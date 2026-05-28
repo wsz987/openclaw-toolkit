@@ -6,6 +6,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            commands::workflow::inspect_stage1_dashboard_command,
             commands::workflow::start_stage1_install,
             commands::dialog::pick_directory_dialog
         ])
