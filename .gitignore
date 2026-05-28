@@ -10,3 +10,8 @@ coverage
 !.env.example
 apps/desktop/src-tauri/target
 runtime
+
+
+# Added by cargo
+
+/target
