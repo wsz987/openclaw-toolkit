@@ -1,0 +1,16 @@
+{
+  "name": "openclaw-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm --filter @openclaw-toolkit/desktop build",
+    "dev:desktop": "pnpm --filter @openclaw-toolkit/desktop dev",
+    "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  }
+}

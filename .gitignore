@@ -1,0 +1,12 @@
+node_modules
+.dist
+dist
+build
+coverage
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+apps/desktop/src-tauri/target
+runtime
