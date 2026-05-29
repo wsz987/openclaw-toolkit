@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{path::{Path, PathBuf}, process::Command};
+
+use anyhow::Context;
+use semver::{Version, VersionReq};
 
 use crate::core::{artifact::{install_archive, verify_sha256}, manifest::models::RequiredNodeRuntime, remote::download_remote_file};
 
@@ -11,10 +14,12 @@ pub fn node_runtime_executable(node_dir: &Path) -> PathBuf {
 }
 
 pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &RequiredNodeRuntime, remote_base_url: Option<&str>) -> anyhow::Result<PathBuf> {
+    validate_required_node(node)?;
+
     let dir = node_runtime_dir(base_dir, node);
     let node_exe = node_runtime_executable(&dir);
 
-    if node_exe.exists() {
+    if node_exe.exists() && validate_node_executable(&node_exe, &node.range).is_ok() {
         return Ok(dir);
     }
 
@@ -37,5 +42,98 @@ pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &Required
         anyhow::bail!("node runtime install failed, missing node.exe in {}", dir.display());
     }
 
+    validate_node_executable(&node_exe, &node.range)
+        .with_context(|| format!("校验 Node Runtime 失败：{}", node_exe.display()))?;
+
     Ok(dir)
+}
+
+pub fn validate_required_node(node: &RequiredNodeRuntime) -> anyhow::Result<()> {
+    let pinned = parse_node_version(&node.version)?;
+    let requirement = parse_node_range(&node.range)
+        .with_context(|| format!("解析 requiredNode.range 失败：{}", node.range))?;
+
+    if !requirement.matches(&pinned) {
+        anyhow::bail!("requiredNode.version {} 不满足 requiredNode.range {}", node.version, node.range);
+    }
+
+    Ok(())
+}
+
+pub fn validate_node_executable(node_exe: &Path, range: &str) -> anyhow::Result<Version> {
+    let actual = read_node_version(node_exe)?;
+    ensure_node_version_matches(&actual, range)?;
+    Ok(actual)
+}
+
+pub fn ensure_node_version_matches(actual: &Version, range: &str) -> anyhow::Result<()> {
+    let requirement = parse_node_range(range).with_context(|| format!("解析 Node 版本范围失败：{}", range))?;
+    if !requirement.matches(actual) {
+        anyhow::bail!("当前 Node Runtime 版本 {} 不满足要求 {}", actual, range);
+    }
+
+    Ok(())
+}
+
+fn parse_node_range(range: &str) -> anyhow::Result<VersionReq> {
+    let normalized = range
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(", ");
+    VersionReq::parse(&normalized).with_context(|| format!("解析 Node 版本范围失败：{}", range))
+}
+
+pub fn parse_node_version(value: &str) -> anyhow::Result<Version> {
+    let normalized = value.trim().trim_start_matches('v');
+    Version::parse(normalized).with_context(|| format!("解析 Node 版本失败：{}", value))
+}
+
+fn read_node_version(node_exe: &Path) -> anyhow::Result<Version> {
+    let output = Command::new(node_exe)
+        .arg("--version")
+        .output()
+        .with_context(|| format!("执行 {} --version 失败", node_exe.display()))?;
+
+    if !output.status.success() {
+        anyhow::bail!("{} --version 退出失败：{}", node_exe.display(), output.status);
+    }
+
+    let stdout = String::from_utf8(output.stdout).context("读取 node --version 输出失败")?;
+    parse_node_version(&stdout)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ensure_node_version_matches, parse_node_version, validate_required_node};
+    use crate::core::manifest::models::RequiredNodeRuntime;
+
+    #[test]
+    fn parses_node_version_with_v_prefix() {
+        let version = parse_node_version("v20.11.1\n").unwrap();
+
+        assert_eq!(version.major, 20);
+        assert_eq!(version.minor, 11);
+        assert_eq!(version.patch, 1);
+    }
+
+    #[test]
+    fn validates_node_version_range() {
+        let version = parse_node_version("v20.11.1").unwrap();
+
+        assert!(ensure_node_version_matches(&version, ">=20 <21").is_ok());
+        assert!(ensure_node_version_matches(&version, ">=21 <22").is_err());
+    }
+
+    #[test]
+    fn rejects_inconsistent_required_node_manifest() {
+        let node = RequiredNodeRuntime {
+            version: "20.11.1".to_string(),
+            range: ">=18 <20".to_string(),
+            artifact: "node.zip".to_string(),
+            sha256: "sha".to_string(),
+            signature: None,
+        };
+
+        assert!(validate_required_node(&node).is_err());
+    }
 }

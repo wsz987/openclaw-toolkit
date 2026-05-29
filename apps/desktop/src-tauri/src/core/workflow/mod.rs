@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     browser::configure_browser_runtime,
+    environment::{validate_windows_environment, windows_environment_status},
     license::verify_offline_license,
     manifest::{
         load_release_manifest, load_toolkit_manifest, load_toolkit_settings, write_installed_manifest,
         models::{InstalledManifest, ReleaseArtifact, ReleaseManifest, ToolkitManifest},
     },
-    node_runtime::{ensure_node_runtime, node_runtime_dir, node_runtime_executable},
+    node_runtime::{ensure_node_runtime, node_runtime_dir, node_runtime_executable, validate_node_executable, validate_required_node},
     openclaw_config::{install_openclaw, openclaw_dir as resolve_openclaw_dir, write_openclaw_config},
     permissions::configure_permissions,
     process::verify_openclaw_runtime,
@@ -169,15 +170,23 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         let install_mode = progress.install_mode.clone();
         let selected_version = progress.selected_version.clone();
         let openclaw_version = progress.openclaw_version.clone();
-        let node_version = progress.node_version.clone();
-        let release_manifest_available = if install_mode == "remote" {
+        let toolkit_manifest = load_toolkit_manifest(&project_root).ok();
+        let release_manifest = if install_mode == "remote" {
             load_toolkit_settings(&project_root)
                 .ok()
                 .and_then(|settings| settings.remote_base_url)
                 .and_then(|remote_base_url| load_release_manifest_from_remote(&remote_base_url).ok())
-                .is_some()
         } else {
-            project_root.join("artifacts").join("manifest.json").exists()
+            load_release_manifest(&project_root).ok()
+        };
+        let release_manifest_available = release_manifest.is_some();
+        let resolved_release = match (&toolkit_manifest, &release_manifest, openclaw_version.as_deref()) {
+            (Some(_), Some(release_manifest), Some(openclaw_version)) => release_manifest
+                .releases
+                .iter()
+                .find(|release| release.version == openclaw_version)
+                .cloned(),
+            _ => None,
         };
         let environment = build_environment_checks(
             &project_root,
@@ -187,8 +196,8 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
             input.selected_version.as_deref(),
             install_mode.as_str(),
             selected_version.as_str(),
-            openclaw_version.as_deref(),
-            node_version.as_deref(),
+            toolkit_manifest.as_ref(),
+            resolved_release.as_ref(),
             release_manifest_available,
         );
 
@@ -243,10 +252,8 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         input.selected_version.as_deref(),
         install_mode.as_str(),
         selected_version.as_str(),
-        resolved_release.as_ref().map(|release| release.version.as_str()),
-        resolved_release
-            .as_ref()
-            .map(|release| release.required_node.version.as_str()),
+        toolkit_manifest.as_ref(),
+        resolved_release.as_ref(),
         release_manifest_available,
     );
 
@@ -356,7 +363,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         &mut progress,
         InstallStep::CheckEnvironment,
         Some(InstallStep::SelectInstallMode),
-        || check_environment(),
+        || check_environment(&toolkit_manifest),
     )?;
 
     run_step(
@@ -397,6 +404,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         .find(|release| release.version == selected_version)
         .cloned()
         .with_context(|| format!("OpenClaw release {} not found", selected_version))?;
+    validate_required_node(&release.required_node)?;
 
     progress.openclaw_version = Some(release.version.clone());
     progress.node_version = Some(release.required_node.version.clone());
@@ -411,7 +419,10 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
             let runtime_dir = node_runtime_dir(&base_dir, &release.required_node);
             let node_exe = node_runtime_executable(&runtime_dir);
             if node_exe.exists() {
-                append_install_log(&base_dir, &format!("{} node runtime already exists: {}", workflow_id, runtime_dir.display()))?;
+                match validate_node_executable(&node_exe, &release.required_node.range) {
+                    Ok(version) => append_install_log(&base_dir, &format!("{} node runtime already exists: {} ({})", workflow_id, runtime_dir.display(), version))?,
+                    Err(error) => append_install_log(&base_dir, &format!("{} node runtime exists but requires reinstall: {}", workflow_id, error))?,
+                }
             }
             Ok(())
         },
@@ -684,26 +695,33 @@ fn build_environment_checks(
     selected_version_override: Option<&str>,
     install_mode: &str,
     selected_version: &str,
-    openclaw_version: Option<&str>,
-    node_version: Option<&str>,
+    toolkit_manifest: Option<&ToolkitManifest>,
+    resolved_release: Option<&ReleaseArtifact>,
     release_manifest_available: bool,
 ) -> Vec<Stage1EnvironmentCheck> {
     let toolkit_manifest_path = project_root.join("artifacts").join("toolkit-manifest.json");
     let release_manifest_path = project_root.join("artifacts").join("manifest.json");
     let toolkit_settings_path = project_root.join("artifacts").join("toolkit-settings.json");
-    let openclaw_dir = openclaw_version.map(|version| base_dir.join("openclaw").join(version));
-    let node_dir = node_version.map(|version| base_dir.join("runtimes").join("node").join(format!("{}-win-x64", version)));
+    let openclaw_dir = resolved_release.map(|release| base_dir.join("openclaw").join(&release.version));
+    let node_dir = resolved_release.map(|release| node_runtime_dir(base_dir, &release.required_node));
     let installed_manifest_path = openclaw_dir.as_ref().map(|dir| dir.join("installed-manifest.json"));
     let config_path = openclaw_dir.as_ref().map(|dir| dir.join("openclaw.json"));
-    let windows_ok = cfg!(target_os = "windows");
+    let windows_status = windows_environment_status(toolkit_manifest);
     let license_ok = verify_offline_license(license_key).is_ok();
+    let node_runtime_check = build_node_runtime_check(node_dir.as_deref(), resolved_release);
 
     vec![
         Stage1EnvironmentCheck {
             id: "windows".to_string(),
             label: "Windows 环境".to_string(),
-            state: if windows_ok { Stage1CheckState::Ok } else { Stage1CheckState::Error },
-            detail: if windows_ok { "当前系统已满足 Stage 1 运行前提".to_string() } else { "Stage 1 当前仅支持 Windows 环境".to_string() },
+            state: match &windows_status {
+                Ok(status) if status.is_supported() => Stage1CheckState::Ok,
+                Ok(_) => Stage1CheckState::Error,
+                Err(_) => Stage1CheckState::Error,
+            },
+            detail: windows_status
+                .map(|status| status.detail())
+                .unwrap_or_else(|error| format!("Windows 环境检查失败：{}", error)),
         },
         Stage1EnvironmentCheck {
             id: "project-root".to_string(),
@@ -757,19 +775,7 @@ fn build_environment_checks(
             },
             detail: format!("当前选择：{}", selected_version_override.unwrap_or(selected_version)),
         },
-        Stage1EnvironmentCheck {
-            id: "node-runtime".to_string(),
-            label: "受管 Node Runtime".to_string(),
-            state: if node_dir.as_ref().map(|dir| node_runtime_executable(dir).exists()).unwrap_or(false) {
-                Stage1CheckState::Ok
-            } else {
-                Stage1CheckState::Warn
-            },
-            detail: node_dir
-                .as_ref()
-                .map(|dir| dir.display().to_string())
-                .unwrap_or_else(|| "尚未解析 Node Runtime 版本".to_string()),
-        },
+        node_runtime_check,
         Stage1EnvironmentCheck {
             id: "openclaw-install".to_string(),
             label: "OpenClaw 安装目录".to_string(),
@@ -799,6 +805,51 @@ fn build_environment_checks(
     ]
 }
 
+fn build_node_runtime_check(node_dir: Option<&Path>, resolved_release: Option<&ReleaseArtifact>) -> Stage1EnvironmentCheck {
+    let Some(release) = resolved_release else {
+        return Stage1EnvironmentCheck {
+            id: "node-runtime".to_string(),
+            label: "受管 Node Runtime".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: "尚未解析 Node Runtime 版本".to_string(),
+        };
+    };
+
+    let Some(node_dir) = node_dir else {
+        return Stage1EnvironmentCheck {
+            id: "node-runtime".to_string(),
+            label: "受管 Node Runtime".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("需要 Node {} ({})", release.required_node.version, release.required_node.range),
+        };
+    };
+
+    let node_exe = node_runtime_executable(node_dir);
+    if !node_exe.exists() {
+        return Stage1EnvironmentCheck {
+            id: "node-runtime".to_string(),
+            label: "受管 Node Runtime".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("未安装：{}，需要 Node {} ({})", node_dir.display(), release.required_node.version, release.required_node.range),
+        };
+    }
+
+    match validate_node_executable(&node_exe, &release.required_node.range) {
+        Ok(actual) => Stage1EnvironmentCheck {
+            id: "node-runtime".to_string(),
+            label: "受管 Node Runtime".to_string(),
+            state: Stage1CheckState::Ok,
+            detail: format!("{}，当前版本 {}，要求 {}", node_exe.display(), actual, release.required_node.range),
+        },
+        Err(error) => Stage1EnvironmentCheck {
+            id: "node-runtime".to_string(),
+            label: "受管 Node Runtime".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("{}，{}", node_exe.display(), error),
+        },
+    }
+}
+
 fn infer_precheck_step(
     project_root: &Path,
     license_key: Option<&str>,
@@ -806,11 +857,15 @@ fn infer_precheck_step(
     toolkit_manifest: Option<&ToolkitManifest>,
     release_manifest: Option<&ReleaseManifest>,
 ) -> Option<InstallStep> {
-    if !cfg!(target_os = "windows") {
+    let Some(toolkit_manifest) = toolkit_manifest else {
+        return Some(InstallStep::LoadManifest);
+    };
+
+    if validate_windows_environment(toolkit_manifest).is_err() {
         return Some(InstallStep::CheckEnvironment);
     }
 
-    if !project_root.exists() || toolkit_manifest.is_none() {
+    if !project_root.exists() {
         return Some(InstallStep::LoadManifest);
     }
 
@@ -888,11 +943,8 @@ fn resolve_selected_version(
     }
 }
 
-fn check_environment() -> anyhow::Result<()> {
-    if !cfg!(target_os = "windows") {
-        anyhow::bail!("Stage 1 当前仅支持 Windows 环境");
-    }
-    Ok(())
+fn check_environment(toolkit_manifest: &ToolkitManifest) -> anyhow::Result<()> {
+    validate_windows_environment(toolkit_manifest)
 }
 
 fn step_title(step: InstallStep) -> &'static str {

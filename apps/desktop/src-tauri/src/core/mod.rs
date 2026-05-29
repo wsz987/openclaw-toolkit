@@ -2,6 +2,7 @@ pub mod workflow;
 pub mod manifest;
 pub mod license;
 pub mod artifact;
+pub mod environment;
 pub mod node_runtime;
 pub mod openclaw_config;
 pub mod skills;

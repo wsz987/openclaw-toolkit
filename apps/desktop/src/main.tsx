@@ -443,7 +443,7 @@ function App() {
   const activeStep = stepProgress.find((step) => step.state === 'current');
   const progressValue = dashboard?.progress ?? 0;
   const environmentItems = dashboard?.environment ?? [];
-  
+
   // Extract specific checks for Step 1
   const step1CheckIds = ['windows', 'project-root', 'toolkit-manifest'];
   const step1Checks = environmentItems.filter((check) => step1CheckIds.includes(check.id));
@@ -476,7 +476,7 @@ function App() {
       ...diag,
       tasks: diag.tasks.map((task) => {
         let status: 'checked' | 'pending' | 'waiting' = 'waiting';
-        
+
         const isStepDone = dashboard?.completedSteps.includes(stepId);
         const isStepCurrent = dashboard?.currentStep === stepId;
 
@@ -673,11 +673,10 @@ function App() {
                   key={item.id}
                   data-state={item.state}
                 >
-                  <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                    item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                    'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-                  }`}>
+                  <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
+                      item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                        'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    }`}>
                     {item.state === 'ok' ? (
                       <CheckIcon size={12} />
                     ) : item.state === 'error' ? (
@@ -798,11 +797,10 @@ function App() {
                   key={item.id}
                   data-state={item.state}
                 >
-                  <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                    item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                    'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-                  }`}>
+                  <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
+                      item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                        'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    }`}>
                     {item.state === 'ok' ? (
                       <CheckIcon size={12} />
                     ) : item.state === 'error' ? (
@@ -861,12 +859,11 @@ function App() {
                     const isFailed = step.state === 'failed';
 
                     return (
-                      <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${
-                        isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
-                        isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
-                        isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
-                        'bg-[hsl(var(--surface-dark-soft))] border-white/2'
-                      }`}>
+                      <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
+                          isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
+                            isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
+                              'bg-[hsl(var(--surface-dark-soft))] border-white/2'
+                        }`}>
                         <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
                           {isDone ? (
                             <CheckIcon size={14} className="text-[hsl(var(--success))]" />
@@ -882,19 +879,18 @@ function App() {
                           <strong className="text-sm font-medium text-[hsl(var(--on-dark))]">{step.title}</strong>
                           <p className="text-[11px] text-[hsl(var(--on-dark-soft))]">{step.description}</p>
                         </div>
-                        <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
-                          isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                          isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
-                          isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                          'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-                        }`}>
+                        <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
+                            isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
+                              isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                                'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                          }`}>
                           {step.state === 'done'
                             ? '已就绪'
                             : step.state === 'current'
-                            ? '运行中'
-                            : step.state === 'failed'
-                            ? '受阻'
-                            : '等待中'}
+                              ? '运行中'
+                              : step.state === 'failed'
+                                ? '受阻'
+                                : '等待中'}
                         </div>
                       </div>
                     );
@@ -918,9 +914,8 @@ function App() {
                     <p className="diagnostic-desc text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">{diagnosticsInfo.description}</p>
                     <div className="diagnostic-tasks-list flex flex-col gap-2.5 mt-2">
                       {diagnosticsInfo.tasks.map((task, i) => (
-                        <div key={i} className={`diagnostic-task-item flex gap-3 text-xs items-start text-[hsl(var(--on-dark-soft))] ${
-                          task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
-                        }`}>
+                        <div key={i} className={`diagnostic-task-item flex gap-3 text-xs items-start text-[hsl(var(--on-dark-soft))] ${task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
+                          }`}>
                           <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5">
                             {task.status === 'checked' ? (
                               <CheckIcon size={12} className="text-[hsl(var(--success))]" />
@@ -984,12 +979,11 @@ function App() {
                   const isFailed = step.state === 'failed';
 
                   return (
-                    <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${
-                      isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
-                      isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
-                      isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
-                      'bg-[hsl(var(--surface-dark-soft))] border-white/2'
-                    }`}>
+                    <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
+                        isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
+                          isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
+                            'bg-[hsl(var(--surface-dark-soft))] border-white/2'
+                      }`}>
                       <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
                         {isDone ? (
                           <CheckIcon size={14} className="text-[hsl(var(--success))]" />
@@ -1005,19 +999,18 @@ function App() {
                         <strong className="text-sm font-medium text-[hsl(var(--on-dark))]">{step.title}</strong>
                         <p className="text-[11px] text-[hsl(var(--on-dark-soft))]">{step.description}</p>
                       </div>
-                      <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
-                        isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                        isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
-                        isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                        'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-                      }`}>
+                      <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
+                          isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
+                            isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                              'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                        }`}>
                         {step.state === 'done'
                           ? '已就绪'
                           : step.state === 'current'
-                          ? '运行中'
-                          : step.state === 'failed'
-                          ? '受阻'
-                          : '等待中'}
+                            ? '运行中'
+                            : step.state === 'failed'
+                              ? '受阻'
+                              : '等待中'}
                       </div>
                     </div>
                   );
@@ -1041,9 +1034,8 @@ function App() {
                   <p className="diagnostic-desc text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">{diagnosticsInfo.description}</p>
                   <div className="diagnostic-tasks-list flex flex-col gap-2.5 mt-2">
                     {diagnosticsInfo.tasks.map((task, i) => (
-                      <div key={i} className={`diagnostic-task-item flex gap-3 text-xs items-start text-[hsl(var(--on-dark-soft))] ${
-                        task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
-                      }`}>
+                      <div key={i} className={`diagnostic-task-item flex gap-3 text-xs items-start text-[hsl(var(--on-dark-soft))] ${task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
+                        }`}>
                         <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5">
                           {task.status === 'checked' ? (
                             <CheckIcon size={12} className="text-[hsl(var(--success))]" />
@@ -1084,9 +1076,6 @@ function App() {
             <h1 className="font-serif text-4xl text-[hsl(var(--ink))] font-normal tracking-tight leading-tight">
               部署受管运行环境
             </h1>
-            <p className="text-sm text-[hsl(var(--muted))] mt-1">
-              基于离线授权系统检测，为 OpenClaw 开发生态圈构建隔离沙箱 Node 运行环境。
-            </p>
           </div>
           {dashboard?.openclawVersion && (
             <div className="flex flex-col items-end gap-1">
@@ -1117,8 +1106,8 @@ function App() {
             }
 
             return (
-              <div 
-                key={mp.id} 
+              <div
+                key={mp.id}
                 className={`step-node group ${state}`}
                 onClick={() => {
                   if (phase !== 'running' && phase !== 'succeeded' && index <= 1) {
@@ -1132,7 +1121,7 @@ function App() {
                     <div className="step-node-line-fill" />
                   </div>
                 )}
-                
+
                 <div className="step-node-circle">
                   {state === 'done' ? (
                     <CheckIcon size={12} />

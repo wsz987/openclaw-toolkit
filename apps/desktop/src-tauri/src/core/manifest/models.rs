@@ -7,6 +7,19 @@ pub struct ToolkitManifest {
     pub schema_version: String,
     pub default_openclaw_version: String,
     pub supported_openclaw_versions: Vec<String>,
+    pub environment: Option<EnvironmentRequirements>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvironmentRequirements {
+    pub windows: Option<WindowsRequirements>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowsRequirements {
+    pub min_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
