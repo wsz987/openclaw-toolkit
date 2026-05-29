@@ -450,7 +450,7 @@ function App() {
   const step1Ready = step1Checks.length > 0 && step1Checks.every((c) => c.state === 'ok');
 
   // Extract specific checks for Step 2
-  const step2CheckIds = ['license', 'install-mode', 'release-manifest', 'selected-version'];
+  const step2CheckIds = ['license', 'install-mode', 'release-manifest', 'selected-version', 'system-openclaw'];
   const step2Checks = environmentItems.filter((check) => step2CheckIds.includes(check.id));
   const step2Ready = step2Checks.length > 0 && step2Checks.every((c) => c.state === 'ok');
 

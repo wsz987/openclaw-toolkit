@@ -16,7 +16,7 @@ use crate::core::{
     node_runtime::{ensure_node_runtime, node_runtime_dir, node_runtime_executable, validate_node_executable, validate_required_node},
     openclaw_config::{install_openclaw, openclaw_dir as resolve_openclaw_dir, write_openclaw_config},
     permissions::configure_permissions,
-    process::verify_openclaw_runtime,
+    process::{detect_system_openclaw, verify_openclaw_runtime},
     remote::load_release_manifest_from_remote,
     runtime::{append_install_log, backup_existing_dir},
     skills::install_skills,
@@ -709,6 +709,7 @@ fn build_environment_checks(
     let windows_status = windows_environment_status(toolkit_manifest);
     let license_ok = verify_offline_license(license_key).is_ok();
     let node_runtime_check = build_node_runtime_check(node_dir.as_deref(), resolved_release);
+    let system_openclaw_check = build_system_openclaw_check();
 
     vec![
         Stage1EnvironmentCheck {
@@ -776,6 +777,7 @@ fn build_environment_checks(
             detail: format!("当前选择：{}", selected_version_override.unwrap_or(selected_version)),
         },
         node_runtime_check,
+        system_openclaw_check,
         Stage1EnvironmentCheck {
             id: "openclaw-install".to_string(),
             label: "OpenClaw 安装目录".to_string(),
@@ -846,6 +848,36 @@ fn build_node_runtime_check(node_dir: Option<&Path>, resolved_release: Option<&R
             label: "受管 Node Runtime".to_string(),
             state: Stage1CheckState::Warn,
             detail: format!("{}，{}", node_exe.display(), error),
+        },
+    }
+}
+
+fn build_system_openclaw_check() -> Stage1EnvironmentCheck {
+    let detection = detect_system_openclaw();
+    match (detection.executable, detection.version, detection.error) {
+        (Some(executable), Some(version), _) => Stage1EnvironmentCheck {
+            id: "system-openclaw".to_string(),
+            label: "系统 OpenClaw".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("检测到系统 OpenClaw：{}，版本 {}。安装流程仍将使用受管运行环境。", executable.display(), version),
+        },
+        (Some(executable), None, Some(error)) => Stage1EnvironmentCheck {
+            id: "system-openclaw".to_string(),
+            label: "系统 OpenClaw".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("检测到系统 OpenClaw：{}，但读取版本失败：{}。安装流程仍将使用受管运行环境。", executable.display(), error),
+        },
+        (Some(executable), None, None) => Stage1EnvironmentCheck {
+            id: "system-openclaw".to_string(),
+            label: "系统 OpenClaw".to_string(),
+            state: Stage1CheckState::Warn,
+            detail: format!("检测到系统 OpenClaw：{}。安装流程仍将使用受管运行环境。", executable.display()),
+        },
+        (None, _, _) => Stage1EnvironmentCheck {
+            id: "system-openclaw".to_string(),
+            label: "系统 OpenClaw".to_string(),
+            state: Stage1CheckState::Ok,
+            detail: "未检测到 PATH 中的系统 OpenClaw，当前安装将使用受管运行环境。".to_string(),
         },
     }
 }
