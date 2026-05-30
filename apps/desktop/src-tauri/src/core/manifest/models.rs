@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 pub struct ToolkitManifest {
     pub toolkit_version: String,
     pub schema_version: String,
+    #[serde(rename = "defaultOpenClawVersion", alias = "defaultOpenclawVersion")]
     pub default_openclaw_version: String,
+    #[serde(rename = "supportedOpenClawVersions", alias = "supportedOpenclawVersions")]
     pub supported_openclaw_versions: Vec<String>,
     pub environment: Option<EnvironmentRequirements>,
 }

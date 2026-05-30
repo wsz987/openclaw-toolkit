@@ -76,12 +76,18 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 
 ## Milestone 7：前端安装向导（已完成基础版）
 
-- 目录选择：项目根目录、OpenClaw 基础目录
+- 目录选择：项目资源目录、OpenClaw 安装目录
 - 激活密钥输入
 - 安装模式选择
 - 版本输入，支持 `latest`
 - 远程地址不对用户展示，由内部 settings 管理
 - 组件拆分为 shadcn 风格轻量组件
+
+说明：
+
+- 面向最终用户的主文案应统一为 `OpenClaw 安装目录`
+- 离线集成安装包场景下，安装资源目录应由程序自动定位，不建议要求用户手工填写项目根目录
+- 前端主流程默认只暴露 `OpenClaw 安装目录` 一个路径输入
 
 ## Milestone 8：打包（待做）
 

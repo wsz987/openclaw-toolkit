@@ -235,3 +235,43 @@ export const InfoIcon = ({ size = 16, className, ...props }: IconProps) => (
     <line x1="12" y1="8" x2="12.01" y2="8" />
   </svg>
 );
+
+export const EyeIcon = ({ size = 16, className, ...props }: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M2.06 12.35a1 1 0 0 1 0-.7C3.42 7.6 7.36 4.5 12 4.5s8.58 3.1 9.94 7.15a1 1 0 0 1 0 .7C20.58 16.4 16.64 19.5 12 19.5s-8.58-3.1-9.94-7.15Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const EyeOffIcon = ({ size = 16, className, ...props }: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="m3 3 18 18" />
+    <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.5c4.64 0 8.58 3.1 9.94 7.15a1 1 0 0 1 0 .7 11.9 11.9 0 0 1-2.17 3.46" />
+    <path d="M6.71 6.72A11.84 11.84 0 0 0 2.06 11.65a1 1 0 0 0 0 .7C3.42 16.4 7.36 19.5 12 19.5a10.9 10.9 0 0 0 5.29-1.38" />
+  </svg>
+);

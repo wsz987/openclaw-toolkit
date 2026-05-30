@@ -14,6 +14,16 @@ pub fn append_install_log(base_dir: &Path, message: &str) -> anyhow::Result<()> 
     Ok(())
 }
 
+pub fn append_error_chain_log(base_dir: &Path, title: &str, error: &anyhow::Error) -> anyhow::Result<()> {
+    append_install_log(base_dir, &format!("{}: {}", title, error))?;
+
+    for (index, cause) in error.chain().enumerate().skip(1) {
+        append_install_log(base_dir, &format!("  cause[{index}]: {cause}"))?;
+    }
+
+    Ok(())
+}
+
 pub fn backup_existing_dir(source: &Path, base_dir: &Path, label: &str) -> anyhow::Result<Option<std::path::PathBuf>> {
     if !source.exists() {
         return Ok(None);

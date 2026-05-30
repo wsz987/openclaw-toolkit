@@ -12,3 +12,4 @@ pub mod process;
 pub mod runtime;
 pub mod remote;
 pub mod dialog;
+pub mod version_catalog;

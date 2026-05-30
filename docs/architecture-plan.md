@@ -22,6 +22,15 @@ Managed Node Runtime = OpenClaw 运行环境
 OpenClaw Package + Skills = 被工具包安装和管理的目标环境
 ```
 
+离线集成安装包作为默认发布形态时，`artifacts`、`manifest`、`templates` 等安装资源应由安装器自动定位，不应要求最终用户手动指定项目根目录。最终用户主要需要确认的是 `OpenClaw 安装目录`，即受管 Node Runtime、OpenClaw 主程序、配置、日志和备份的落盘根路径。
+
+资源目录解析建议顺序：
+
+- 显式指定的开发态目录
+- `OPENCLAW_TOOLKIT_ROOT` 环境变量
+- 安装器当前工作目录及其上级目录
+- 安装器可执行文件所在目录及其上级目录
+
 ## 阶段范围
 
 ### Stage 1：当前实现重点
@@ -76,6 +85,8 @@ OpenClaw Managed Runtime
   └─ D:\OpenClaw\backups\
 ```
 
+对用户暴露的目录建议统一使用 `OpenClaw 安装目录` 这一表述；`基础目录`、`部署基础目录` 属于内部实现概念，不建议继续作为主界面文案。
+
 ## Node.js Runtime 策略
 
 Node.js 不属于工具包自身运行时，而是 OpenClaw 的被管理运行时。每个 OpenClaw release 在 manifest 中声明 requiredNode。
@@ -127,6 +138,12 @@ templates                    openclaw 和权限模板
 scripts                      打包、签名、构建脚本
 docs                         架构和部署文档
 ```
+
+对于集成安装包：
+
+- 安装资源目录由程序内部自动解析
+- 用户界面默认只需要配置 `OpenClaw 安装目录`
+- 无论是本地离线包、远程源还是官方 npm 安装，最终都统一部署到该目录下
 
 ## Workflow 设计
 

@@ -2,15 +2,25 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from './components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from './components/ui/alert-dialog';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/card';
 import { Progress } from './components/ui/progress';
 import { Input } from './components/ui/input';
 import { Select } from './components/ui/select';
+import { SecretField } from './components/secret-field';
 import {
   CheckIcon,
   AlertIcon,
   XIcon,
-  KeyIcon,
   FolderIcon,
   ArrowLeftIcon,
   PlayIcon,
@@ -73,6 +83,25 @@ type Stage1Dashboard = {
   openclawVersion: string | null;
   nodeVersion: string | null;
   baseDir: string;
+  systemOpenclaw: {
+    detected: boolean;
+    executable: string | null;
+    version: string | null;
+    error: string | null;
+  };
+  systemNode: {
+    detected: boolean;
+    executable: string | null;
+    version: string | null;
+    satisfiesRequirement: boolean | null;
+    error: string | null;
+  };
+  installPlan: {
+    targetOpenclawVersion: string | null;
+    targetNodeVersion: string | null;
+    action: string;
+    requiresConfirmation: boolean;
+  };
 };
 
 type Stage1InstallResult = {
@@ -83,6 +112,23 @@ type Stage1InstallResult = {
   openclawDir: string;
   nodeDir: string;
   configPath: string;
+};
+
+type VersionCatalogOption = {
+  value: string;
+  label: string;
+  detail: string;
+  selectable: boolean;
+  actualVersion: string | null;
+};
+
+type VersionCatalogResult = {
+  installMode: InstallMode;
+  sourceReady: boolean;
+  defaultValue: string;
+  latestVersion: string | null;
+  options: VersionCatalogOption[];
+  message: string | null;
 };
 
 type DirectoryPickerResponse = string | null;
@@ -155,8 +201,8 @@ const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
     title: '加载 Manifest 资源清单',
     description: '正在读取安装包及包含的工具链元数据配置...',
     tasks: [
-      { label: '读取 toolkit-manifest.json 配置文件', key: 'project-root' },
-      { label: '解析版本定义和资源分发配额', key: 'project-root' }
+      { label: '定位内置安装资源目录', key: 'resource-root' },
+      { label: '读取 toolkit-manifest.json 配置文件', key: 'toolkit-manifest' }
     ]
   },
   validateLicense: {
@@ -172,7 +218,7 @@ const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
     description: '进行基础环境与架构兼容性检验，确保工具可在当前系统正常运作...',
     tasks: [
       { label: '校验操作系统类型 (当前要求 Windows 架构)', key: 'windows' },
-      { label: '测试项目目标路径与访问权限', key: 'project-root' }
+      { label: '测试安装资源目录与访问权限', key: 'resource-root' }
     ]
   },
   selectInstallMode: {
@@ -288,7 +334,6 @@ const BrandSpike = ({ size = 20, className }: { size?: number; className?: strin
 );
 
 function App() {
-  const [projectRoot, setProjectRoot] = useState('D:\\coding\\auto-intsall-openclaw');
   const [baseDir, setBaseDir] = useState('D:\\OpenClaw');
   const [licenseKey, setLicenseKey] = useState('stage1-dev');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
@@ -296,8 +341,11 @@ function App() {
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [dashboard, setDashboard] = useState<Stage1Dashboard | null>(null);
+  const [versionCatalogLoading, setVersionCatalogLoading] = useState(false);
+  const [versionCatalog, setVersionCatalog] = useState<VersionCatalogResult | null>(null);
   const [result, setResult] = useState<Stage1InstallResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   // wizardStep manages which wizard panel is active (0: Init/Paths, 1: License/Config, 2: Deploy dependencies, 3: Verify)
   const [wizardStep, setWizardStep] = useState(0);
@@ -306,14 +354,49 @@ function App() {
 
   const payload = useMemo(
     () => ({
-      projectRoot,
       baseDir,
       licenseKey,
       installMode,
       selectedVersion
     }),
-    [projectRoot, baseDir, licenseKey, installMode, selectedVersion]
+    [baseDir, licenseKey, installMode, selectedVersion]
   );
+
+  async function loadVersionCatalog(mode: InstallMode, preserveSelection = true) {
+    setVersionCatalogLoading(true);
+    try {
+      const response = await invoke<VersionCatalogResult>('inspect_version_catalog_command', {
+        input: {
+          installMode: mode
+        }
+      });
+
+      setVersionCatalog(response);
+      setSelectedVersion((current) => {
+        if (!preserveSelection) {
+          return response.defaultValue;
+        }
+
+        const currentOption = response.options.find((option) => option.value === current);
+        if (currentOption?.selectable) {
+          return current;
+        }
+
+        return response.defaultValue;
+      });
+    } catch (err) {
+      setVersionCatalog({
+        installMode: mode,
+        sourceReady: false,
+        defaultValue: 'latest',
+        latestVersion: null,
+        options: [],
+        message: err instanceof Error ? err.message : String(err)
+      });
+    } finally {
+      setVersionCatalogLoading(false);
+    }
+  }
 
   async function loadDashboard() {
     setError(null);
@@ -343,11 +426,11 @@ function App() {
     }
   }
 
-  async function pickDirectory(field: 'projectRoot' | 'baseDir') {
+  async function pickDirectory() {
     const picked = await invoke<DirectoryPickerResponse>('pick_directory_dialog', {
       request: {
-        title: field === 'projectRoot' ? '选择项目根目录' : '选择 OpenClaw 基础目录',
-        defaultPath: field === 'projectRoot' ? projectRoot : baseDir
+        title: '选择 OpenClaw 安装目录',
+        defaultPath: baseDir
       }
     });
 
@@ -355,11 +438,7 @@ function App() {
       return;
     }
 
-    if (field === 'projectRoot') {
-      setProjectRoot(picked);
-    } else {
-      setBaseDir(picked);
-    }
+    setBaseDir(picked);
   }
 
   async function startInstall() {
@@ -379,6 +458,19 @@ function App() {
     }
   }
 
+  async function handlePrimaryInstallAction() {
+    if (!canStartInstall) {
+      return;
+    }
+
+    if (dashboard?.installPlan.requiresConfirmation) {
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    await startInstall();
+  }
+
   // Auto scroll timeline container to keep current step centered
   useEffect(() => {
     if (timelineContainerRef.current) {
@@ -388,6 +480,10 @@ function App() {
       }
     }
   }, [dashboard?.currentStep]);
+
+  useEffect(() => {
+    void loadVersionCatalog(installMode);
+  }, [installMode]);
 
   useEffect(() => {
     void loadDashboard();
@@ -445,14 +541,39 @@ function App() {
   const environmentItems = dashboard?.environment ?? [];
 
   // Extract specific checks for Step 1
-  const step1CheckIds = ['windows', 'project-root', 'toolkit-manifest'];
+  const step1CheckIds = ['windows', 'resource-root', 'toolkit-manifest'];
   const step1Checks = environmentItems.filter((check) => step1CheckIds.includes(check.id));
   const step1Ready = step1Checks.length > 0 && step1Checks.every((c) => c.state === 'ok');
 
   // Extract specific checks for Step 2
   const step2CheckIds = ['license', 'install-mode', 'release-manifest', 'selected-version', 'system-openclaw'];
   const step2Checks = environmentItems.filter((check) => step2CheckIds.includes(check.id));
-  const step2Ready = step2Checks.length > 0 && step2Checks.every((c) => c.state === 'ok');
+  const step2Ready = step2Checks.length > 0 && step2Checks.every((c) => c.state !== 'error');
+  const selectedVersionOption = versionCatalog?.options.find((option) => option.value === selectedVersion) ?? null;
+  const versionSelectable = selectedVersionOption?.selectable ?? false;
+  const versionListReady = Boolean(versionCatalog?.sourceReady && versionCatalog.options.length > 0);
+  const canStartInstall = step2Ready && versionListReady && versionSelectable;
+  const systemOpenclaw = dashboard?.systemOpenclaw ?? {
+    detected: false,
+    executable: null,
+    version: null,
+    error: null
+  };
+  const installPlan = dashboard?.installPlan ?? {
+    targetOpenclawVersion: selectedVersionOption?.actualVersion ?? dashboard?.openclawVersion ?? null,
+    targetNodeVersion: dashboard?.nodeVersion ?? null,
+    action: 'install',
+    requiresConfirmation: false
+  };
+  const installActionLabel = installPlan.action === 'upgrade'
+    ? '升级'
+    : installPlan.action === 'reinstall'
+      ? '重装'
+      : '安装';
+  const confirmationDescription = systemOpenclaw.version
+    ? `当前电脑已存在 OpenClaw ${systemOpenclaw.version}，继续后将按官方安装规范在受管运行环境中执行${installActionLabel}。`
+    : '当前电脑已存在系统级 OpenClaw，但未成功读取版本信息。继续后仍会按官方安装规范在受管运行环境中执行安装或更新。';
+  const confirmationTargetVersion = installPlan.targetOpenclawVersion ?? dashboard?.openclawVersion ?? '待解析';
 
   const readyChecks = environmentItems.filter((item) => item.state === 'ok').length;
   const phase = dashboard?.phase ?? 'precheck';
@@ -602,30 +723,13 @@ function App() {
           <Card>
             <CardHeader>
               <CardTitle>步骤 1: 部署路径配置</CardTitle>
-              <CardDescription>指定项目运行目录与受管环境基础目录</CardDescription>
+              <CardDescription>指定 OpenClaw 安装目录，安装资源将由程序自动定位</CardDescription>
             </CardHeader>
             <CardContent className="form-stack">
               <div className="form-group flex flex-col gap-2">
                 <label className="flex justify-between text-xs font-semibold text-[hsl(var(--body-strong))]">
-                  <span>项目根目录</span>
-                  <span className="text-[10px] text-[hsl(var(--muted-soft))] font-normal">必填，工具链根文件夹</span>
-                </label>
-                <div className="directory-input-wrapper flex gap-2">
-                  <Input
-                    value={projectRoot}
-                    onChange={(e) => setProjectRoot(e.target.value)}
-                    placeholder="如 D:\coding\auto-intsall-openclaw"
-                  />
-                  <Button variant="secondary" onClick={() => pickDirectory('projectRoot')}>
-                    <FolderIcon size={13} className="mr-1.5" /> 选择
-                  </Button>
-                </div>
-              </div>
-
-              <div className="form-group flex flex-col gap-2">
-                <label className="flex justify-between text-xs font-semibold text-[hsl(var(--body-strong))]">
-                  <span>OpenClaw 部署基础目录</span>
-                  <span className="text-[10px] text-[hsl(var(--muted-soft))] font-normal">目标安装根路径</span>
+                  <span>OpenClaw 安装目录</span>
+                  <span className="text-[10px] text-[hsl(var(--muted-soft))] font-normal">用于存放运行环境与配置文件</span>
                 </label>
                 <div className="directory-input-wrapper flex gap-2">
                   <Input
@@ -633,7 +737,7 @@ function App() {
                     onChange={(e) => setBaseDir(e.target.value)}
                     placeholder="如 D:\OpenClaw"
                   />
-                  <Button variant="secondary" onClick={() => pickDirectory('baseDir')}>
+                  <Button variant="secondary" onClick={() => pickDirectory()}>
                     <FolderIcon size={13} className="mr-1.5" /> 选择
                   </Button>
                 </div>
@@ -674,8 +778,8 @@ function App() {
                   data-state={item.state}
                 >
                   <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                      item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                        'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                      'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
                     }`}>
                     {item.state === 'ok' ? (
                       <CheckIcon size={12} />
@@ -712,46 +816,75 @@ function App() {
               <CardDescription>验证激活密钥，设定组件获取源与安装版本</CardDescription>
             </CardHeader>
             <CardContent className="form-stack">
-              <div className="form-group flex flex-col gap-2">
-                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
-                  <span>离线激活授权密钥</span>
-                </label>
-                <div className="relative">
-                  <KeyIcon
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted))]"
-                  />
-                  <Input
-                    type="password"
-                    value={licenseKey}
-                    onChange={(e) => setLicenseKey(e.target.value)}
-                    className="pl-9"
-                    placeholder="激活许可证密钥"
-                  />
-                </div>
-              </div>
+              <SecretField
+                label="离线激活授权密钥"
+                value={licenseKey}
+                onChange={setLicenseKey}
+                placeholder="输入激活许可证密钥"
+              />
+
+
 
               <div className="form-group flex flex-col gap-2">
                 <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
-                  <span>版本设定</span>
-                </label>
-                <Input
-                  value={selectedVersion}
-                  onChange={(e) => setSelectedVersion(e.target.value)}
-                  placeholder="latest 或特定版本号，如 1.2.0"
-                />
-              </div>
-
-              <div className="form-group flex flex-col gap-2">
-                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
-                  <span>组件提取模式</span>
+                  <span>使用源</span>
                 </label>
                 <Select value={installMode} onChange={(e) => setInstallMode(e.target.value as InstallMode)}>
-                  <option value="local">本地离线包 (从 artifacts/ 目录读取)</option>
-                  <option value="remote">公司内部远程包 (从服务器端获取拉取)</option>
-                  <option value="npm">NPM 官方包分发 (通过网络动态部署)</option>
+                  <option value="local">本地离线包</option>
+                  <option value="remote">远程包</option>
+                  <option value="npm">NPM 官方包分发</option>
                 </Select>
               </div>
+
+              <div className="form-group flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
+                  <span>版本列表</span>
+                </label>
+                <Select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  disabled={versionCatalogLoading || !versionCatalog || versionCatalog.options.length === 0}
+                >
+                  {!versionCatalog || versionCatalog.options.length === 0 ? (
+                    <option value={selectedVersion}>
+                      {versionCatalogLoading ? '版本目录加载中...' : '暂无可选版本'}
+                    </option>
+                  ) : null}
+                  {versionCatalog?.options.map((option) => (
+                    <option key={option.value} value={option.value} disabled={!option.selectable}>
+                      {option.label}{option.selectable ? '' : ' · 当前不可安装'}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-[11px] leading-relaxed text-[hsl(var(--muted-soft))]">
+                  {versionCatalogLoading
+                    ? '正在按当前使用源加载版本目录...'
+                    : selectedVersionOption?.detail
+                      ?? versionCatalog?.message
+                      ?? '按当前使用源自动加载可用版本。'}
+                </p>
+                {versionCatalog?.latestVersion && (
+                  <p className="text-[11px] leading-relaxed text-[hsl(var(--muted))]">
+                    `latest` 当前将解析为 `{versionCatalog.latestVersion}`。
+                  </p>
+                )}
+              </div>
+
+              {systemOpenclaw.detected && (
+                <div className="system-openclaw-banner">
+                  <div className="system-openclaw-banner__icon">
+                    <AlertIcon size={14} />
+                  </div>
+                  <div className="system-openclaw-banner__body">
+                    <strong>检测到系统 OpenClaw，需要部署前确认</strong>
+                    <p>
+                      {systemOpenclaw.version
+                        ? `本机版本 ${systemOpenclaw.version}，即将${installActionLabel}到 ${confirmationTargetVersion}。`
+                        : `已检测到本机 OpenClaw，版本读取失败；即将按官方安装规范执行${installActionLabel}。`}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-4 mt-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setWizardStep(0)}>
@@ -760,8 +893,8 @@ function App() {
                 <Button
                   variant="default"
                   className="flex-1"
-                  onClick={startInstall}
-                  disabled={loading || !step2Ready}
+                  onClick={() => void handlePrimaryInstallAction()}
+                  disabled={loading || !canStartInstall}
                 >
                   {loading ? (
                     <>
@@ -771,7 +904,7 @@ function App() {
                   ) : (
                     <>
                       <PlayIcon size={12} className="mr-2" />
-                      开始部署安装
+                      {systemOpenclaw.detected ? '确认后部署' : '开始部署安装'}
                     </>
                   )}
                 </Button>
@@ -786,7 +919,7 @@ function App() {
                 <CardTitle>授权与配置预检</CardTitle>
                 <CardDescription className="mt-1">校验激活包密钥及包源可用状态</CardDescription>
               </div>
-              <span className={`text-sm font-semibold ${step2Ready ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'}`}>
+              <span className={`text-sm font-semibold ${canStartInstall ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'}`}>
                 {step2Checks.filter((c) => c.state === 'ok').length}/{step2Checks.length} 项通过
               </span>
             </CardHeader>
@@ -798,8 +931,8 @@ function App() {
                   data-state={item.state}
                 >
                   <div className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok' ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                      item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                        'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    item.state === 'error' ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                      'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
                     }`}>
                     {item.state === 'ok' ? (
                       <CheckIcon size={12} />
@@ -860,9 +993,9 @@ function App() {
 
                     return (
                       <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
-                          isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
-                            isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
-                              'bg-[hsl(var(--surface-dark-soft))] border-white/2'
+                        isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
+                          isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
+                            'bg-[hsl(var(--surface-dark-soft))] border-white/2'
                         }`}>
                         <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
                           {isDone ? (
@@ -880,9 +1013,9 @@ function App() {
                           <p className="text-[11px] text-[hsl(var(--on-dark-soft))]">{step.description}</p>
                         </div>
                         <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                            isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
-                              isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                                'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                          isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
+                            isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                              'bg-white/5 text-[hsl(var(--on-dark-soft))]'
                           }`}>
                           {step.state === 'done'
                             ? '已就绪'
@@ -980,9 +1113,9 @@ function App() {
 
                   return (
                     <div key={step.id} className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${isActive ? 'bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]' :
-                        isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
-                          isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
-                            'bg-[hsl(var(--surface-dark-soft))] border-white/2'
+                      isDone ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]' :
+                        isFailed ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]' :
+                          'bg-[hsl(var(--surface-dark-soft))] border-white/2'
                       }`}>
                       <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
                         {isDone ? (
@@ -1000,9 +1133,9 @@ function App() {
                         <p className="text-[11px] text-[hsl(var(--on-dark-soft))]">{step.description}</p>
                       </div>
                       <div className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${isDone ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' :
-                          isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
-                            isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
-                              'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                        isActive ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]' :
+                          isFailed ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]' :
+                            'bg-white/5 text-[hsl(var(--on-dark-soft))]'
                         }`}>
                         {step.state === 'done'
                           ? '已就绪'
@@ -1137,6 +1270,54 @@ function App() {
 
         {renderContent()}
       </div>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>检测到系统 OpenClaw</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmationDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="confirm-install-panel">
+            <div className="confirm-install-panel__row">
+              <span>系统路径</span>
+              <code>{systemOpenclaw.executable ?? '未读取到'}</code>
+            </div>
+            <div className="confirm-install-panel__row">
+              <span>系统版本</span>
+              <code>{systemOpenclaw.version ?? `读取失败：${systemOpenclaw.error ?? '未知错误'}`}</code>
+            </div>
+            <div className="confirm-install-panel__row">
+              <span>即将部署</span>
+              <code>OpenClaw {confirmationTargetVersion}</code>
+            </div>
+            <div className="confirm-install-panel__row">
+              <span>受管 Node</span>
+              <code>{installPlan.targetNodeVersion ?? '待解析'}</code>
+            </div>
+            <div className="confirm-install-panel__row">
+              <span>执行动作</span>
+              <code>{installActionLabel}</code>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={loading}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmDialogOpen(false);
+                void startInstall();
+              }}
+            >
+              继续{installActionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

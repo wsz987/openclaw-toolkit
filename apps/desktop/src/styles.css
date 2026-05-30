@@ -520,6 +520,7 @@ body {
   word-break: break-all;
   max-height: 180px;
   overflow-y: auto;
+  line-height: 1.55;
 }
 
 .status-view-actions {
@@ -548,6 +549,81 @@ body {
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   display: inline-flex;
+}
+
+.system-openclaw-banner {
+  display: flex;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--warning) / 0.24);
+  background:
+    linear-gradient(135deg, hsl(var(--surface-soft)) 0%, hsl(var(--canvas)) 100%);
+}
+
+.system-openclaw-banner__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: hsl(var(--warning));
+  background-color: hsl(var(--warning) / 0.12);
+}
+
+.system-openclaw-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.system-openclaw-banner__body strong {
+  font-size: 0.85rem;
+  color: hsl(var(--body-strong));
+}
+
+.system-openclaw-banner__body p {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--body));
+}
+
+.confirm-install-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top left, hsl(var(--surface-card)) 0%, hsl(var(--canvas)) 78%);
+  border: 1px solid hsl(var(--hairline));
+}
+
+.confirm-install-panel__row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.confirm-install-panel__row span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: hsl(var(--muted));
+  padding-top: 0.15rem;
+}
+
+.confirm-install-panel__row code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: hsl(var(--ink));
+  word-break: break-all;
 }
 
 /* Animations */
@@ -616,5 +692,9 @@ body {
   }
   .result-detail-grid {
     grid-template-columns: 1fr;
+  }
+  .confirm-install-panel__row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
   }
 }

@@ -1,4 +1,8 @@
-use std::{path::{Path, PathBuf}, process::Command};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 pub struct SystemOpenClawDetection {
     pub executable: Option<PathBuf>,
@@ -42,12 +46,65 @@ fn read_openclaw_version(executable: &Path) -> anyhow::Result<String> {
 }
 
 fn run_openclaw_version_command(executable: &Path, flag: &str) -> anyhow::Result<String> {
-    let output = Command::new(executable).arg(flag).output()?;
+    let output = openclaw_version_command(executable).arg(flag).output()?;
     if !output.status.success() {
         anyhow::bail!("{} {} exited with {}", executable.display(), flag, output.status);
     }
 
     parse_openclaw_version_output(&String::from_utf8_lossy(&output.stdout))
+}
+
+#[cfg(target_os = "windows")]
+fn openclaw_version_command(executable: &Path) -> Command {
+    let extension = executable
+        .extension()
+        .and_then(OsStr::to_str)
+        .map(|value| value.to_ascii_lowercase());
+
+    match extension.as_deref() {
+        Some("exe") => Command::new(executable),
+        Some("cmd") | Some("bat") => {
+            let mut command = Command::new("cmd");
+            command.arg("/c").arg(executable);
+            command
+        }
+        Some("ps1") => {
+            let mut command = Command::new("powershell");
+            command
+                .arg("-NoProfile")
+                .arg("-ExecutionPolicy")
+                .arg("Bypass")
+                .arg("-File")
+                .arg(executable);
+            command
+        }
+        _ => {
+            if let Some(sibling_cmd) = sibling_command(executable, "cmd") {
+                let mut command = Command::new("cmd");
+                command.arg("/c").arg(sibling_cmd);
+                return command;
+            }
+
+            if let Some(sibling_exe) = sibling_command(executable, "exe") {
+                return Command::new(sibling_exe);
+            }
+
+            let mut command = Command::new("cmd");
+            command.arg("/c").arg(executable);
+            command
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn openclaw_version_command(executable: &Path) -> Command {
+    Command::new(executable)
+}
+
+#[cfg(target_os = "windows")]
+fn sibling_command(executable: &Path, extension: &str) -> Option<PathBuf> {
+    let candidate = executable.with_extension(extension);
+    candidate.exists().then_some(candidate)
 }
 
 fn parse_openclaw_version_output(output: &str) -> anyhow::Result<String> {
@@ -66,17 +123,23 @@ fn parse_openclaw_version_output(output: &str) -> anyhow::Result<String> {
 
 #[cfg(target_os = "windows")]
 fn find_system_openclaw() -> Option<PathBuf> {
-    let output = Command::new("where").arg("openclaw").output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
+    for candidate in ["openclaw.cmd", "openclaw.exe", "openclaw.ps1", "openclaw"] {
+        let output = Command::new("where").arg(candidate).output().ok()?;
+        if !output.status.success() {
+            continue;
+        }
 
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(PathBuf::from)
-        .find(|path| path.exists())
+        if let Some(path) = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(PathBuf::from)
+            .find(|path| path.exists())
+        {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[cfg(not(target_os = "windows"))]

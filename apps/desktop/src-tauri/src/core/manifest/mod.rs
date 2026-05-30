@@ -41,3 +41,27 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &PathBuf) -> anyhow::Result<T
     let content = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     serde_json::from_str(&content).with_context(|| format!("parse {}", path.display()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::models::ToolkitManifest;
+
+    #[test]
+    fn parses_toolkit_manifest_with_openclaw_field_names() {
+        let payload = r#"{
+          "toolkitVersion": "0.1.0",
+          "schemaVersion": "2026-05-28",
+          "defaultOpenClawVersion": "2026.5.20",
+          "supportedOpenClawVersions": ["2026.5.20"],
+          "environment": {
+            "windows": {
+              "minVersion": "10.0.0"
+            }
+          }
+        }"#;
+
+        let manifest: ToolkitManifest = serde_json::from_str(payload).unwrap();
+        assert_eq!(manifest.default_openclaw_version, "2026.5.20");
+        assert_eq!(manifest.supported_openclaw_versions, vec!["2026.5.20"]);
+    }
+}

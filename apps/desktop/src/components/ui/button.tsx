@@ -14,22 +14,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-          // Variant classes using Anthropic theme colors or standard dark variables
-          variant === "default" && "bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))]",
-          variant === "destructive" && "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-          variant === "outline" && "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-          variant === "secondary" && "bg-[hsl(var(--canvas))] text-[hsl(var(--ink))] border border-[hsl(var(--hairline))] hover:bg-[hsl(var(--surface-soft))] hover:border-[hsl(var(--muted-soft))/0.6]",
-          variant === "ghost" && "hover:bg-accent hover:text-accent-foreground",
-          variant === "link" && "text-primary underline-offset-4 hover:underline",
-          // Size classes
-          size === "default" && "h-10 px-4 py-2",
-          size === "sm" && "h-9 rounded-md px-3",
-          size === "lg" && "h-11 rounded-md px-8",
-          size === "icon" && "h-10 w-10",
-          className
-        )}
+        className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
         {...props}
       />
@@ -38,4 +23,26 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
-export { Button }
+function buttonVariants({
+  variant = "default",
+  size = "default",
+}: {
+  variant?: ButtonProps["variant"]
+  size?: ButtonProps["size"]
+}) {
+  return cn(
+    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+    variant === "default" && "bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))]",
+    variant === "destructive" && "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+    variant === "outline" && "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+    variant === "secondary" && "bg-[hsl(var(--canvas))] text-[hsl(var(--ink))] border border-[hsl(var(--hairline))] hover:bg-[hsl(var(--surface-soft))] hover:border-[hsl(var(--muted-soft))/0.6]",
+    variant === "ghost" && "hover:bg-accent hover:text-accent-foreground",
+    variant === "link" && "text-primary underline-offset-4 hover:underline",
+    size === "default" && "h-10 px-4 py-2",
+    size === "sm" && "h-9 rounded-md px-3",
+    size === "lg" && "h-11 rounded-md px-8",
+    size === "icon" && "h-10 w-10"
+  )
+}
+
+export { Button, buttonVariants }

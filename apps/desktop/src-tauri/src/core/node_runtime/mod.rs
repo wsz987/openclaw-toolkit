@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, process::Command};
+use std::{fs, path::{Path, PathBuf}, process::Command};
 
 use anyhow::Context;
 use semver::{Version, VersionReq};
@@ -10,14 +10,14 @@ pub fn node_runtime_dir(base_dir: &Path, node: &RequiredNodeRuntime) -> PathBuf 
 }
 
 pub fn node_runtime_executable(node_dir: &Path) -> PathBuf {
-    node_dir.join("node.exe")
+    resolve_node_runtime_executable(node_dir).unwrap_or_else(|| node_dir.join("node.exe"))
 }
 
 pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &RequiredNodeRuntime, remote_base_url: Option<&str>) -> anyhow::Result<PathBuf> {
     validate_required_node(node)?;
 
     let dir = node_runtime_dir(base_dir, node);
-    let node_exe = node_runtime_executable(&dir);
+    let node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
 
     if node_exe.exists() && validate_node_executable(&node_exe, &node.range).is_ok() {
         return Ok(dir);
@@ -46,6 +46,36 @@ pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &Required
         .with_context(|| format!("校验 Node Runtime 失败：{}", node_exe.display()))?;
 
     Ok(dir)
+}
+
+pub fn detect_system_node() -> SystemNodeDetection {
+    let Some(executable) = find_system_node() else {
+        return SystemNodeDetection {
+            executable: None,
+            version: None,
+            error: None,
+        };
+    };
+
+    match read_node_version(&executable) {
+        Ok(version) => SystemNodeDetection {
+            executable: Some(executable),
+            version: Some(version),
+            error: None,
+        },
+        Err(error) => SystemNodeDetection {
+            executable: Some(executable),
+            version: None,
+            error: Some(error.to_string()),
+        },
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SystemNodeDetection {
+    pub executable: Option<PathBuf>,
+    pub version: Option<Version>,
+    pub error: Option<String>,
 }
 
 pub fn validate_required_node(node: &RequiredNodeRuntime) -> anyhow::Result<()> {
@@ -100,6 +130,42 @@ fn read_node_version(node_exe: &Path) -> anyhow::Result<Version> {
 
     let stdout = String::from_utf8(output.stdout).context("读取 node --version 输出失败")?;
     parse_node_version(&stdout)
+}
+
+fn resolve_node_runtime_executable(node_dir: &Path) -> Option<PathBuf> {
+    let direct = node_dir.join("node.exe");
+    if direct.exists() {
+        return Some(direct);
+    }
+
+    let entries = fs::read_dir(node_dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !entry.file_type().ok()?.is_dir() {
+            continue;
+        }
+
+        let nested = path.join("node.exe");
+        if nested.exists() {
+            return Some(nested);
+        }
+    }
+
+    None
+}
+
+fn find_system_node() -> Option<PathBuf> {
+    let output = Command::new("where").arg("node").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(PathBuf::from)
+        .find(|path| path.exists())
 }
 
 #[cfg(test)]
