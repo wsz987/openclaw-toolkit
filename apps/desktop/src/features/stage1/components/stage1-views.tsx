@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
@@ -14,12 +15,17 @@ import {
   InfoIcon,
   PlayIcon,
   SettingsIcon,
+  MonitorIcon,
   SpinnerIcon,
   XIcon
 } from '../../../components/icons';
 import { stage1Steps } from '../model/graph';
 import type {
   InstallMode,
+  OpenClawLaunchResult,
+  OpenClawPostInstallStatus,
+  OpenClawProviderSetupPayload,
+  OpenClawProviderSetupResult,
   Stage1Dashboard,
   Stage1DiagnosticsInfo,
   Stage1EnvironmentCheck,
@@ -125,22 +131,78 @@ export function ErrorStateView({ errorMessage, failedStepLabel, onBack }: ErrorS
 
 type SuccessStateViewProps = {
   result: Stage1InstallResult;
+  status: OpenClawPostInstallStatus | null;
+  statusLoading: boolean;
+  providerSetupLoading: boolean;
+  providerSetupResult: OpenClawProviderSetupResult | null;
+  runtimeLaunchLoading: boolean;
+  runtimeLaunchResult: OpenClawLaunchResult | null;
+  onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
+  onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
   onBack: () => void;
 };
 
-export function SuccessStateView({ result, onBack }: SuccessStateViewProps) {
+export function SuccessStateView({
+  result,
+  status,
+  statusLoading,
+  providerSetupLoading,
+  providerSetupResult,
+  runtimeLaunchLoading,
+  runtimeLaunchResult,
+  onProviderSetup,
+  onLaunchRuntime,
+  onBack
+}: SuccessStateViewProps) {
+  const [providerId, setProviderId] = useState<'volcengine' | 'volcengine-plan'>('volcengine-plan');
+  const [apiUrl, setApiUrl] = useState('https://ark.cn-beijing.volces.com/api/coding/v3');
+  const [apiKey, setApiKey] = useState('');
+  const [primaryModel, setPrimaryModel] = useState('volcengine-plan/ark-code-latest');
+  const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
+  const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
+
+  useEffect(() => {
+    if (!status) {
+      return;
+    }
+
+    if (status.providerId === 'volcengine') {
+      setProviderId('volcengine');
+      setApiUrl(status.providerApiUrl ?? 'https://ark.cn-beijing.volces.com/api/v3');
+      setPrimaryModel(status.providerModel ?? 'volcengine/doubao-seed-1-8-251228');
+    } else {
+      setProviderId('volcengine-plan');
+      setApiUrl(status.providerApiUrl ?? 'https://ark.cn-beijing.volces.com/api/coding/v3');
+      setPrimaryModel(status.providerModel ?? 'volcengine-plan/ark-code-latest');
+    }
+
+    setEnableFeishuPlugin(!status.feishuPluginEnabled ? true : status.feishuPluginEnabled);
+  }, [status]);
+
+  useEffect(() => {
+    if (providerId === 'volcengine') {
+      setApiUrl('https://ark.cn-beijing.volces.com/api/v3');
+      setPrimaryModel('volcengine/doubao-seed-1-8-251228');
+    } else {
+      setApiUrl('https://ark.cn-beijing.volces.com/api/coding/v3');
+      setPrimaryModel('volcengine-plan/ark-code-latest');
+    }
+  }, [providerId]);
+
+  const providerReady = status?.providerInitialized ?? false;
+
   return (
-    <Card className="max-w-3xl mx-auto border-[hsl(var(--success)/0.3)] bg-[hsl(var(--canvas))] text-center py-12 px-8 flex flex-col items-center animate-fade-in shadow-lg">
+    <Card className="max-w-5xl mx-auto border-[hsl(var(--success)/0.3)] bg-[hsl(var(--canvas))] py-12 px-8 flex flex-col items-center animate-fade-in shadow-lg">
       <div className="w-16 h-16 rounded-full flex items-center justify-center bg-[hsl(var(--success)/0.1)] border border-[hsl(var(--success))] text-[hsl(var(--success))] mb-6">
         <CheckIcon size={34} />
       </div>
-      <CardHeader className="p-0 mb-6">
+      <CardHeader className="p-0 mb-6 text-center">
         <CardTitle className="text-3xl text-[hsl(var(--ink))]">运行环境部署成功</CardTitle>
-        <CardDescription className="text-sm text-[hsl(var(--body))] mt-2 max-w-lg mx-auto">
+        <CardDescription className="text-sm text-[hsl(var(--body))] mt-2 max-w-2xl mx-auto">
           OpenClaw 核心程序及依赖资源已成功安装就绪，并通过系统环境最终冷启动验证。
         </CardDescription>
       </CardHeader>
-      <CardContent className="w-full p-0 mb-8">
+      <CardContent className="w-full p-0 mb-8 flex flex-col gap-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
           <div className="bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] p-4 rounded-lg flex flex-col gap-1">
             <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">工作流 Workflow ID</span>
@@ -167,10 +229,196 @@ export function SuccessStateView({ result, onBack }: SuccessStateViewProps) {
             <code className="text-xs font-mono text-[hsl(var(--ink))] break-all">{result.nodeDir}</code>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-6 text-left">
+          <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-[hsl(var(--ink))]">OpenClaw 初始化与授权</h3>
+                <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1">
+                  按项目 graph 设计，先接入 provider，再开放 agent 权限，并启用飞书插件入口。
+                </p>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold ${
+                  providerReady
+                    ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                    : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                }`}
+              >
+                {providerReady ? 'Provider 已初始化' : '待初始化'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Provider 类型</label>
+                <select
+                  className="h-10 rounded-md border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-3 text-sm text-[hsl(var(--ink))]"
+                  value={providerId}
+                  onChange={(event) => setProviderId(event.target.value as 'volcengine' | 'volcengine-plan')}
+                  disabled={providerSetupLoading}
+                >
+                  <option value="volcengine-plan">火山引擎 Ark Coding</option>
+                  <option value="volcengine">火山引擎 Ark 通用模型</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认模型</label>
+                <Input value={primaryModel} onChange={(event) => setPrimaryModel(event.target.value)} disabled={providerSetupLoading} />
+              </div>
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API URL</label>
+                <Input value={apiUrl} onChange={(event) => setApiUrl(event.target.value)} disabled={providerSetupLoading} />
+              </div>
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API Key</label>
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  placeholder="填写火山引擎 API Key"
+                  disabled={providerSetupLoading}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 text-sm text-[hsl(var(--body))]">
+                <input
+                  type="checkbox"
+                  checked={enableFeishuPlugin}
+                  onChange={(event) => setEnableFeishuPlugin(event.target.checked)}
+                  disabled={providerSetupLoading}
+                />
+                启用飞书插件入口
+              </label>
+              <label className="flex items-center gap-2 text-sm text-[hsl(var(--body))]">
+                <input
+                  type="checkbox"
+                  checked={grantAgentPermissions}
+                  onChange={(event) => setGrantAgentPermissions(event.target.checked)}
+                  disabled={providerSetupLoading}
+                />
+                授权 OpenClaw Agent 权限
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="default"
+                disabled={providerSetupLoading || !status || apiKey.trim().length === 0}
+                onClick={() =>
+                  void onProviderSetup({
+                    configPath: result.configPath,
+                    providerId,
+                    apiKey,
+                    apiUrl,
+                    primaryModel,
+                    enableFeishuPlugin,
+                    grantAgentPermissions
+                  })
+                }
+              >
+                {providerSetupLoading ? (
+                  <>
+                    <SpinnerIcon size={14} className="spinning mr-2" />
+                    正在初始化
+                  </>
+                ) : (
+                  <>
+                    <SettingsIcon size={14} className="mr-2" />
+                    初始化 OpenClaw
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={runtimeLaunchLoading || !status}
+                onClick={() => void onLaunchRuntime(result.configPath)}
+              >
+                {runtimeLaunchLoading ? (
+                  <>
+                    <SpinnerIcon size={14} className="spinning mr-2" />
+                    启动中
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon size={12} className="mr-2" />
+                    启动 OpenClaw
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {providerSetupResult ? (
+              <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
+                Provider 已写入：`{providerSetupResult.providerId}`，默认模型：`{providerSetupResult.primaryModel}`，
+                飞书插件 {providerSetupResult.feishuPluginEnabled ? '已启用' : '未启用'}。
+              </div>
+            ) : null}
+
+            {runtimeLaunchResult ? (
+              <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
+                OpenClaw 已启动，进程 PID：`{runtimeLaunchResult.pid}`，日志文件：`{runtimeLaunchResult.logPath}`。
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] p-5 flex flex-col gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[hsl(var(--ink))]">运行后操作</h3>
+              <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1">
+                安装器已对齐到 OpenClaw 使用能力，下面展示启动后用户最关心的入口状态。
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <strong className="block text-sm text-[hsl(var(--body-strong))]">OpenClaw 启动状态</strong>
+                    <p className="mt-1 text-xs text-[hsl(var(--muted))]">
+                      {runtimeLaunchResult ? '已通过受管 Node 启动' : '尚未从安装器执行启动'}
+                    </p>
+                  </div>
+                  <MonitorIcon size={18} className={runtimeLaunchResult ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--muted-soft))]'} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+                <strong className="block text-sm text-[hsl(var(--body-strong))]">OpenClaw 控制台地址</strong>
+                <code className="mt-2 block text-xs font-mono text-[hsl(var(--ink))] break-all">
+                  {statusLoading ? '状态加载中...' : status?.controlUiUrl ?? '待启动后可访问 http://127.0.0.1:18789/'}
+                </code>
+              </div>
+
+              <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+                <strong className="block text-sm text-[hsl(var(--body-strong))]">插件能力状态</strong>
+                <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--body))]">
+                  飞书插件：{status?.feishuPluginEnabled ? '已启用' : '待启用'}；已启用插件：
+                  {status?.pluginsEnabled.length ? ` ${status.pluginsEnabled.join(', ')}` : ' 暂无'}。
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+                <strong className="block text-sm text-[hsl(var(--body-strong))]">Skills 与工作区</strong>
+                <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--body))]">
+                  Skills：{status?.skillsInstalled.length ? status.skillsInstalled.join(', ') : '未识别'}。
+                </p>
+                <code className="mt-2 block text-xs font-mono text-[hsl(var(--ink))] break-all">
+                  {status?.workspaceDir ?? result.openclawDir}
+                </code>
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
-      <Button variant="default" onClick={onBack}>
-        返回配置首页
-      </Button>
+      <div className="flex flex-wrap gap-3 justify-center">
+        <Button variant="secondary" onClick={onBack}>
+          返回配置首页
+        </Button>
+      </div>
     </Card>
   );
 }
@@ -400,13 +648,13 @@ function TimelinePanel({
   timelineContainerRef
 }: Pick<ProgressStageViewProps, 'timelineDescription' | 'timelineItems' | 'timelineContainerRef'>) {
   return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-6 flex flex-col">
-      <CardHeader className="p-0 mb-4">
+    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full">
+      <CardHeader className="p-0 mb-6">
         <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">流程微步骤流水</CardTitle>
         <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">{timelineDescription}</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="sub-steps-timeline flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1" ref={timelineContainerRef}>
+        <div className="sub-steps-timeline" ref={timelineContainerRef}>
           {timelineItems.map((step) => {
             const isActive = step.state === 'current';
             const isDone = step.state === 'done';
@@ -415,14 +663,8 @@ function TimelinePanel({
             return (
               <div
                 key={step.id}
-                className={`timeline-row flex gap-4 p-3 rounded-lg border items-center transition-all duration-200 ${
-                  isActive
-                    ? 'active bg-[hsl(var(--surface-dark-elevated))] border-[hsl(var(--primary)/0.3)]'
-                    : isDone
-                      ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--success)/0.15)]'
-                      : isFailed
-                        ? 'bg-[hsl(var(--surface-dark-soft))] border-[hsl(var(--error)/0.3)]'
-                        : 'bg-[hsl(var(--surface-dark-soft))] border-white/2'
+                className={`timeline-row transition-all duration-200 ${
+                  isActive ? 'active' : isDone ? 'done' : isFailed ? 'failed' : ''
                 }`}
               >
                 <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -464,24 +706,24 @@ function TimelinePanel({
 
 function DiagnosticsPanel({ diagnosticsInfo }: { diagnosticsInfo: Stage1DiagnosticsInfo | null }) {
   return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-6 flex flex-col">
-      <CardHeader className="p-0 mb-4">
+    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full">
+      <CardHeader className="p-0 mb-6">
         <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">后台任务检测</CardTitle>
         <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">活动部署步骤之实时诊断</CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-1 flex flex-col">
         {diagnosticsInfo ? (
-          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark-soft))] border border-white/3 rounded-lg p-4 flex flex-col gap-3 flex-1">
-            <div className="diagnostic-title flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))] border-b border-white/5 pb-2">
+          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4 flex-1">
+            <div className="diagnostic-title flex items-center gap-2.5 text-base font-semibold text-[hsl(var(--primary))] border-b border-white/5 pb-3">
               <SettingsIcon size={14} className="spinning text-[hsl(var(--primary))]" style={{ animationDuration: '12s' }} />
               {diagnosticsInfo.title}
             </div>
             <p className="diagnostic-desc text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">{diagnosticsInfo.description}</p>
-            <div className="diagnostic-tasks-list flex flex-col gap-2.5 mt-2">
+            <div className="diagnostic-tasks-list flex flex-col gap-3.5 mt-2">
               {diagnosticsInfo.tasks.map((task, index) => (
                 <div
                   key={`${task.key}-${index}`}
-                  className={`diagnostic-task-item flex gap-3 text-xs items-start text-[hsl(var(--on-dark-soft))] ${
+                  className={`diagnostic-task-item flex gap-3 text-sm items-start text-[hsl(var(--on-dark-soft))] ${
                     task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
                   }`}
                 >
@@ -523,15 +765,15 @@ export function ProgressStageView({
 }: ProgressStageViewProps) {
   return (
     <div className={`product-mockup-card-dark view-container ${animated ? 'animate-fade-in' : ''}`.trim()}>
-      <div className="panel-heading mb-0">
-        <h2 className="text-[hsl(var(--on-dark))] text-xl font-serif">{title}</h2>
+      <div className="panel-heading mb-4">
+        <h2 className="text-[hsl(var(--on-dark))] text-2xl font-serif font-normal tracking-tight">{title}</h2>
         <span>{subtitle}</span>
       </div>
 
-      <div className="progress-wrapper bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-5 flex items-center gap-8">
+      <div className="progress-wrapper">
         <div className="progress-info flex flex-col min-w-[5rem]">
           <span className="text-[10px] text-[hsl(var(--on-dark-soft))] uppercase tracking-wide">整体进度</span>
-          <strong className="font-serif text-3xl text-[hsl(var(--primary))] font-normal">{progressValue}%</strong>
+          <strong className="font-serif text-3.5xl text-[hsl(var(--primary))] font-normal">{progressValue}%</strong>
         </div>
         <div className="progress-bar-container flex-1 flex flex-col gap-2">
           <div className="progress-bar-text flex justify-between text-xs font-medium text-[hsl(var(--on-dark))]">
@@ -540,7 +782,7 @@ export function ProgressStageView({
               {completedCount} / {stage1Steps.length} 步骤已完成
             </span>
           </div>
-          <Progress value={progressValue} className="h-2" />
+          <Progress value={progressValue} className="h-2.5" />
         </div>
       </div>
 

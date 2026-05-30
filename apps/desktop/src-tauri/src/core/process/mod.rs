@@ -1,13 +1,23 @@
 use std::{
     ffi::OsStr,
+    fs,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
+
+use anyhow::Context;
+
+use crate::core::openclaw_config::OpenClawStatusSummary;
 
 pub struct SystemOpenClawDetection {
     pub executable: Option<PathBuf>,
     pub version: Option<String>,
     pub error: Option<String>,
+}
+
+pub struct ManagedOpenClawLaunchResult {
+    pub pid: u32,
+    pub log_path: PathBuf,
 }
 
 pub fn detect_system_openclaw() -> SystemOpenClawDetection {
@@ -38,6 +48,47 @@ pub fn verify_openclaw_runtime(config_path: &Path) -> anyhow::Result<()> {
         anyhow::bail!("openclaw config not found: {}", config_path.display());
     }
     Ok(())
+}
+
+pub fn launch_managed_openclaw(status: &OpenClawStatusSummary) -> anyhow::Result<ManagedOpenClawLaunchResult> {
+    let node_exe = PathBuf::from(&status.node_dir).join("node.exe");
+    if !node_exe.exists() {
+        anyhow::bail!("managed node runtime not found: {}", node_exe.display());
+    }
+
+    let openclaw_entry = PathBuf::from(&status.openclaw_dir).join("package").join("openclaw.mjs");
+    if !openclaw_entry.exists() {
+        anyhow::bail!("managed openclaw entry not found: {}", openclaw_entry.display());
+    }
+
+    let log_dir = PathBuf::from(&status.openclaw_dir).join("logs");
+    fs::create_dir_all(&log_dir).with_context(|| format!("create {}", log_dir.display()))?;
+    let log_path = log_dir.join("gateway-runtime.log");
+    let stdout = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .with_context(|| format!("open {}", log_path.display()))?;
+    let stderr = stdout
+        .try_clone()
+        .with_context(|| format!("clone log handle {}", log_path.display()))?;
+
+    let child = Command::new(&node_exe)
+        .arg(&openclaw_entry)
+        .arg("gateway")
+        .env("OPENCLAW_CONFIG_PATH", &status.config_path)
+        .env("OPENCLAW_HOME", &status.openclaw_dir)
+        .current_dir(PathBuf::from(&status.openclaw_dir).join("package"))
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr))
+        .spawn()
+        .with_context(|| format!("launch managed openclaw via {}", node_exe.display()))?;
+
+    Ok(ManagedOpenClawLaunchResult {
+        pid: child.id(),
+        log_path,
+    })
 }
 
 fn read_openclaw_version(executable: &Path) -> anyhow::Result<String> {

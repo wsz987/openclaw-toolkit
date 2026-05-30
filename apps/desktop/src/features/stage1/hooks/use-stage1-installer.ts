@@ -17,12 +17,24 @@ import {
 } from '../model/selectors';
 import type {
   InstallMode,
+  OpenClawLaunchResult,
+  OpenClawPostInstallStatus,
+  OpenClawProviderSetupPayload,
+  OpenClawProviderSetupResult,
   Stage1Dashboard,
   Stage1InstallPayload,
   Stage1InstallResult,
   VersionCatalogResult
 } from '../model/types';
-import { inspectStage1Dashboard, inspectVersionCatalog, pickDirectory, startStage1Install } from '../api/stage1-api';
+import {
+  inspectOpenClawStatus,
+  inspectStage1Dashboard,
+  inspectVersionCatalog,
+  launchOpenClawRuntime,
+  pickDirectory,
+  setupOpenClawProvider,
+  startStage1Install
+} from '../api/stage1-api';
 
 export function useStage1Installer() {
   const [baseDir, setBaseDir] = useState('D:\\OpenClaw');
@@ -35,6 +47,12 @@ export function useStage1Installer() {
   const [versionCatalogLoading, setVersionCatalogLoading] = useState(false);
   const [versionCatalog, setVersionCatalog] = useState<VersionCatalogResult | null>(null);
   const [result, setResult] = useState<Stage1InstallResult | null>(null);
+  const [postInstallStatus, setPostInstallStatus] = useState<OpenClawPostInstallStatus | null>(null);
+  const [postInstallLoading, setPostInstallLoading] = useState(false);
+  const [providerSetupLoading, setProviderSetupLoading] = useState(false);
+  const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
+  const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
+  const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -102,11 +120,15 @@ export function useStage1Installer() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPostInstallStatus(null);
+    setProviderSetupResult(null);
+    setRuntimeLaunchResult(null);
     setWizardStep(2);
 
     try {
       const response = await startStage1Install(payload);
       setResult(response);
+      await loadPostInstallStatus(response.configPath);
       await loadDashboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -133,9 +155,58 @@ export function useStage1Installer() {
     await startInstall();
   }
 
+  async function loadPostInstallStatus(configPath: string) {
+    setPostInstallLoading(true);
+    try {
+      const response = await inspectOpenClawStatus(configPath);
+      setPostInstallStatus(response);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setPostInstallLoading(false);
+    }
+  }
+
+  async function handleProviderSetup(input: OpenClawProviderSetupPayload) {
+    setProviderSetupLoading(true);
+    setError(null);
+    try {
+      const response = await setupOpenClawProvider(input);
+      setProviderSetupResult(response);
+      await loadPostInstallStatus(response.configPath);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setProviderSetupLoading(false);
+    }
+  }
+
+  async function handleLaunchRuntime(configPath: string) {
+    setRuntimeLaunchLoading(true);
+    setError(null);
+    try {
+      const response = await launchOpenClawRuntime(configPath);
+      setRuntimeLaunchResult(response);
+      await loadPostInstallStatus(configPath);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setRuntimeLaunchLoading(false);
+    }
+  }
+
   function handleBackToConfig() {
     setError(null);
     setResult(null);
+    setPostInstallStatus(null);
+    setProviderSetupResult(null);
+    setRuntimeLaunchResult(null);
     setLoading(false);
     setWizardStep(0);
 
@@ -242,9 +313,13 @@ export function useStage1Installer() {
     licenseKey,
     loading,
     phase,
+    postInstallLoading,
+    postInstallStatus,
     progressValue,
     readyChecks,
     result,
+    runtimeLaunchLoading,
+    runtimeLaunchResult,
     selectedVersion,
     selectedVersionOption,
     setBaseDir,
@@ -262,11 +337,16 @@ export function useStage1Installer() {
     stepProgress,
     systemOpenclaw,
     timelineContainerRef,
+    providerSetupLoading,
+    providerSetupResult,
     versionCatalog,
     versionCatalogLoading,
     versionListReady,
     versionSelectable,
     wizardStep,
-    confirmInstall
+    confirmInstall,
+    handleLaunchRuntime,
+    handleProviderSetup,
+    loadPostInstallStatus
   };
 }

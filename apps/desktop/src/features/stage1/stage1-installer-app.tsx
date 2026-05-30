@@ -25,16 +25,24 @@ export function Stage1InstallerApp() {
     diagnosticsInfo,
     error,
     handleBackToConfig,
+    handleLaunchRuntime,
     handlePickDirectory,
     handlePrimaryInstallAction,
+    handleProviderSetup,
     installActionLabel,
     installMode,
     installPlan,
     licenseKey,
     loading,
     phase,
+    postInstallLoading,
+    postInstallStatus,
     progressValue,
+    providerSetupLoading,
+    providerSetupResult,
     result,
+    runtimeLaunchLoading,
+    runtimeLaunchResult,
     selectedVersion,
     selectedVersionOption,
     setBaseDir,
@@ -67,7 +75,20 @@ export function Stage1InstallerApp() {
       />
     );
   } else if (phase === 'succeeded' && result) {
-    content = <SuccessStateView result={result} onBack={handleBackToConfig} />;
+    content = (
+      <SuccessStateView
+        result={result}
+        status={postInstallStatus}
+        statusLoading={postInstallLoading}
+        providerSetupLoading={providerSetupLoading}
+        providerSetupResult={providerSetupResult}
+        runtimeLaunchLoading={runtimeLaunchLoading}
+        runtimeLaunchResult={runtimeLaunchResult}
+        onProviderSetup={handleProviderSetup}
+        onLaunchRuntime={handleLaunchRuntime}
+        onBack={handleBackToConfig}
+      />
+    );
   } else if (wizardStep === 0) {
     content = (
       <PrecheckStepView

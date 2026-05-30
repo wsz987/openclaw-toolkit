@@ -81,6 +81,46 @@ export type Stage1InstallResult = {
   configPath: string;
 };
 
+export type OpenClawPostInstallStatus = {
+  openclawDir: string;
+  nodeDir: string;
+  configPath: string;
+  workspaceDir: string;
+  gatewayUrl: string;
+  controlUiUrl: string;
+  providerInitialized: boolean;
+  providerId: string | null;
+  providerModel: string | null;
+  providerApiUrl: string | null;
+  feishuPluginEnabled: boolean;
+  skillsInstalled: string[];
+  pluginsEnabled: string[];
+};
+
+export type OpenClawProviderSetupPayload = {
+  configPath: string;
+  providerId: 'volcengine' | 'volcengine-plan';
+  apiKey: string;
+  apiUrl?: string;
+  primaryModel?: string;
+  enableFeishuPlugin: boolean;
+  grantAgentPermissions: boolean;
+};
+
+export type OpenClawProviderSetupResult = {
+  configPath: string;
+  providerId: string;
+  primaryModel: string;
+  apiUrl: string;
+  feishuPluginEnabled: boolean;
+  agentPermissionsGranted: boolean;
+};
+
+export type OpenClawLaunchResult = {
+  pid: number;
+  logPath: string;
+};
+
 export type VersionCatalogOption = {
   value: string;
   label: string;

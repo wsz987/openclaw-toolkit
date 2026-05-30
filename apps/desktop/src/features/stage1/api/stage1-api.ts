@@ -3,6 +3,10 @@ import { isInstallStep } from '../model/graph';
 import type {
   DirectoryPickerResponse,
   InstallMode,
+  OpenClawLaunchResult,
+  OpenClawPostInstallStatus,
+  OpenClawProviderSetupPayload,
+  OpenClawProviderSetupResult,
   Stage1CheckState,
   Stage1Dashboard,
   Stage1InstallPayload,
@@ -54,4 +58,18 @@ export async function pickDirectory(defaultPath: string): Promise<DirectoryPicke
       defaultPath
     }
   });
+}
+
+export async function inspectOpenClawStatus(configPath: string): Promise<OpenClawPostInstallStatus> {
+  return invoke<OpenClawPostInstallStatus>('inspect_openclaw_status', { configPath });
+}
+
+export async function setupOpenClawProvider(
+  input: OpenClawProviderSetupPayload
+): Promise<OpenClawProviderSetupResult> {
+  return invoke<OpenClawProviderSetupResult>('setup_openclaw_provider', { input });
+}
+
+export async function launchOpenClawRuntime(configPath: string): Promise<OpenClawLaunchResult> {
+  return invoke<OpenClawLaunchResult>('launch_openclaw_runtime', { configPath });
 }
