@@ -17,9 +17,9 @@ pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &Required
     validate_required_node(node)?;
 
     let dir = node_runtime_dir(base_dir, node);
-    let node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
+    let initial_node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
 
-    if node_exe.exists() && validate_node_executable(&node_exe, &node.range).is_ok() {
+    if initial_node_exe.exists() && validate_node_executable(&initial_node_exe, &node.range).is_ok() {
         return Ok(dir);
     }
 
@@ -38,6 +38,7 @@ pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &Required
     verify_sha256(&artifact_path, &node.sha256)?;
     install_archive(&artifact_path, &dir)?;
 
+    let node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
     if !node_exe.exists() {
         anyhow::bail!("node runtime install failed, missing node.exe in {}", dir.display());
     }

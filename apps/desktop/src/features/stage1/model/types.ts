@@ -1,0 +1,135 @@
+export type InstallMode = 'local' | 'remote' | 'npm';
+export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
+export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
+export type Stage1CheckState = 'ok' | 'warn' | 'error';
+
+export type InstallStep =
+  | 'loadManifest'
+  | 'validateLicense'
+  | 'checkEnvironment'
+  | 'selectInstallMode'
+  | 'resolveOpenClawVersion'
+  | 'resolveNodeRuntime'
+  | 'installNodeRuntime'
+  | 'resolveOpenClawArtifact'
+  | 'installOpenClaw'
+  | 'writeInstalledManifest'
+  | 'generateOpenClawConfig'
+  | 'installSkills'
+  | 'configurePermissions'
+  | 'configureBrowser'
+  | 'verifyRuntime';
+
+export type Stage1EnvironmentCheck = {
+  id: string;
+  label: string;
+  state: Stage1CheckState;
+  detail: string;
+};
+
+export type Stage1StepSnapshot = {
+  id: InstallStep;
+  title: string;
+  description: string;
+  state: Stage1StepState;
+};
+
+export type Stage1Dashboard = {
+  workflowId: string | null;
+  phase: Stage1Phase;
+  currentStep: InstallStep | null;
+  currentStepLabel: string;
+  progress: number;
+  completedSteps: InstallStep[];
+  failedStep: InstallStep | null;
+  message: string | null;
+  steps: Stage1StepSnapshot[];
+  environment: Stage1EnvironmentCheck[];
+  installMode: InstallMode;
+  selectedVersion: string;
+  openclawVersion: string | null;
+  nodeVersion: string | null;
+  baseDir: string;
+  systemOpenclaw: {
+    detected: boolean;
+    executable: string | null;
+    version: string | null;
+    error: string | null;
+  };
+  systemNode: {
+    detected: boolean;
+    executable: string | null;
+    version: string | null;
+    satisfiesRequirement: boolean | null;
+    error: string | null;
+  };
+  installPlan: {
+    targetOpenclawVersion: string | null;
+    targetNodeVersion: string | null;
+    action: string;
+    requiresConfirmation: boolean;
+  };
+};
+
+export type Stage1InstallResult = {
+  workflowId: string;
+  status: string;
+  openclawVersion: string;
+  nodeVersion: string;
+  openclawDir: string;
+  nodeDir: string;
+  configPath: string;
+};
+
+export type VersionCatalogOption = {
+  value: string;
+  label: string;
+  detail: string;
+  selectable: boolean;
+  actualVersion: string | null;
+};
+
+export type VersionCatalogResult = {
+  installMode: InstallMode;
+  sourceReady: boolean;
+  defaultValue: string;
+  latestVersion: string | null;
+  options: VersionCatalogOption[];
+  message: string | null;
+};
+
+export type DirectoryPickerResponse = string | null;
+
+export type Stage1InstallPayload = {
+  baseDir: string;
+  licenseKey: string;
+  installMode: InstallMode;
+  selectedVersion: string;
+};
+
+export type MasterPhaseId = 'verify-pre' | 'dependencies' | 'config-write' | 'final-check';
+
+export interface MasterPhase {
+  id: MasterPhaseId;
+  label: string;
+  steps: InstallStep[];
+}
+
+export interface StepDiagnosticTask {
+  label: string;
+  key: string;
+}
+
+export interface StepDiagnostic {
+  title: string;
+  description: string;
+  tasks: StepDiagnosticTask[];
+}
+
+export type DiagnosticTaskStatus = 'checked' | 'pending' | 'waiting';
+
+export type Stage1DiagnosticsInfo = {
+  title: string;
+  description: string;
+  tasks: Array<StepDiagnosticTask & { status: DiagnosticTaskStatus }>;
+};
