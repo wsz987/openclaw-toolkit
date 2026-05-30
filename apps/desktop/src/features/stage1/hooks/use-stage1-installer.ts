@@ -37,6 +37,8 @@ import {
 } from '../api/stage1-api';
 
 export function useStage1Installer() {
+  const DASHBOARD_DEBOUNCE_MS = 350;
+
   const [baseDir, setBaseDir] = useState('D:\\OpenClaw');
   const [licenseKey, setLicenseKey] = useState('stage1-dev');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
@@ -58,6 +60,8 @@ export function useStage1Installer() {
   const [wizardStep, setWizardStep] = useState(0);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const dashboardRequestIdRef = useRef(0);
+  const dashboardDebounceTimerRef = useRef<number | null>(null);
 
   const payload = useMemo<Stage1InstallPayload>(
     () => ({
@@ -96,16 +100,29 @@ export function useStage1Installer() {
     }
   }
 
-  async function loadDashboard() {
+  async function loadDashboard(input: Stage1InstallPayload) {
+    const requestId = ++dashboardRequestIdRef.current;
     setError(null);
     setDashboardLoading(true);
+
     try {
-      const response = await inspectStage1Dashboard(payload);
+      const response = await inspectStage1Dashboard(input);
+
+      if (requestId !== dashboardRequestIdRef.current) {
+        return;
+      }
+
       setDashboard(response);
     } catch (err) {
+      if (requestId !== dashboardRequestIdRef.current) {
+        return;
+      }
+
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setDashboardLoading(false);
+      if (requestId === dashboardRequestIdRef.current) {
+        setDashboardLoading(false);
+      }
     }
   }
 
@@ -129,7 +146,7 @@ export function useStage1Installer() {
       const response = await startStage1Install(payload);
       setResult(response);
       await loadPostInstallStatus(response.configPath);
-      await loadDashboard();
+      await loadDashboard(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -236,7 +253,26 @@ export function useStage1Installer() {
   }, [installMode]);
 
   useEffect(() => {
-    void loadDashboard();
+    if (loading) {
+      return;
+    }
+
+    if (dashboardDebounceTimerRef.current !== null) {
+      window.clearTimeout(dashboardDebounceTimerRef.current);
+    }
+
+    const nextPayload = payload;
+    dashboardDebounceTimerRef.current = window.setTimeout(() => {
+      dashboardDebounceTimerRef.current = null;
+      void loadDashboard(nextPayload);
+    }, DASHBOARD_DEBOUNCE_MS);
+
+    return () => {
+      if (dashboardDebounceTimerRef.current !== null) {
+        window.clearTimeout(dashboardDebounceTimerRef.current);
+        dashboardDebounceTimerRef.current = null;
+      }
+    };
   }, [payload]);
 
   useEffect(() => {
@@ -252,7 +288,7 @@ export function useStage1Installer() {
     }
 
     const timer = window.setInterval(() => {
-      void loadDashboard();
+      void loadDashboard(payload);
     }, 800);
 
     return () => window.clearInterval(timer);

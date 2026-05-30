@@ -4,12 +4,19 @@ use crate::core::workflow::{
 use crate::core::version_catalog::{inspect_version_catalog, VersionCatalogInput, VersionCatalogResult};
 
 #[tauri::command]
-pub fn inspect_stage1_dashboard_command(input: Stage1InstallInput) -> Result<Stage1Dashboard, String> {
-    inspect_stage1_dashboard(input).map_err(|error| {
-        let rendered = render_error_chain(&error);
-        eprintln!("inspect_stage1_dashboard_command failed:\n{}", rendered);
-        rendered
-    })
+pub async fn inspect_stage1_dashboard_command(input: Stage1InstallInput) -> Result<Stage1Dashboard, String> {
+    tauri::async_runtime::spawn_blocking(move || inspect_stage1_dashboard(input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("inspect_stage1_dashboard_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(|error| {
+            let rendered = render_error_chain(&error);
+            eprintln!("inspect_stage1_dashboard_command failed:\n{}", rendered);
+            rendered
+        })
 }
 
 #[tauri::command]
