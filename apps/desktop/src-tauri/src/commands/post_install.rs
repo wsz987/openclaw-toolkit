@@ -15,20 +15,43 @@ pub struct ManagedLaunchResponse {
 }
 
 #[tauri::command]
-pub fn inspect_openclaw_status(config_path: String) -> Result<OpenClawStatusSummary, String> {
-    read_openclaw_status(&PathBuf::from(config_path)).map_err(render_error)
+pub async fn inspect_openclaw_status(config_path: String) -> Result<OpenClawStatusSummary, String> {
+    tauri::async_runtime::spawn_blocking(move || read_openclaw_status(&PathBuf::from(config_path)))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("inspect_openclaw_status join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
 }
 
 #[tauri::command]
-pub fn setup_openclaw_provider(input: ProviderSetupInput) -> Result<ProviderSetupResult, String> {
-    apply_provider_setup(&input).map_err(render_error)
+pub async fn setup_openclaw_provider(input: ProviderSetupInput) -> Result<ProviderSetupResult, String> {
+    tauri::async_runtime::spawn_blocking(move || apply_provider_setup(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("setup_openclaw_provider join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
 }
 
 #[tauri::command]
-pub fn launch_openclaw_runtime(config_path: String) -> Result<ManagedLaunchResponse, String> {
-    let status = read_openclaw_status(&PathBuf::from(&config_path)).map_err(render_error)?;
-    let launch = launch_managed_openclaw(&status).map_err(render_error)?;
-    Ok(map_launch_response(launch))
+pub async fn launch_openclaw_runtime(config_path: String) -> Result<ManagedLaunchResponse, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let status = read_openclaw_status(&PathBuf::from(&config_path))?;
+        let launch = launch_managed_openclaw(&status)?;
+        Ok::<ManagedLaunchResponse, anyhow::Error>(map_launch_response(launch))
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("launch_openclaw_runtime join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
 }
 
 fn map_launch_response(launch: ManagedOpenClawLaunchResult) -> ManagedLaunchResponse {

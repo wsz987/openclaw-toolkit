@@ -190,6 +190,7 @@ export function SuccessStateView({
   }, [providerId]);
 
   const providerReady = status?.providerInitialized ?? false;
+  const postInstallActionLoading = providerSetupLoading || runtimeLaunchLoading || statusLoading;
 
   return (
     <Card className="max-w-5xl mx-auto border-[hsl(var(--success)/0.3)] bg-[hsl(var(--canvas))] py-12 px-8 flex flex-col items-center animate-fade-in shadow-lg">
@@ -307,7 +308,7 @@ export function SuccessStateView({
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="default"
-                disabled={providerSetupLoading || !status || apiKey.trim().length === 0}
+                disabled={postInstallActionLoading || !status || apiKey.trim().length === 0}
                 onClick={() =>
                   void onProviderSetup({
                     configPath: result.configPath,
@@ -334,7 +335,7 @@ export function SuccessStateView({
               </Button>
               <Button
                 variant="secondary"
-                disabled={runtimeLaunchLoading || !status}
+                disabled={postInstallActionLoading || !status}
                 onClick={() => void onLaunchRuntime(result.configPath)}
               >
                 {runtimeLaunchLoading ? (

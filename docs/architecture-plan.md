@@ -211,6 +211,55 @@ loadManifest
 
 记录本机已安装状态，包含工具包版本、OpenClaw 版本、Node Runtime 版本、安装方式、运行目录、配置路径和 skills 列表。
 
+### installation registry
+
+除实例目录内部的 `installed-manifest` 外，还应新增“应用级安装注册中心”，并放在 Tauri 应用数据目录，而不是放在 `OpenClaw 安装目录` 内。
+
+registry 负责：
+
+- 持久化最近一次安装成功的实例
+- 记录当前激活实例与最近使用目录
+- 支持多安装实例发现与切换
+- 记录失败中、待恢复、已损坏实例
+- 为应用启动后的状态恢复提供唯一入口
+
+建议数据分层：
+
+- `settings.json`：用户偏好、最近目录、activeInstallationId
+- `install-registry.json`：安装实例索引和状态
+- `installed-manifest.json`：具体安装目录内的自描述文件
+
+仅依赖默认 `OpenClaw 安装目录` 推断安装状态不可接受；安装识别必须以 registry + manifest 校验为准。
+
+## 启动恢复设计
+
+应用启动后不应直接进入安装向导，而应先执行 bootstrap：
+
+```text
+load settings
+  -> load install registry
+  -> locate active installation
+  -> validate paths / manifest / config / runtime
+  -> route UI
+```
+
+推荐首页状态：
+
+- `NoInstallation`
+- `Installing`
+- `InstalledHome`
+- `Recovery`
+- `ChooseInstallation`
+
+其中 `InstalledHome` 是长期入口，负责：
+
+- 启动 OpenClaw
+- 打开控制面板
+- 修改 Provider / 权限 / 插件
+- 查看 Skills 和工作区状态
+
+安装成功页只作为一次性反馈，不应继续承担长期入口职责。
+
 ## 授权设计
 
 使用离线授权，不自定义易伪造格式。

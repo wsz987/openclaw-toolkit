@@ -102,9 +102,20 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 - volcengine / deepseek / qwen 模块
 - feishu plugin 模块
 
+## Milestone 10：安装状态持久化与启动恢复（待做）
+
+- 新增应用级 `settings.json`
+- 新增 `install-registry.json`
+- 为 `installed-manifest` 增加 `installationId`、`baseDir`、`schemaVersion`
+- 安装流程按 step 实时写入 workflow state
+- 应用启动新增 `bootstrap_app_state`
+- 按 active installation 自动恢复到安装首页或修复页
+- 安装后交互从“一次性成功页”升级为“实例首页”
+
 ## 下一步建议
 
-1. 把 `toolkit-settings.json` 的生成和加密/签名策略定下来。
-2. 把远程下载进度和安装日志实时显示到前端。
-3. 把 browser runtime 检测从占位改为真实 Edge/Chrome/Chromium 检测。
-4. 接入正式离线授权验签公钥。
+1. 先补齐 `settings + install-registry + bootstrap_app_state`，解决自定义安装目录和重启恢复问题。
+2. 把安装后操作页重构为基于 active installation 的长期首页，而不是依赖本次会话结果。
+3. 把远程下载进度和安装日志实时显示到前端。
+4. 把 browser runtime 检测从占位改为真实 Edge/Chrome/Chromium 检测。
+5. 接入正式离线授权验签公钥。

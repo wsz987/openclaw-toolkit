@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDebouncedValue } from '../../../hooks/use-debounced-value';
+import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
 import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '../model/graph';
 import {
   buildDiagnosticsInfo,
@@ -60,8 +62,11 @@ export function useStage1Installer() {
   const [wizardStep, setWizardStep] = useState(0);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
-  const dashboardRequestIdRef = useRef(0);
-  const dashboardDebounceTimerRef = useRef<number | null>(null);
+  const dashboardRequestGuard = useLatestRequestGuard();
+  const versionCatalogRequestGuard = useLatestRequestGuard();
+  const postInstallStatusRequestGuard = useLatestRequestGuard();
+  const providerSetupRequestGuard = useLatestRequestGuard();
+  const runtimeLaunchRequestGuard = useLatestRequestGuard();
 
   const payload = useMemo<Stage1InstallPayload>(
     () => ({
@@ -72,11 +77,18 @@ export function useStage1Installer() {
     }),
     [baseDir, licenseKey, installMode, selectedVersion]
   );
+  const debouncedPayload = useDebouncedValue(payload, DASHBOARD_DEBOUNCE_MS);
 
   async function loadVersionCatalog(mode: InstallMode, preserveSelection = true) {
+    const requestId = versionCatalogRequestGuard.begin();
     setVersionCatalogLoading(true);
     try {
       const response = await inspectVersionCatalog(mode);
+
+      if (!versionCatalogRequestGuard.isCurrent(requestId)) {
+        return;
+      }
+
       setVersionCatalog(response);
       setSelectedVersion((current) => {
         if (!preserveSelection) {
@@ -87,6 +99,10 @@ export function useStage1Installer() {
         return currentOption?.selectable ? current : response.defaultValue;
       });
     } catch (err) {
+      if (!versionCatalogRequestGuard.isCurrent(requestId)) {
+        return;
+      }
+
       setVersionCatalog({
         installMode: mode,
         sourceReady: false,
@@ -96,31 +112,33 @@ export function useStage1Installer() {
         message: err instanceof Error ? err.message : String(err)
       });
     } finally {
-      setVersionCatalogLoading(false);
+      if (versionCatalogRequestGuard.isCurrent(requestId)) {
+        setVersionCatalogLoading(false);
+      }
     }
   }
 
   async function loadDashboard(input: Stage1InstallPayload) {
-    const requestId = ++dashboardRequestIdRef.current;
+    const requestId = dashboardRequestGuard.begin();
     setError(null);
     setDashboardLoading(true);
 
     try {
       const response = await inspectStage1Dashboard(input);
 
-      if (requestId !== dashboardRequestIdRef.current) {
+      if (!dashboardRequestGuard.isCurrent(requestId)) {
         return;
       }
 
       setDashboard(response);
     } catch (err) {
-      if (requestId !== dashboardRequestIdRef.current) {
+      if (!dashboardRequestGuard.isCurrent(requestId)) {
         return;
       }
 
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      if (requestId === dashboardRequestIdRef.current) {
+      if (dashboardRequestGuard.isCurrent(requestId)) {
         setDashboardLoading(false);
       }
     }
@@ -173,48 +191,84 @@ export function useStage1Installer() {
   }
 
   async function loadPostInstallStatus(configPath: string) {
+    const requestId = postInstallStatusRequestGuard.begin();
     setPostInstallLoading(true);
     try {
       const response = await inspectOpenClawStatus(configPath);
+
+      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setPostInstallStatus(response);
       return response;
     } catch (err) {
+      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setError(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
-      setPostInstallLoading(false);
+      if (postInstallStatusRequestGuard.isCurrent(requestId)) {
+        setPostInstallLoading(false);
+      }
     }
   }
 
   async function handleProviderSetup(input: OpenClawProviderSetupPayload) {
+    const requestId = providerSetupRequestGuard.begin();
     setProviderSetupLoading(true);
     setError(null);
     try {
       const response = await setupOpenClawProvider(input);
+
+      if (!providerSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setProviderSetupResult(response);
       await loadPostInstallStatus(response.configPath);
       return response;
     } catch (err) {
+      if (!providerSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setError(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
-      setProviderSetupLoading(false);
+      if (providerSetupRequestGuard.isCurrent(requestId)) {
+        setProviderSetupLoading(false);
+      }
     }
   }
 
   async function handleLaunchRuntime(configPath: string) {
+    const requestId = runtimeLaunchRequestGuard.begin();
     setRuntimeLaunchLoading(true);
     setError(null);
     try {
       const response = await launchOpenClawRuntime(configPath);
+
+      if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setRuntimeLaunchResult(response);
       await loadPostInstallStatus(configPath);
       return response;
     } catch (err) {
+      if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
       setError(err instanceof Error ? err.message : String(err));
       return null;
     } finally {
-      setRuntimeLaunchLoading(false);
+      if (runtimeLaunchRequestGuard.isCurrent(requestId)) {
+        setRuntimeLaunchLoading(false);
+      }
     }
   }
 
@@ -257,23 +311,8 @@ export function useStage1Installer() {
       return;
     }
 
-    if (dashboardDebounceTimerRef.current !== null) {
-      window.clearTimeout(dashboardDebounceTimerRef.current);
-    }
-
-    const nextPayload = payload;
-    dashboardDebounceTimerRef.current = window.setTimeout(() => {
-      dashboardDebounceTimerRef.current = null;
-      void loadDashboard(nextPayload);
-    }, DASHBOARD_DEBOUNCE_MS);
-
-    return () => {
-      if (dashboardDebounceTimerRef.current !== null) {
-        window.clearTimeout(dashboardDebounceTimerRef.current);
-        dashboardDebounceTimerRef.current = null;
-      }
-    };
-  }, [payload]);
+    void loadDashboard(debouncedPayload);
+  }, [debouncedPayload, loading]);
 
   useEffect(() => {
     const nextWizardStep = deriveWizardStepFromDashboard(dashboard);
@@ -299,12 +338,26 @@ export function useStage1Installer() {
   const activeStep = stepProgress.find((step) => step.state === 'current');
   const progressValue = dashboard?.progress ?? 0;
   const environmentItems = dashboard?.environment ?? [];
+  const payloadSettled =
+    payload.baseDir === debouncedPayload.baseDir &&
+    payload.licenseKey === debouncedPayload.licenseKey &&
+    payload.installMode === debouncedPayload.installMode &&
+    payload.selectedVersion === debouncedPayload.selectedVersion;
+  const dashboardMatchesDebouncedPayload =
+    dashboard?.baseDir === debouncedPayload.baseDir &&
+    dashboard?.installMode === debouncedPayload.installMode &&
+    dashboard?.selectedVersion === debouncedPayload.selectedVersion;
+  const dashboardReadyForCurrentPayload = payloadSettled && dashboardMatchesDebouncedPayload && !dashboardLoading;
 
   const step1Checks = getStepChecks(environmentItems, STEP1_CHECK_IDS);
-  const step1Ready = step1Checks.length > 0 && step1Checks.every((check) => check.state === 'ok');
+  const step1Ready =
+    dashboardReadyForCurrentPayload && step1Checks.length > 0 && step1Checks.every((check) => check.state === 'ok');
 
   const step2Checks = getStepChecks(environmentItems, STEP2_CHECK_IDS);
-  const step2Ready = step2Checks.length > 0 && step2Checks.every((check) => check.state !== 'error');
+  const step2Ready =
+    dashboardReadyForCurrentPayload &&
+    step2Checks.length > 0 &&
+    step2Checks.every((check) => check.state !== 'error');
   const selectedVersionOption = getSelectedVersionOption(versionCatalog, selectedVersion);
   const versionSelectable = selectedVersionOption?.selectable ?? false;
   const versionListReady = isVersionListReady(versionCatalog);
