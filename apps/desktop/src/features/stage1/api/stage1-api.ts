@@ -1,15 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isInstallStep } from '../model/graph';
 import type {
+  AppBootstrapState,
   DirectoryPickerResponse,
   InstallMode,
   OpenClawLaunchResult,
+  OpenPathResult,
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1CheckState,
   Stage1Dashboard,
   Stage1InstallPayload,
+  Stage1InstallLogTail,
   Stage1InstallResult,
   Stage1StepState,
   VersionCatalogResult
@@ -42,6 +45,14 @@ export async function inspectVersionCatalog(mode: InstallMode): Promise<VersionC
   });
 }
 
+export async function bootstrapAppState(): Promise<AppBootstrapState> {
+  return invoke<AppBootstrapState>('bootstrap_app_state_command');
+}
+
+export async function importInstallationFromPath(path: string): Promise<AppBootstrapState> {
+  return invoke<AppBootstrapState>('import_installation_from_path_command', { path });
+}
+
 export async function inspectStage1Dashboard(input: Stage1InstallPayload): Promise<Stage1Dashboard> {
   const response = await invoke<Stage1Dashboard>('inspect_stage1_dashboard_command', { input });
   return normalizeDashboard(response);
@@ -51,10 +62,26 @@ export async function startStage1Install(input: Stage1InstallPayload): Promise<S
   return invoke<Stage1InstallResult>('start_stage1_install', { input });
 }
 
+export async function readStage1InstallLogTail(baseDir: string, maxLines = 200): Promise<Stage1InstallLogTail> {
+  return invoke<Stage1InstallLogTail>('read_stage1_install_log_tail_command', {
+    baseDir,
+    maxLines
+  });
+}
+
 export async function pickDirectory(defaultPath: string): Promise<DirectoryPickerResponse> {
   return invoke<DirectoryPickerResponse>('pick_directory_dialog', {
     request: {
       title: '选择 OpenClaw 安装目录',
+      defaultPath
+    }
+  });
+}
+
+export async function pickFile(defaultPath: string): Promise<DirectoryPickerResponse> {
+  return invoke<DirectoryPickerResponse>('pick_file_dialog', {
+    request: {
+      title: '选择 installed-manifest.json 或 OpenClaw 安装目录',
       defaultPath
     }
   });
@@ -72,4 +99,16 @@ export async function setupOpenClawProvider(
 
 export async function launchOpenClawRuntime(configPath: string): Promise<OpenClawLaunchResult> {
   return invoke<OpenClawLaunchResult>('launch_openclaw_runtime', { configPath });
+}
+
+export async function openControlPanel(configPath: string): Promise<string> {
+  return invoke<string>('open_control_panel_command', { configPath });
+}
+
+export async function openInstallationDirectory(path: string): Promise<OpenPathResult> {
+  return invoke<OpenPathResult>('open_installation_directory_command', { path });
+}
+
+export async function openLogsDirectory(configPath: string): Promise<OpenPathResult> {
+  return invoke<OpenPathResult>('open_logs_directory_command', { configPath });
 }

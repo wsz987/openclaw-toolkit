@@ -3,6 +3,10 @@ import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
 import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '../model/graph';
 import {
+  stage1Steps,
+  isInstallStep,
+} from '../model/graph';
+import {
   buildDiagnosticsInfo,
   createPendingStepProgress,
   deriveWizardStepFromDashboard,
@@ -24,24 +28,30 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1Dashboard,
+  Stage1InstallLogTail,
   Stage1InstallPayload,
   Stage1InstallResult,
   VersionCatalogResult
 } from '../model/types';
 import {
+  importInstallationFromPath,
   inspectOpenClawStatus,
   inspectStage1Dashboard,
   inspectVersionCatalog,
   launchOpenClawRuntime,
+  openControlPanel,
+  openInstallationDirectory,
+  openLogsDirectory,
   pickDirectory,
+  readStage1InstallLogTail,
   setupOpenClawProvider,
   startStage1Install
 } from '../api/stage1-api';
 
-export function useStage1Installer() {
+export function useStage1Installer(initialBaseDir?: string | null) {
   const DASHBOARD_DEBOUNCE_MS = 350;
 
-  const [baseDir, setBaseDir] = useState('D:\\OpenClaw');
+  const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : 'D:\\OpenClaw');
   const [licenseKey, setLicenseKey] = useState('stage1-dev');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
   const [selectedVersion, setSelectedVersion] = useState('latest');
@@ -51,12 +61,17 @@ export function useStage1Installer() {
   const [versionCatalogLoading, setVersionCatalogLoading] = useState(false);
   const [versionCatalog, setVersionCatalog] = useState<VersionCatalogResult | null>(null);
   const [result, setResult] = useState<Stage1InstallResult | null>(null);
+  const [installLogTail, setInstallLogTail] = useState<Stage1InstallLogTail | null>(null);
   const [postInstallStatus, setPostInstallStatus] = useState<OpenClawPostInstallStatus | null>(null);
   const [postInstallLoading, setPostInstallLoading] = useState(false);
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
   const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
   const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
+  const [controlPanelOpening, setControlPanelOpening] = useState(false);
+  const [installationDirOpening, setInstallationDirOpening] = useState(false);
+  const [logsDirOpening, setLogsDirOpening] = useState(false);
+  const [importingInstallation, setImportingInstallation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -67,6 +82,7 @@ export function useStage1Installer() {
   const postInstallStatusRequestGuard = useLatestRequestGuard();
   const providerSetupRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
+  const installLogRequestGuard = useLatestRequestGuard();
 
   const payload = useMemo<Stage1InstallPayload>(
     () => ({
@@ -144,6 +160,28 @@ export function useStage1Installer() {
     }
   }
 
+  async function loadInstallLog(baseDirToRead: string) {
+    if (!baseDirToRead.trim()) {
+      return;
+    }
+
+    const requestId = installLogRequestGuard.begin();
+    try {
+      const response = await readStage1InstallLogTail(baseDirToRead, 200);
+      if (!installLogRequestGuard.isCurrent(requestId)) {
+        return;
+      }
+
+      setInstallLogTail(response);
+    } catch {
+      if (!installLogRequestGuard.isCurrent(requestId)) {
+        return;
+      }
+
+      setInstallLogTail(null);
+    }
+  }
+
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
@@ -151,22 +189,85 @@ export function useStage1Installer() {
     }
   }
 
+  async function handleImportInstallation() {
+    setImportingInstallation(true);
+    setError(null);
+    try {
+      const picked = await pickDirectory(baseDir);
+      if (!picked) {
+        return null;
+      }
+
+      return await importInstallationFromPath(picked);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setImportingInstallation(false);
+    }
+  }
+
   async function startInstall() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setInstallLogTail(null);
     setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
     setWizardStep(2);
+    setDashboard((current) => {
+      const firstStep = stage1Steps[0];
+      return {
+        workflowId: current?.workflowId ?? 'starting',
+        phase: 'running',
+        currentStep: firstStep.id,
+        currentStepLabel: firstStep.title,
+        progress: 0,
+        completedSteps: [],
+        failedStep: null,
+        message: firstStep.description,
+        steps: stage1Steps.map((step, index) => ({
+          ...step,
+          state: index === 0 ? 'current' : 'pending'
+        })),
+        environment: current?.environment ?? [],
+        installMode,
+        selectedVersion,
+        openclawVersion: current?.openclawVersion ?? null,
+        nodeVersion: current?.nodeVersion ?? null,
+        baseDir,
+        systemOpenclaw: current?.systemOpenclaw ?? {
+          detected: false,
+          executable: null,
+          version: null,
+          error: null
+        },
+        systemNode: current?.systemNode ?? {
+          detected: false,
+          executable: null,
+          version: null,
+          satisfiesRequirement: null,
+          error: null
+        },
+        installPlan: current?.installPlan ?? {
+          targetOpenclawVersion: null,
+          targetNodeVersion: null,
+          action: 'install',
+          requiresConfirmation: false
+        }
+      };
+    });
 
     try {
       const response = await startStage1Install(payload);
       setResult(response);
       await loadPostInstallStatus(response.configPath);
       await loadDashboard(payload);
+      await loadInstallLog(payload.baseDir);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      await loadInstallLog(payload.baseDir);
     } finally {
       setLoading(false);
     }
@@ -272,6 +373,45 @@ export function useStage1Installer() {
     }
   }
 
+  async function handleOpenControlPanel(configPath: string) {
+    setControlPanelOpening(true);
+    setError(null);
+    try {
+      return await openControlPanel(configPath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setControlPanelOpening(false);
+    }
+  }
+
+  async function handleOpenInstallationDirectory(path: string) {
+    setInstallationDirOpening(true);
+    setError(null);
+    try {
+      return await openInstallationDirectory(path);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setInstallationDirOpening(false);
+    }
+  }
+
+  async function handleOpenLogsDirectory(configPath: string) {
+    setLogsDirOpening(true);
+    setError(null);
+    try {
+      return await openLogsDirectory(configPath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setLogsDirOpening(false);
+    }
+  }
+
   function handleBackToConfig() {
     setError(null);
     setResult(null);
@@ -328,10 +468,19 @@ export function useStage1Installer() {
 
     const timer = window.setInterval(() => {
       void loadDashboard(payload);
+      void loadInstallLog(payload.baseDir);
     }, 800);
 
     return () => window.clearInterval(timer);
   }, [loading, payload]);
+
+  useEffect(() => {
+    if (wizardStep < 2 && !loading) {
+      return;
+    }
+
+    void loadInstallLog(baseDir);
+  }, [baseDir, wizardStep, loading]);
 
   const stepProgress = dashboard?.steps ?? createPendingStepProgress();
   const completedCount = stepProgress.filter((step) => step.state === 'done').length;
@@ -396,10 +545,14 @@ export function useStage1Installer() {
     handleBackToConfig,
     handlePickDirectory,
     handlePrimaryInstallAction,
+    installLogTail,
     installActionLabel,
     installMode,
     installPlan,
+    installationDirOpening,
+    importingInstallation,
     licenseKey,
+    logsDirOpening,
     loading,
     phase,
     postInstallLoading,
@@ -433,9 +586,26 @@ export function useStage1Installer() {
     versionListReady,
     versionSelectable,
     wizardStep,
+    controlPanelOpening,
     confirmInstall,
+    handleImportInstallation,
     handleLaunchRuntime,
+    handleOpenControlPanel,
+    handleOpenInstallationDirectory,
+    handleOpenLogsDirectory,
     handleProviderSetup,
     loadPostInstallStatus
+  };
+}
+
+export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): Stage1InstallResult {
+  return {
+    workflowId: record.installationId,
+    status: record.status,
+    openclawVersion: record.openclawVersion,
+    nodeVersion: record.nodeVersion,
+    openclawDir: record.openclawDir,
+    nodeDir: record.nodeDir,
+    configPath: record.configPath
   };
 }

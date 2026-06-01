@@ -1,4 +1,8 @@
-use std::{fs, io::{self, Read}, path::{Path, PathBuf}};
+use std::{
+    fs,
+    io::{self, Read},
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
 use flate2::read::GzDecoder;
@@ -25,7 +29,12 @@ pub fn sha256_file(path: &Path) -> anyhow::Result<String> {
 pub fn verify_sha256(path: &Path, expected: &str) -> anyhow::Result<()> {
     let actual = sha256_file(path)?;
     if actual != expected {
-        anyhow::bail!("sha256 mismatch for {}: expected={}, actual={}", path.display(), expected, actual);
+        anyhow::bail!(
+            "sha256 mismatch for {}: expected={}, actual={}",
+            path.display(),
+            expected,
+            actual
+        );
     }
     Ok(())
 }
@@ -57,8 +66,13 @@ pub fn copy_tree(source: &Path, destination: &Path) -> anyhow::Result<()> {
             if let Some(parent) = destination_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::copy(&source_path, &destination_path)
-                .with_context(|| format!("copy {} to {}", source_path.display(), destination_path.display()))?;
+            fs::copy(&source_path, &destination_path).with_context(|| {
+                format!(
+                    "copy {} to {}",
+                    source_path.display(),
+                    destination_path.display()
+                )
+            })?;
         }
     }
 
@@ -105,7 +119,9 @@ pub fn install_archive(archive_path: &Path, destination: &Path) -> anyhow::Resul
             .with_context(|| format!("open archive {}", archive_path.display()))?;
         let decoder = GzDecoder::new(file);
         let mut archive = Archive::new(decoder);
-        archive.unpack(destination).with_context(|| format!("unpack {}", archive_path.display()))?;
+        archive
+            .unpack(destination)
+            .with_context(|| format!("unpack {}", archive_path.display()))?;
         return Ok(());
     }
 
@@ -118,5 +134,7 @@ pub fn install_archive(archive_path: &Path, destination: &Path) -> anyhow::Resul
 }
 
 pub fn join_path_segments(base: &Path, segments: &[&str]) -> PathBuf {
-    segments.iter().fold(base.to_path_buf(), |acc, segment| acc.join(segment))
+    segments
+        .iter()
+        .fold(base.to_path_buf(), |acc, segment| acc.join(segment))
 }

@@ -5,16 +5,22 @@ use chrono::Utc;
 
 pub fn append_install_log(base_dir: &Path, message: &str) -> anyhow::Result<()> {
     let log_dir = base_dir.join("logs");
-    fs::create_dir_all(&log_dir).with_context(|| format!("create log dir {}", log_dir.display()))?;
+    fs::create_dir_all(&log_dir)
+        .with_context(|| format!("create log dir {}", log_dir.display()))?;
     let line = format!("{} {}\n", Utc::now().to_rfc3339(), message);
     let log_path = log_dir.join("stage1-install.log");
     let mut existing = fs::read_to_string(&log_path).unwrap_or_default();
     existing.push_str(&line);
     fs::write(log_path, existing)?;
+    println!("[安装日志] {}", message);
     Ok(())
 }
 
-pub fn append_error_chain_log(base_dir: &Path, title: &str, error: &anyhow::Error) -> anyhow::Result<()> {
+pub fn append_error_chain_log(
+    base_dir: &Path,
+    title: &str,
+    error: &anyhow::Error,
+) -> anyhow::Result<()> {
     append_install_log(base_dir, &format!("{}: {}", title, error))?;
 
     for (index, cause) in error.chain().enumerate().skip(1) {
@@ -24,14 +30,19 @@ pub fn append_error_chain_log(base_dir: &Path, title: &str, error: &anyhow::Erro
     Ok(())
 }
 
-pub fn backup_existing_dir(source: &Path, base_dir: &Path, label: &str) -> anyhow::Result<Option<std::path::PathBuf>> {
+pub fn backup_existing_dir(
+    source: &Path,
+    base_dir: &Path,
+    label: &str,
+) -> anyhow::Result<Option<std::path::PathBuf>> {
     if !source.exists() {
         return Ok(None);
     }
 
-    let backup_dir = base_dir
-        .join("backups")
-        .join(format!("{}-{}", label, Utc::now().format("%Y%m%d%H%M%S")));
+    let backup_dir =
+        base_dir
+            .join("backups")
+            .join(format!("{}-{}", label, Utc::now().format("%Y%m%d%H%M%S")));
 
     copy_dir(source, &backup_dir)?;
     Ok(Some(backup_dir))

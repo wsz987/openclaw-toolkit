@@ -7,7 +7,10 @@ pub struct ToolkitManifest {
     pub schema_version: String,
     #[serde(rename = "defaultOpenClawVersion", alias = "defaultOpenclawVersion")]
     pub default_openclaw_version: String,
-    #[serde(rename = "supportedOpenClawVersions", alias = "supportedOpenclawVersions")]
+    #[serde(
+        rename = "supportedOpenClawVersions",
+        alias = "supportedOpenclawVersions"
+    )]
     pub supported_openclaw_versions: Vec<String>,
     pub environment: Option<EnvironmentRequirements>,
 }
@@ -62,14 +65,24 @@ pub struct ReleaseManifest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstalledManifest {
+    #[serde(default = "default_manifest_schema_version")]
+    pub schema_version: u32,
+    #[serde(default)]
+    pub installation_id: Option<String>,
     pub toolkit_version: String,
     pub openclaw_version: String,
     pub node_version: String,
     pub install_mode: String,
     pub installed_at: String,
+    #[serde(default)]
+    pub base_dir: Option<String>,
     pub openclaw_dir: String,
     pub node_dir: String,
     pub config_path: String,
     #[serde(default)]
     pub skills: Vec<ReleaseSkill>,
+}
+
+fn default_manifest_schema_version() -> u32 {
+    1
 }

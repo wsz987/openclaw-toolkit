@@ -28,15 +28,26 @@ impl FromStr for WindowsVersion {
             anyhow::bail!("Windows 版本格式无效：{}", value);
         }
 
-        let major = parts[0].parse::<u32>().with_context(|| format!("解析 Windows 主版本失败：{}", value))?;
-        let minor = parts[1].parse::<u32>().with_context(|| format!("解析 Windows 次版本失败：{}", value))?;
+        let major = parts[0]
+            .parse::<u32>()
+            .with_context(|| format!("解析 Windows 主版本失败：{}", value))?;
+        let minor = parts[1]
+            .parse::<u32>()
+            .with_context(|| format!("解析 Windows 次版本失败：{}", value))?;
         let build = parts
             .get(2)
-            .map(|part| part.parse::<u32>().with_context(|| format!("解析 Windows build 失败：{}", value)))
+            .map(|part| {
+                part.parse::<u32>()
+                    .with_context(|| format!("解析 Windows build 失败：{}", value))
+            })
             .transpose()?
             .unwrap_or(0);
 
-        Ok(Self { major, minor, build })
+        Ok(Self {
+            major,
+            minor,
+            build,
+        })
     }
 }
 
@@ -65,7 +76,9 @@ pub struct WindowsEnvironmentStatus {
 
 impl WindowsEnvironmentStatus {
     pub fn is_supported(&self) -> bool {
-        self.detected.map(|detected| detected >= self.required).unwrap_or(false)
+        self.detected
+            .map(|detected| detected >= self.required)
+            .unwrap_or(false)
     }
 
     pub fn detail(&self) -> String {
@@ -74,12 +87,17 @@ impl WindowsEnvironmentStatus {
                 format!("当前系统版本 {}，最低要求 {}", detected, self.required)
             }
             Some(detected) => format!("当前系统版本 {}，最低要求 {}", detected, self.required),
-            None => format!("Stage 1 当前仅支持 Windows 环境，最低要求 {}", self.required),
+            None => format!(
+                "Stage 1 当前仅支持 Windows 环境，最低要求 {}",
+                self.required
+            ),
         }
     }
 }
 
-pub fn windows_min_version(toolkit_manifest: Option<&ToolkitManifest>) -> anyhow::Result<WindowsVersion> {
+pub fn windows_min_version(
+    toolkit_manifest: Option<&ToolkitManifest>,
+) -> anyhow::Result<WindowsVersion> {
     let configured = toolkit_manifest
         .and_then(|manifest| manifest.environment.as_ref())
         .and_then(|environment| environment.windows.as_ref())
@@ -89,7 +107,9 @@ pub fn windows_min_version(toolkit_manifest: Option<&ToolkitManifest>) -> anyhow
     configured.parse()
 }
 
-pub fn windows_environment_status(toolkit_manifest: Option<&ToolkitManifest>) -> anyhow::Result<WindowsEnvironmentStatus> {
+pub fn windows_environment_status(
+    toolkit_manifest: Option<&ToolkitManifest>,
+) -> anyhow::Result<WindowsEnvironmentStatus> {
     Ok(WindowsEnvironmentStatus {
         required: windows_min_version(toolkit_manifest)?,
         detected: current_windows_version()?,

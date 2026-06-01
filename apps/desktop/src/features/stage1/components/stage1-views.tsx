@@ -16,6 +16,7 @@ import {
   PlayIcon,
   SettingsIcon,
   MonitorIcon,
+  EyeIcon,
   SpinnerIcon,
   XIcon
 } from '../../../components/icons';
@@ -29,6 +30,7 @@ import type {
   Stage1Dashboard,
   Stage1DiagnosticsInfo,
   Stage1EnvironmentCheck,
+  Stage1InstallLogTail,
   Stage1InstallResult,
   Stage1StepSnapshot,
   VersionCatalogOption,
@@ -137,9 +139,19 @@ type SuccessStateViewProps = {
   providerSetupResult: OpenClawProviderSetupResult | null;
   runtimeLaunchLoading: boolean;
   runtimeLaunchResult: OpenClawLaunchResult | null;
+  controlPanelOpening?: boolean;
+  installationDirOpening?: boolean;
+  logsDirOpening?: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
+  onOpenControlPanel?: (configPath: string) => Promise<string | null>;
+  onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
+  onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
   onBack: () => void;
+  mode?: 'installed' | 'recovery';
+  recoveryMessage?: string | null;
+  importLoading?: boolean;
+  onImportInstallation?: () => void;
 };
 
 export function SuccessStateView({
@@ -150,9 +162,19 @@ export function SuccessStateView({
   providerSetupResult,
   runtimeLaunchLoading,
   runtimeLaunchResult,
+  controlPanelOpening = false,
+  installationDirOpening = false,
+  logsDirOpening = false,
   onProviderSetup,
   onLaunchRuntime,
-  onBack
+  onOpenControlPanel,
+  onOpenInstallationDirectory,
+  onOpenLogsDirectory,
+  onBack,
+  mode = 'installed',
+  recoveryMessage,
+  importLoading = false,
+  onImportInstallation
 }: SuccessStateViewProps) {
   const [providerId, setProviderId] = useState<'volcengine' | 'volcengine-plan'>('volcengine-plan');
   const [apiUrl, setApiUrl] = useState('https://ark.cn-beijing.volces.com/api/coding/v3');
@@ -198,12 +220,19 @@ export function SuccessStateView({
         <CheckIcon size={34} />
       </div>
       <CardHeader className="p-0 mb-6 text-center">
-        <CardTitle className="text-3xl text-[hsl(var(--ink))]">运行环境部署成功</CardTitle>
+        <CardTitle className="text-3xl text-[hsl(var(--ink))]">{mode === 'recovery' ? '检测到已安装环境' : '运行环境部署成功'}</CardTitle>
         <CardDescription className="text-sm text-[hsl(var(--body))] mt-2 max-w-2xl mx-auto">
-          OpenClaw 核心程序及依赖资源已成功安装就绪，并通过系统环境最终冷启动验证。
+          {mode === 'recovery'
+            ? '应用已恢复上次识别到的 OpenClaw 安装实例，你可以继续启动、修改配置或处理修复项。'
+            : 'OpenClaw 核心程序及依赖资源已成功安装就绪，并通过系统环境最终冷启动验证。'}
         </CardDescription>
       </CardHeader>
       <CardContent className="w-full p-0 mb-8 flex flex-col gap-6">
+        {mode === 'recovery' && recoveryMessage ? (
+          <div className="rounded-lg border border-[hsl(var(--warning)/0.2)] bg-[hsl(var(--warning)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
+            当前实例存在待确认项：{recoveryMessage}
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
           <div className="bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] p-4 rounded-lg flex flex-col gap-1">
             <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">工作流 Workflow ID</span>
@@ -350,6 +379,38 @@ export function SuccessStateView({
                   </>
                 )}
               </Button>
+              <Button
+                variant="secondary"
+                disabled={postInstallActionLoading || !status || !onOpenControlPanel}
+                onClick={() => void onOpenControlPanel?.(result.configPath)}
+              >
+                {controlPanelOpening ? (
+                  <>
+                    <SpinnerIcon size={14} className="spinning mr-2" />
+                    打开中
+                  </>
+                ) : (
+                  <>
+                    <EyeIcon size={14} className="mr-2" />
+                    打开控制面板
+                  </>
+                )}
+              </Button>
+              {mode === 'recovery' && onImportInstallation ? (
+                <Button variant="secondary" disabled={importLoading} onClick={onImportInstallation}>
+                  {importLoading ? (
+                    <>
+                      <SpinnerIcon size={14} className="spinning mr-2" />
+                      导入中
+                    </>
+                  ) : (
+                    <>
+                      <FolderIcon size={14} className="mr-2" />
+                      重新导入已有安装
+                    </>
+                  )}
+                </Button>
+              ) : null}
             </div>
 
             {providerSetupResult ? (
@@ -411,13 +472,53 @@ export function SuccessStateView({
                   {status?.workspaceDir ?? result.openclawDir}
                 </code>
               </div>
+
+              <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+                <strong className="block text-sm text-[hsl(var(--body-strong))]">目录与日志入口</strong>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    disabled={!onOpenInstallationDirectory || installationDirOpening}
+                    onClick={() => void onOpenInstallationDirectory?.(result.openclawDir)}
+                  >
+                    {installationDirOpening ? (
+                      <>
+                        <SpinnerIcon size={14} className="spinning mr-2" />
+                        打开中
+                      </>
+                    ) : (
+                      <>
+                        <FolderIcon size={14} className="mr-2" />
+                        打开安装目录
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={!onOpenLogsDirectory || logsDirOpening}
+                    onClick={() => void onOpenLogsDirectory?.(result.configPath)}
+                  >
+                    {logsDirOpening ? (
+                      <>
+                        <SpinnerIcon size={14} className="spinning mr-2" />
+                        打开中
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRightIcon size={14} className="mr-2" />
+                        打开日志目录
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </CardContent>
       <div className="flex flex-wrap gap-3 justify-center">
         <Button variant="secondary" onClick={onBack}>
-          返回配置首页
+          {mode === 'recovery' ? '重新检测环境' : '返回配置首页'}
         </Button>
       </div>
     </Card>
@@ -633,11 +734,13 @@ export function ConfigStepView({
 type ProgressStageViewProps = {
   title: string;
   subtitle: string;
+  statusMessage?: string | null;
   timelineDescription: string;
   progressValue: number;
   currentStepLabel: string;
   completedCount: number;
   timelineItems: Stage1StepSnapshot[];
+  installLogTail: Stage1InstallLogTail | null;
   diagnosticsInfo: Stage1DiagnosticsInfo | null;
   timelineContainerRef: RefObject<HTMLDivElement | null>;
   animated?: boolean;
@@ -705,16 +808,60 @@ function TimelinePanel({
   );
 }
 
-function DiagnosticsPanel({ diagnosticsInfo }: { diagnosticsInfo: Stage1DiagnosticsInfo | null }) {
+function LogLine({ line }: { line: string }) {
+  const lowered = line.toLowerCase();
+  const tone = lowered.includes('error') || lowered.includes('failed')
+    ? 'text-[hsl(var(--error))]'
+    : lowered.includes('warn')
+      ? 'text-[hsl(var(--warning))]'
+      : lowered.includes('完成') || lowered.includes('success') || lowered.includes('added ')
+        ? 'text-[hsl(var(--success))]'
+        : 'text-[hsl(var(--on-dark-soft))]';
+
+  return <div className={`font-mono text-[11px] leading-5 whitespace-pre-wrap break-all ${tone}`}>{line}</div>;
+}
+
+function InstallLogPanel({
+  installLogTail,
+  diagnosticsInfo
+}: {
+  installLogTail: Stage1InstallLogTail | null;
+  diagnosticsInfo: Stage1DiagnosticsInfo | null;
+}) {
   return (
     <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full">
       <CardHeader className="p-0 mb-6">
-        <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">后台任务检测</CardTitle>
-        <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">活动部署步骤之实时诊断</CardDescription>
+        <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">安装日志面板</CardTitle>
+        <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">
+          最近 200 行安装日志，自动刷新并高亮错误/警告
+        </CardDescription>
       </CardHeader>
-      <CardContent className="p-0 flex-1 flex flex-col">
+      <CardContent className="p-0 flex-1 flex flex-col gap-4 min-h-0">
+        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg px-4 py-3">
+          <div className="text-[11px] text-[hsl(var(--on-dark-soft))] leading-relaxed">
+            {installLogTail?.path ?? '日志文件尚未生成'}
+          </div>
+          {installLogTail?.truncated ? (
+            <div className="mt-1 text-[10px] text-[hsl(var(--warning))]">已截取最近 200 行，较早日志已省略</div>
+          ) : null}
+        </div>
+
+        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-4 flex-1 min-h-[18rem] overflow-auto">
+          {installLogTail?.lines.length ? (
+            <div className="flex flex-col gap-1">
+              {installLogTail.lines.map((line, index) => (
+                <LogLine key={`${index}-${line.slice(0, 16)}`} line={line} />
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-sm text-[hsl(var(--on-dark-soft))]">
+              等待安装任务写入日志...
+            </div>
+          )}
+        </div>
+
         {diagnosticsInfo ? (
-          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4 flex-1">
+          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4">
             <div className="diagnostic-title flex items-center gap-2.5 text-base font-semibold text-[hsl(var(--primary))] border-b border-white/5 pb-3">
               <SettingsIcon size={14} className="spinning text-[hsl(var(--primary))]" style={{ animationDuration: '12s' }} />
               {diagnosticsInfo.title}
@@ -755,11 +902,13 @@ function DiagnosticsPanel({ diagnosticsInfo }: { diagnosticsInfo: Stage1Diagnost
 export function ProgressStageView({
   title,
   subtitle,
+  statusMessage,
   timelineDescription,
   progressValue,
   currentStepLabel,
   completedCount,
   timelineItems,
+  installLogTail,
   diagnosticsInfo,
   timelineContainerRef,
   animated = false
@@ -784,6 +933,11 @@ export function ProgressStageView({
             </span>
           </div>
           <Progress value={progressValue} className="h-2.5" />
+          {statusMessage ? (
+            <div className="text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] min-h-[1.25rem]">
+              {statusMessage}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -793,7 +947,7 @@ export function ProgressStageView({
           timelineItems={timelineItems}
           timelineContainerRef={timelineContainerRef}
         />
-        <DiagnosticsPanel diagnosticsInfo={diagnosticsInfo} />
+        <InstallLogPanel installLogTail={installLogTail} diagnosticsInfo={diagnosticsInfo} />
       </div>
     </div>
   );

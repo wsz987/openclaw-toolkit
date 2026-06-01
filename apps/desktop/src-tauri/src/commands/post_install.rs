@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 
 use crate::core::{
+    app_state::{mark_installation_launched, sync_installation_status_by_config_path},
     openclaw_config::{
-        apply_provider_setup, read_openclaw_status, OpenClawStatusSummary, ProviderSetupInput, ProviderSetupResult,
+        apply_provider_setup, read_openclaw_status, OpenClawStatusSummary, ProviderSetupInput,
+        ProviderSetupResult,
     },
     process::{launch_managed_openclaw, ManagedOpenClawLaunchResult},
 };
@@ -16,26 +18,37 @@ pub struct ManagedLaunchResponse {
 
 #[tauri::command]
 pub async fn inspect_openclaw_status(config_path: String) -> Result<OpenClawStatusSummary, String> {
-    tauri::async_runtime::spawn_blocking(move || read_openclaw_status(&PathBuf::from(config_path)))
-        .await
-        .map_err(|error| {
-            let rendered = error.to_string();
-            eprintln!("inspect_openclaw_status join failed:\n{}", rendered);
-            rendered
-        })?
-        .map_err(render_error)
+    tauri::async_runtime::spawn_blocking(move || {
+        let config_path = PathBuf::from(config_path);
+        let status = read_openclaw_status(&config_path)?;
+        let _ = sync_installation_status_by_config_path(&config_path);
+        Ok::<OpenClawStatusSummary, anyhow::Error>(status)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("inspect_openclaw_status join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
 }
 
 #[tauri::command]
-pub async fn setup_openclaw_provider(input: ProviderSetupInput) -> Result<ProviderSetupResult, String> {
-    tauri::async_runtime::spawn_blocking(move || apply_provider_setup(&input))
-        .await
-        .map_err(|error| {
-            let rendered = error.to_string();
-            eprintln!("setup_openclaw_provider join failed:\n{}", rendered);
-            rendered
-        })?
-        .map_err(render_error)
+pub async fn setup_openclaw_provider(
+    input: ProviderSetupInput,
+) -> Result<ProviderSetupResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_provider_setup(&input)?;
+        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
+        Ok::<ProviderSetupResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("setup_openclaw_provider join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
 }
 
 #[tauri::command]
@@ -43,6 +56,7 @@ pub async fn launch_openclaw_runtime(config_path: String) -> Result<ManagedLaunc
     tauri::async_runtime::spawn_blocking(move || {
         let status = read_openclaw_status(&PathBuf::from(&config_path))?;
         let launch = launch_managed_openclaw(&status)?;
+        let _ = mark_installation_launched(&PathBuf::from(&config_path));
         Ok::<ManagedLaunchResponse, anyhow::Error>(map_launch_response(launch))
     })
     .await

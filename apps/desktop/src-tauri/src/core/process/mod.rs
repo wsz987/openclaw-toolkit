@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Context;
 
-use crate::core::openclaw_config::OpenClawStatusSummary;
+use crate::core::{node_runtime::node_runtime_executable, openclaw_config::OpenClawStatusSummary};
 
 pub struct SystemOpenClawDetection {
     pub executable: Option<PathBuf>,
@@ -50,15 +50,23 @@ pub fn verify_openclaw_runtime(config_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn launch_managed_openclaw(status: &OpenClawStatusSummary) -> anyhow::Result<ManagedOpenClawLaunchResult> {
-    let node_exe = PathBuf::from(&status.node_dir).join("node.exe");
+pub fn launch_managed_openclaw(
+    status: &OpenClawStatusSummary,
+) -> anyhow::Result<ManagedOpenClawLaunchResult> {
+    let node_dir = PathBuf::from(&status.node_dir);
+    let node_exe = node_runtime_executable(&node_dir);
     if !node_exe.exists() {
         anyhow::bail!("managed node runtime not found: {}", node_exe.display());
     }
 
-    let openclaw_entry = PathBuf::from(&status.openclaw_dir).join("package").join("openclaw.mjs");
+    let openclaw_entry = PathBuf::from(&status.openclaw_dir)
+        .join("package")
+        .join("openclaw.mjs");
     if !openclaw_entry.exists() {
-        anyhow::bail!("managed openclaw entry not found: {}", openclaw_entry.display());
+        anyhow::bail!(
+            "managed openclaw entry not found: {}",
+            openclaw_entry.display()
+        );
     }
 
     let log_dir = PathBuf::from(&status.openclaw_dir).join("logs");
@@ -99,7 +107,12 @@ fn read_openclaw_version(executable: &Path) -> anyhow::Result<String> {
 fn run_openclaw_version_command(executable: &Path, flag: &str) -> anyhow::Result<String> {
     let output = openclaw_version_command(executable).arg(flag).output()?;
     if !output.status.success() {
-        anyhow::bail!("{} {} exited with {}", executable.display(), flag, output.status);
+        anyhow::bail!(
+            "{} {} exited with {}",
+            executable.display(),
+            flag,
+            output.status
+        );
     }
 
     parse_openclaw_version_output(&String::from_utf8_lossy(&output.stdout))
@@ -205,7 +218,10 @@ mod tests {
     #[test]
     fn parses_openclaw_version_output() {
         assert_eq!(parse_openclaw_version_output("v1.2.3\n").unwrap(), "1.2.3");
-        assert_eq!(parse_openclaw_version_output("openclaw 1.2.3\n").unwrap(), "openclaw 1.2.3");
+        assert_eq!(
+            parse_openclaw_version_output("openclaw 1.2.3\n").unwrap(),
+            "openclaw 1.2.3"
+        );
     }
 
     #[test]

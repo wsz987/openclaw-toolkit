@@ -1,4 +1,7 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
 
@@ -29,11 +32,13 @@ pub fn load_toolkit_settings(project_root: &Path) -> anyhow::Result<ToolkitSetti
 
 pub fn write_installed_manifest(path: &Path, manifest: &InstalledManifest) -> anyhow::Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("create manifest dir {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("create manifest dir {}", parent.display()))?;
     }
 
     let content = serde_json::to_string_pretty(manifest)?;
-    fs::write(path, content).with_context(|| format!("write installed manifest {}", path.display()))?;
+    fs::write(path, content)
+        .with_context(|| format!("write installed manifest {}", path.display()))?;
     Ok(())
 }
 

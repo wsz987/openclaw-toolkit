@@ -121,6 +121,8 @@ export type OpenClawLaunchResult = {
   logPath: string;
 };
 
+export type OpenPathResult = string;
+
 export type VersionCatalogOption = {
   value: string;
   label: string;
@@ -145,6 +147,41 @@ export type Stage1InstallPayload = {
   licenseKey: string;
   installMode: InstallMode;
   selectedVersion: string;
+};
+
+export type InstallationRecord = {
+  installationId: string;
+  displayName: string;
+  baseDir: string;
+  openclawDir: string;
+  nodeDir: string;
+  configPath: string;
+  installedManifestPath: string;
+  installMode: InstallMode;
+  openclawVersion: string;
+  nodeVersion: string;
+  status: string;
+  configState: string;
+  runtimeState: string;
+  providerState: string;
+  panelState: string;
+  installedAt: string;
+  lastValidatedAt: string | null;
+  lastLaunchedAt: string | null;
+  lastError: string | null;
+};
+
+export type AppBootstrapState = {
+  screen: 'installer' | 'installedHome' | 'recovery';
+  settings: {
+    schemaVersion: number;
+    lastSelectedBaseDir: string | null;
+    activeInstallationId: string | null;
+    recentInstallationIds: string[];
+  };
+  activeInstallation: InstallationRecord | null;
+  status: OpenClawPostInstallStatus | null;
+  message: string | null;
 };
 
 export type MasterPhaseId = 'verify-pre' | 'dependencies' | 'config-write' | 'final-check';
@@ -172,4 +209,10 @@ export type Stage1DiagnosticsInfo = {
   title: string;
   description: string;
   tasks: Array<StepDiagnosticTask & { status: DiagnosticTaskStatus }>;
+};
+
+export type Stage1InstallLogTail = {
+  path: string;
+  lines: string[];
+  truncated: boolean;
 };

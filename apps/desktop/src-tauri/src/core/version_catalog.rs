@@ -4,8 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use serde::{Deserialize, Serialize};
 use semver::Version;
+use serde::{Deserialize, Serialize};
 
 use crate::core::{
     manifest::{
@@ -17,7 +17,7 @@ use crate::core::{
 };
 
 const NPM_PACKAGE_NAME: &str = "openclaw";
-const NPM_REGISTRY_URL: &str = "https://registry.npmjs.org/openclaw";
+const NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com/openclaw";
 const NPM_RECENT_VERSION_LIMIT: usize = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,7 +121,10 @@ pub fn build_version_catalog(project_root: &Path, install_mode: &str) -> Version
         actual_version: Some(entry.value.clone()),
     }));
 
-    let default_value = if options.iter().any(|option| option.value == "latest" && option.selectable) {
+    let default_value = if options
+        .iter()
+        .any(|option| option.value == "latest" && option.selectable)
+    {
         "latest".to_string()
     } else {
         options
@@ -141,7 +144,11 @@ pub fn build_version_catalog(project_root: &Path, install_mode: &str) -> Version
     }
 }
 
-pub fn resolve_release_for_install(project_root: &Path, install_mode: &str, selected_version: &str) -> anyhow::Result<ReleaseArtifact> {
+pub fn resolve_release_for_install(
+    project_root: &Path,
+    install_mode: &str,
+    selected_version: &str,
+) -> anyhow::Result<ReleaseArtifact> {
     let catalog = build_internal_catalog(project_root, install_mode);
     if !catalog.source_ready {
         anyhow::bail!(
@@ -210,7 +217,10 @@ fn build_local_catalog(project_root: &Path) -> InternalCatalog {
     let entries = sort_releases_desc(manifest.releases)
         .into_iter()
         .map(|release| {
-            let artifact_path = project_root.join("artifacts").join("openclaw").join(&release.artifact);
+            let artifact_path = project_root
+                .join("artifacts")
+                .join("openclaw")
+                .join(&release.artifact);
             let node_path = project_root
                 .join("artifacts")
                 .join("node")
@@ -345,7 +355,9 @@ fn build_npm_catalog(project_root: &Path) -> InternalCatalog {
             versions
                 .keys()
                 .filter(|version| !is_filtered_prerelease(version))
-                .filter_map(|version| parse_sortable_version(version).map(|parsed| (version.clone(), parsed)))
+                .filter_map(|version| {
+                    parse_sortable_version(version).map(|parsed| (version.clone(), parsed))
+                })
                 .max_by(|left, right| left.1.cmp(&right.1))
                 .map(|item| item.0)
         });
@@ -406,7 +418,9 @@ fn build_npm_catalog(project_root: &Path) -> InternalCatalog {
     let message = if !source_ready {
         Some("npm 官方目录中没有可展示的正式版本".to_string())
     } else if entries.iter().all(|entry| !entry.selectable) {
-        Some("已读取 npm 正式版本，但当前项目内置的受管 Node 离线包还不满足这些版本要求".to_string())
+        Some(
+            "已读取 npm 正式版本，但当前项目内置的受管 Node 离线包还不满足这些版本要求".to_string(),
+        )
     } else {
         None
     };
@@ -524,7 +538,10 @@ fn resource_root_candidates() -> Vec<PathBuf> {
 
     let mut unique = Vec::new();
     for candidate in candidates {
-        if !unique.iter().any(|existing: &PathBuf| existing == &candidate) {
+        if !unique
+            .iter()
+            .any(|existing: &PathBuf| existing == &candidate)
+        {
             unique.push(candidate);
         }
     }
@@ -548,7 +565,9 @@ fn path_with_ancestors(start: PathBuf, levels: usize) -> Vec<PathBuf> {
 }
 
 fn has_toolkit_manifest(root: &Path) -> bool {
-    root.join("artifacts").join("toolkit-manifest.json").exists()
+    root.join("artifacts")
+        .join("toolkit-manifest.json")
+        .exists()
 }
 
 #[cfg(test)]
@@ -573,7 +592,13 @@ mod tests {
             .join("..");
         let catalog = build_version_catalog(&root, "local");
 
-        assert!(catalog.options.iter().any(|option| option.value == "latest"));
-        assert!(catalog.options.iter().any(|option| option.value == "2026.5.20"));
+        assert!(catalog
+            .options
+            .iter()
+            .any(|option| option.value == "latest"));
+        assert!(catalog
+            .options
+            .iter()
+            .any(|option| option.value == "2026.5.20"));
     }
 }

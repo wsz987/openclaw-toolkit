@@ -1,46 +1,80 @@
-use std::{fs, path::{Path, PathBuf}, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::Context;
 use semver::{Version, VersionReq};
 
-use crate::core::{artifact::{install_archive, verify_sha256}, manifest::models::RequiredNodeRuntime, remote::download_remote_file};
+use crate::core::{
+    artifact::{install_archive, verify_sha256},
+    manifest::models::RequiredNodeRuntime,
+    remote::download_remote_file,
+};
 
 pub fn node_runtime_dir(base_dir: &Path, node: &RequiredNodeRuntime) -> PathBuf {
-    base_dir.join("runtimes").join("node").join(format!("{}-win-x64", node.version))
+    base_dir
+        .join("runtimes")
+        .join("node")
+        .join(format!("{}-win-x64", node.version))
 }
 
 pub fn node_runtime_executable(node_dir: &Path) -> PathBuf {
-    resolve_node_runtime_executable(node_dir).unwrap_or_else(|| node_dir.join("node.exe"))
+    node_runtime_file(node_dir, "node.exe")
 }
 
-pub fn ensure_node_runtime(project_root: &Path, base_dir: &Path, node: &RequiredNodeRuntime, remote_base_url: Option<&str>) -> anyhow::Result<PathBuf> {
+pub fn node_runtime_npm_command(node_dir: &Path) -> PathBuf {
+    node_runtime_file(node_dir, "npm.cmd")
+}
+
+pub fn ensure_node_runtime(
+    project_root: &Path,
+    base_dir: &Path,
+    node: &RequiredNodeRuntime,
+    remote_base_url: Option<&str>,
+) -> anyhow::Result<PathBuf> {
     validate_required_node(node)?;
 
     let dir = node_runtime_dir(base_dir, node);
-    let initial_node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
+    let initial_node_exe = node_runtime_executable(&dir);
 
-    if initial_node_exe.exists() && validate_node_executable(&initial_node_exe, &node.range).is_ok() {
+    if initial_node_exe.exists() && validate_node_executable(&initial_node_exe, &node.range).is_ok()
+    {
         return Ok(dir);
     }
 
     let artifact_path = if let Some(remote_base_url) = remote_base_url {
         let cache_path = base_dir.join("downloads").join("node").join(&node.artifact);
-        download_remote_file(remote_base_url, &format!("artifacts/node/{}", node.artifact), &cache_path)?;
+        download_remote_file(
+            remote_base_url,
+            &format!("artifacts/node/{}", node.artifact),
+            &cache_path,
+        )?;
         cache_path
     } else {
-        project_root.join("artifacts").join("node").join(&node.artifact)
+        project_root
+            .join("artifacts")
+            .join("node")
+            .join(&node.artifact)
     };
 
     if !artifact_path.exists() {
-        anyhow::bail!("node runtime artifact not found: {}", artifact_path.display());
+        anyhow::bail!(
+            "node runtime artifact not found: {}",
+            artifact_path.display()
+        );
     }
 
     verify_sha256(&artifact_path, &node.sha256)?;
     install_archive(&artifact_path, &dir)?;
 
-    let node_exe = resolve_node_runtime_executable(&dir).unwrap_or_else(|| dir.join("node.exe"));
+    let node_exe = node_runtime_executable(&dir);
     if !node_exe.exists() {
-        anyhow::bail!("node runtime install failed, missing node.exe in {}", dir.display());
+        anyhow::bail!(
+            "node runtime install failed, missing node.exe in {}",
+            dir.display()
+        );
     }
 
     validate_node_executable(&node_exe, &node.range)
@@ -85,7 +119,11 @@ pub fn validate_required_node(node: &RequiredNodeRuntime) -> anyhow::Result<()> 
         .with_context(|| format!("解析 requiredNode.range 失败：{}", node.range))?;
 
     if !requirement.matches(&pinned) {
-        anyhow::bail!("requiredNode.version {} 不满足 requiredNode.range {}", node.version, node.range);
+        anyhow::bail!(
+            "requiredNode.version {} 不满足 requiredNode.range {}",
+            node.version,
+            node.range
+        );
     }
 
     Ok(())
@@ -98,7 +136,8 @@ pub fn validate_node_executable(node_exe: &Path, range: &str) -> anyhow::Result<
 }
 
 pub fn ensure_node_version_matches(actual: &Version, range: &str) -> anyhow::Result<()> {
-    let requirement = parse_node_range(range).with_context(|| format!("解析 Node 版本范围失败：{}", range))?;
+    let requirement =
+        parse_node_range(range).with_context(|| format!("解析 Node 版本范围失败：{}", range))?;
     if !requirement.matches(actual) {
         anyhow::bail!("当前 Node Runtime 版本 {} 不满足要求 {}", actual, range);
     }
@@ -107,10 +146,7 @@ pub fn ensure_node_version_matches(actual: &Version, range: &str) -> anyhow::Res
 }
 
 fn parse_node_range(range: &str) -> anyhow::Result<VersionReq> {
-    let normalized = range
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(", ");
+    let normalized = range.split_whitespace().collect::<Vec<_>>().join(", ");
     VersionReq::parse(&normalized).with_context(|| format!("解析 Node 版本范围失败：{}", range))
 }
 
@@ -126,15 +162,23 @@ fn read_node_version(node_exe: &Path) -> anyhow::Result<Version> {
         .with_context(|| format!("执行 {} --version 失败", node_exe.display()))?;
 
     if !output.status.success() {
-        anyhow::bail!("{} --version 退出失败：{}", node_exe.display(), output.status);
+        anyhow::bail!(
+            "{} --version 退出失败：{}",
+            node_exe.display(),
+            output.status
+        );
     }
 
     let stdout = String::from_utf8(output.stdout).context("读取 node --version 输出失败")?;
     parse_node_version(&stdout)
 }
 
-fn resolve_node_runtime_executable(node_dir: &Path) -> Option<PathBuf> {
-    let direct = node_dir.join("node.exe");
+fn node_runtime_file(node_dir: &Path, file_name: &str) -> PathBuf {
+    resolve_node_runtime_file(node_dir, file_name).unwrap_or_else(|| node_dir.join(file_name))
+}
+
+fn resolve_node_runtime_file(node_dir: &Path, file_name: &str) -> Option<PathBuf> {
+    let direct = node_dir.join(file_name);
     if direct.exists() {
         return Some(direct);
     }
@@ -146,7 +190,7 @@ fn resolve_node_runtime_executable(node_dir: &Path) -> Option<PathBuf> {
             continue;
         }
 
-        let nested = path.join("node.exe");
+        let nested = path.join(file_name);
         if nested.exists() {
             return Some(nested);
         }
@@ -171,7 +215,15 @@ fn find_system_node() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ensure_node_version_matches, parse_node_version, validate_required_node};
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::{
+        ensure_node_version_matches, node_runtime_executable, node_runtime_npm_command,
+        parse_node_version, validate_required_node,
+    };
     use crate::core::manifest::models::RequiredNodeRuntime;
 
     #[test]
@@ -202,5 +254,43 @@ mod tests {
         };
 
         assert!(validate_required_node(&node).is_err());
+    }
+
+    #[test]
+    fn resolves_nested_node_runtime_executable() {
+        let temp_dir = unique_temp_dir("node-runtime-exe");
+        let nested_dir = temp_dir.join("node-v22.19.0-win-x64");
+        fs::create_dir_all(&nested_dir).unwrap();
+        fs::write(nested_dir.join("node.exe"), []).unwrap();
+
+        assert_eq!(
+            node_runtime_executable(&temp_dir),
+            nested_dir.join("node.exe")
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn resolves_nested_node_runtime_npm_command() {
+        let temp_dir = unique_temp_dir("node-runtime-npm");
+        let nested_dir = temp_dir.join("node-v22.19.0-win-x64");
+        fs::create_dir_all(&nested_dir).unwrap();
+        fs::write(nested_dir.join("npm.cmd"), []).unwrap();
+
+        assert_eq!(
+            node_runtime_npm_command(&temp_dir),
+            nested_dir.join("npm.cmd")
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    fn unique_temp_dir(label: &str) -> std::path::PathBuf {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("openclaw-{label}-{suffix}"))
     }
 }
