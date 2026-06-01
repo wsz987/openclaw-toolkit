@@ -1,17 +1,23 @@
-import { stage1Steps } from './model/graph';
 import { findStepTitle } from './model/selectors';
 import { createInstallResultFromRecord, useStage1Installer } from './hooks/use-stage1-installer';
 import { Stage1Header } from './components/stage1-header';
 import { Stage1Stepper } from './components/stage1-stepper';
 import { ConfirmInstallDialog } from './components/confirm-install-dialog';
-import {
-  ConfigStepView,
-  ErrorStateView,
-  PrecheckStepView,
-  ProgressStageView,
-  SuccessStateView
-} from './components/stage1-views';
+import { PostInstallEntryView } from './components/post-install-entry-view';
+import { PostInstallHomeView } from './components/post-install-views';
+import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './components/stage1-views';
 import type { AppBootstrapState } from './model/types';
+
+type Stage1Screen =
+  | 'installed-post-install-entry'
+  | 'installed-post-install-home'
+  | 'install-failed'
+  | 'post-install-entry'
+  | 'post-install-home'
+  | 'precheck'
+  | 'config'
+  | 'progress-deps'
+  | 'progress-verify';
 
 export function Stage1InstallerApp({
   bootstrapState,
@@ -34,6 +40,7 @@ export function Stage1InstallerApp({
     diagnosticsInfo,
     error,
     handleBackToConfig,
+    handleEnterPostInstallHome,
     handleLaunchRuntime,
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
@@ -60,6 +67,7 @@ export function Stage1InstallerApp({
     runtimeLaunchLoading,
     runtimeLaunchResult,
     controlPanelOpening,
+    showPostInstallHome,
     selectedVersion,
     selectedVersionOption,
     setBaseDir,
@@ -90,11 +98,29 @@ export function Stage1InstallerApp({
       bootstrapResult
   );
 
+  const screen: Stage1Screen = showInstalledHome
+    ? showPostInstallHome
+      ? 'installed-post-install-home'
+      : 'installed-post-install-entry'
+    : phase === 'failed' || Boolean(error)
+      ? 'install-failed'
+      : phase === 'succeeded' && result
+        ? showPostInstallHome
+          ? 'post-install-home'
+          : 'post-install-entry'
+        : wizardStep === 0
+          ? 'precheck'
+          : wizardStep === 1
+            ? 'config'
+            : wizardStep === 2
+              ? 'progress-deps'
+              : 'progress-verify';
+
   let content: React.ReactNode;
 
-  if (showInstalledHome && bootstrapResult) {
+  if (screen === 'installed-post-install-home' && bootstrapResult) {
     content = (
-      <SuccessStateView
+      <PostInstallHomeView
         result={bootstrapResult}
         status={bootstrapStatus}
         statusLoading={false}
@@ -114,6 +140,7 @@ export function Stage1InstallerApp({
         mode={bootstrapState?.screen === 'recovery' ? 'recovery' : 'installed'}
         recoveryMessage={bootstrapState?.message ?? null}
         importLoading={importingInstallation}
+        backLabel="返回安装向导"
         onImportInstallation={async () => {
           const imported = await handleImportInstallation();
           if (imported) {
@@ -122,7 +149,24 @@ export function Stage1InstallerApp({
         }}
       />
     );
-  } else if (phase === 'failed' || error) {
+  } else if (screen === 'installed-post-install-entry' && bootstrapResult) {
+    content = (
+      <PostInstallEntryView
+        result={bootstrapResult}
+        status={bootstrapStatus}
+        statusLoading={false}
+        title={bootstrapState?.screen === 'recovery' ? '检测到已安装环境' : 'OpenClaw 已安装'}
+        description={
+          bootstrapState?.screen === 'recovery'
+            ? '应用已恢复上次识别到的 OpenClaw 安装实例。请点击下一步，再进入初始化与授权或运行后操作。'
+            : '当前设备已经安装 OpenClaw。请点击下一步，再进入初始化与授权或运行后操作。'
+        }
+        backLabel="返回安装向导"
+        onContinue={handleEnterPostInstallHome}
+        onBack={() => onExitInstalledHome?.()}
+      />
+    );
+  } else if (screen === 'install-failed') {
     content = (
       <ErrorStateView
         errorMessage={error || dashboard?.message || '安装过程中发生未预期的异常错误。'}
@@ -130,9 +174,9 @@ export function Stage1InstallerApp({
         onBack={handleBackToConfig}
       />
     );
-  } else if (phase === 'succeeded' && result) {
+  } else if (screen === 'post-install-home' && result) {
     content = (
-      <SuccessStateView
+      <PostInstallHomeView
         result={result}
         status={postInstallStatus}
         statusLoading={postInstallLoading}
@@ -151,7 +195,17 @@ export function Stage1InstallerApp({
         onBack={handleBackToConfig}
       />
     );
-  } else if (wizardStep === 0) {
+  } else if (screen === 'post-install-entry' && result) {
+    content = (
+      <PostInstallEntryView
+        result={result}
+        status={postInstallStatus}
+        statusLoading={postInstallLoading}
+        onContinue={handleEnterPostInstallHome}
+        onBack={handleBackToConfig}
+      />
+    );
+  } else if (screen === 'precheck') {
     content = (
       <PrecheckStepView
         baseDir={baseDir}
@@ -163,7 +217,7 @@ export function Stage1InstallerApp({
         onNext={() => setWizardStep(1)}
       />
     );
-  } else if (wizardStep === 1) {
+  } else if (screen === 'config') {
     content = (
       <ConfigStepView
         licenseKey={licenseKey}
@@ -185,7 +239,7 @@ export function Stage1InstallerApp({
         onInstall={() => void handlePrimaryInstallAction(canStartInstall, installPlan.requiresConfirmation)}
       />
     );
-  } else if (wizardStep === 2) {
+  } else if (screen === 'progress-deps') {
     content = (
       <ProgressStageView
         title="步骤 3: 运行环境依赖部署"
@@ -220,15 +274,17 @@ export function Stage1InstallerApp({
     );
   }
 
+  const showInstallerChrome = screen === 'precheck' || screen === 'config' || screen === 'progress-deps' || screen === 'progress-verify';
+
   return (
     <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
       <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
-        <Stage1Header openclawVersion={dashboard?.openclawVersion} nodeVersion={dashboard?.nodeVersion} />
-        {showInstalledHome ? null : <Stage1Stepper phase={phase} wizardStep={wizardStep} onStepSelect={setWizardStep} />}
+        {showInstallerChrome ? <Stage1Header openclawVersion={dashboard?.openclawVersion} nodeVersion={dashboard?.nodeVersion} /> : null}
+        {showInstallerChrome ? <Stage1Stepper phase={phase} wizardStep={wizardStep} onStepSelect={setWizardStep} /> : null}
         {content}
       </div>
 
-      {showInstalledHome ? null : (
+      {showInstallerChrome ? (
         <ConfirmInstallDialog
           open={confirmDialogOpen}
           onOpenChange={setConfirmDialogOpen}
@@ -240,7 +296,7 @@ export function Stage1InstallerApp({
           installActionLabel={installActionLabel}
           onConfirm={() => void confirmInstall()}
         />
-      )}
+      ) : null}
     </main>
   );
 }

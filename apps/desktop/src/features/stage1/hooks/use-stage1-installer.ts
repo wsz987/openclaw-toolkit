@@ -75,6 +75,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
+  const [showPostInstallHome, setShowPostInstallHome] = useState(false);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const dashboardRequestGuard = useLatestRequestGuard();
@@ -215,6 +216,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
     setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
+    setShowPostInstallHome(false);
     setWizardStep(2);
     setDashboard((current) => {
       const firstStep = stage1Steps[0];
@@ -330,6 +332,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
 
       setProviderSetupResult(response);
       await loadPostInstallStatus(response.configPath);
+      handleEnterPostInstallHome();
       return response;
     } catch (err) {
       if (!providerSetupRequestGuard.isCurrent(requestId)) {
@@ -412,12 +415,18 @@ export function useStage1Installer(initialBaseDir?: string | null) {
     }
   }
 
+  function handleEnterPostInstallHome() {
+    setShowPostInstallHome(true);
+    setWizardStep(4);
+  }
+
   function handleBackToConfig() {
     setError(null);
     setResult(null);
     setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
+    setShowPostInstallHome(false);
     setLoading(false);
     setWizardStep(0);
 
@@ -543,6 +552,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
     environmentItems,
     error,
     handleBackToConfig,
+    handleEnterPostInstallHome,
     handlePickDirectory,
     handlePrimaryInstallAction,
     installLogTail,
@@ -562,6 +572,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
     result,
     runtimeLaunchLoading,
     runtimeLaunchResult,
+    showPostInstallHome,
     selectedVersion,
     selectedVersionOption,
     setBaseDir,
