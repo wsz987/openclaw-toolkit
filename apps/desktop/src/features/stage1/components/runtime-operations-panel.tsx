@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   ChevronRightIcon,
@@ -5,7 +6,8 @@ import {
   FolderIcon,
   MonitorIcon,
   PlayIcon,
-  SpinnerIcon
+  SpinnerIcon,
+  CheckIcon
 } from '../../../components/icons';
 import type { OpenClawLaunchResult, OpenClawPostInstallStatus, Stage1InstallResult } from '../model/types';
 
@@ -39,147 +41,236 @@ export function RuntimeOperationsPanel({
   onOpenLogsDirectory
 }: RuntimeOperationsPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
+  const isRunning = Boolean(runtimeLaunchResult);
   const postInstallActionLoading = runtimeLaunchLoading || statusLoading;
+  const [copied, setCopied] = useState(false);
 
-  return (
-    <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] p-5 flex flex-col gap-4">
-      <div>
-        <h3 className="text-lg font-semibold text-[hsl(var(--ink))]">{providerReady ? '运行后操作' : '完成初始化后的可用入口'}</h3>
-        <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1">
-          {providerReady ? '下面展示启动后最常用的运行入口与当前状态。' : '完成初始化后，这里会成为用户后续最常进入的运行操作区。'}
-        </p>
-      </div>
+  const handleCopyConsoleUrl = async () => {
+    const url = status?.controlUiUrl ?? 'http://127.0.0.1:18789/';
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
-      <div className="grid grid-cols-1 gap-3">
-        <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <strong className="block text-sm text-[hsl(var(--body-strong))]">OpenClaw 启动状态</strong>
-              <p className="mt-1 text-xs text-[hsl(var(--muted))]">
-                {runtimeLaunchResult ? '已通过受管 Node 启动' : providerReady ? '尚未从安装器执行启动' : '初始化完成后可从这里启动'}
-              </p>
-            </div>
-            <MonitorIcon size={18} className={runtimeLaunchResult ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--muted-soft))]'} />
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-          <strong className="block text-sm text-[hsl(var(--body-strong))]">OpenClaw 控制台地址</strong>
-          <code className="mt-2 block text-xs font-mono text-[hsl(var(--ink))] break-all">
-            {statusLoading ? '状态加载中...' : status?.controlUiUrl ?? '待启动后可访问 http://127.0.0.1:18789/'}
-          </code>
-        </div>
-
-        <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-          <strong className="block text-sm text-[hsl(var(--body-strong))]">插件能力状态</strong>
-          <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--body))]">
-            飞书插件：{status?.feishuPluginEnabled ? '已启用' : '待启用'}；已启用插件：
-            {status?.pluginsEnabled.length ? ` ${status.pluginsEnabled.join(', ')}` : ' 暂无'}。
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-          <strong className="block text-sm text-[hsl(var(--body-strong))]">Skills 与工作区</strong>
-          <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--body))]">
-            Skills：{status?.skillsInstalled.length ? status.skillsInstalled.join(', ') : '未识别'}。
-          </p>
-          <code className="mt-2 block text-xs font-mono text-[hsl(var(--ink))] break-all">
-            {status?.workspaceDir ?? result.openclawDir}
-          </code>
-        </div>
-
-        {providerReady ? (
-          <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-            <strong className="block text-sm text-[hsl(var(--body-strong))]">快速操作</strong>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <Button
-                variant="secondary"
-                disabled={postInstallActionLoading || !status}
-                onClick={() => void onLaunchRuntime(result.configPath)}
-              >
-                {runtimeLaunchLoading ? (
-                  <>
-                    <SpinnerIcon size={14} className="spinning mr-2" />
-                    启动中
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon size={12} className="mr-2" />
-                    启动 OpenClaw
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={postInstallActionLoading || !status || !onOpenControlPanel}
-                onClick={() => void onOpenControlPanel?.(result.configPath)}
-              >
-                {controlPanelOpening ? (
-                  <>
-                    <SpinnerIcon size={14} className="spinning mr-2" />
-                    打开中
-                  </>
-                ) : (
-                  <>
-                    <EyeIcon size={14} className="mr-2" />
-                    打开控制面板
-                  </>
-                )}
-              </Button>
-            </div>
-            {runtimeLaunchResult ? (
-              <div className="mt-3 rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
-                OpenClaw 已启动，进程 PID：`{runtimeLaunchResult.pid}`，日志文件：`{runtimeLaunchResult.logPath}`。
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-[hsl(var(--warning)/0.18)] bg-[hsl(var(--warning)/0.08)] p-4">
-            <strong className="block text-sm text-[hsl(var(--body-strong))]">当前建议</strong>
-            <p className="mt-2 text-xs leading-relaxed text-[hsl(var(--body))]">
-              先在左侧完成 OpenClaw 初始化与授权。完成后，本区将自动切换为启动与运行后操作入口。
+  if (!providerReady) {
+    // Locked/Pending Initialization state
+    return (
+      <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between">
+        <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
+          <div>
+            <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行后操作控制台</h3>
+            <p className="text-xs leading-relaxed text-[hsl(var(--on-dark-soft))] mt-1">
+              完成 API 接入后解锁系统运行与环境入口
             </p>
           </div>
-        )}
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/5 text-[hsl(var(--on-dark-soft))] tracking-wide">
+            锁定中
+          </span>
+        </div>
 
-        <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-          <strong className="block text-sm text-[hsl(var(--body-strong))]">目录与日志入口</strong>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              disabled={!onOpenInstallationDirectory || installationDirOpening}
-              onClick={() => void onOpenInstallationDirectory?.(result.openclawDir)}
-            >
-              {installationDirOpening ? (
-                <>
-                  <SpinnerIcon size={14} className="spinning mr-2" />
-                  打开中
-                </>
-              ) : (
-                <>
-                  <FolderIcon size={14} className="mr-2" />
-                  打开安装目录
-                </>
-              )}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!onOpenLogsDirectory || logsDirOpening}
-              onClick={() => void onOpenLogsDirectory?.(result.configPath)}
-            >
-              {logsDirOpening ? (
-                <>
-                  <SpinnerIcon size={14} className="spinning mr-2" />
-                  打开中
-                </>
-              ) : (
-                <>
-                  <ChevronRightIcon size={14} className="mr-2" />
-                  打开日志目录
-                </>
-              )}
-            </Button>
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-6 px-4 gap-4 animate-fade-in">
+          <div className="w-14 h-14 rounded-full border border-dashed border-white/20 flex items-center justify-center text-[hsl(var(--on-dark-soft))]">
+            <MonitorIcon size={24} />
           </div>
+          <div className="flex flex-col gap-1.5 max-w-sm">
+            <strong className="text-sm font-medium text-[hsl(var(--on-dark))]">等待 API 授权配置就绪</strong>
+            <p className="text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">
+              请先在左侧完成 OpenClaw 的 API 授权与 Provider 参数配置。配置就绪后，此操作面板将自动解锁启动入口与运行状态面板。
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-white/40">
+          <div>$ openclaw daemon --status</div>
+          <div>[system-check] config: openclaw.json (not found)</div>
+          <div>[system-check] provider: pending initial setup payload</div>
+          <div className="animate-pulse">_</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Active Dashboard
+  return (
+    <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg animate-fade-in">
+      <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
+        <div>
+          <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
+          <p className="text-xs leading-relaxed text-[hsl(var(--on-dark-soft))] mt-1">
+            监控 OpenClaw 服务状态并管理快速入口
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isRunning ? (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--success))]"></span>
+            </span>
+          ) : (
+            <span className="relative flex h-2 w-2">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--warning))]"></span>
+            </span>
+          )}
+          <span
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
+              isRunning ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+            }`}
+          >
+            {isRunning ? '服务运行中' : '服务未启动'}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
+          <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">控制台地址</span>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <code className="text-xs font-mono text-[hsl(var(--on-dark))] truncate break-all select-all">
+              {statusLoading ? '加载中...' : status?.controlUiUrl ?? 'http://127.0.0.1:18789/'}
+            </code>
+            <button
+              onClick={handleCopyConsoleUrl}
+              className="text-[10px] bg-white/5 hover:bg-white/10 active:bg-white/15 px-2 py-0.5 rounded border border-white/5 transition-colors font-medium cursor-pointer"
+            >
+              {copied ? '已复制!' : '复制'}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
+          <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">插件启用状态</span>
+          <span className="text-xs font-medium text-[hsl(var(--on-dark))] mt-1 truncate">
+            飞书插件: {status?.feishuPluginEnabled ? '已启用' : '未开启'}
+            {status?.pluginsEnabled.length ? ` (${status.pluginsEnabled.join(', ')})` : ''}
+          </span>
+        </div>
+
+        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1 md:col-span-2">
+          <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">SKILLS & 工作区目录</span>
+          <div className="flex flex-col gap-1 mt-1">
+            <span className="text-xs font-medium text-[hsl(var(--on-dark))] truncate">
+              已识别 Skills: {status?.skillsInstalled.length ? status.skillsInstalled.join(', ') : '未识别'}
+            </span>
+            <code className="text-[11px] font-mono text-[hsl(var(--on-dark-soft))] truncate break-all mt-0.5">
+              {status?.workspaceDir ?? result.openclawDir}
+            </code>
+          </div>
+        </div>
+      </div>
+
+      {/* Mock Terminal Output */}
+      <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text">
+        <div className="text-white/40">$ openclaw daemon --config=openclaw.json</div>
+        {isRunning && runtimeLaunchResult ? (
+          <>
+            <div>[daemon] Spawning OpenClaw core instance...</div>
+            <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimeLaunchResult.pid}</div>
+            <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
+            <div>[gateway] Control Panel ready, proxy route enabled.</div>
+            <div className="text-white/40 truncate">[logs] writing to {runtimeLaunchResult.logPath}</div>
+          </>
+        ) : (
+          <>
+            <div>[system] Engine environment ready.</div>
+            <div>[system] Config validation: OK</div>
+            <div className="text-[hsl(var(--warning))]">[idle] Service instance is offline. Click &quot;启动 OpenClaw&quot; below.</div>
+          </>
+        )}
+        <div className="flex items-center gap-1">
+          <span>_</span>
+          {runtimeLaunchLoading && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
+        </div>
+      </div>
+
+      {/* Action Area */}
+      <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            disabled={postInstallActionLoading || !status}
+            onClick={() => void onLaunchRuntime(result.configPath)}
+            className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 transition-colors"
+          >
+            {runtimeLaunchLoading ? (
+              <>
+                <SpinnerIcon size={14} className="spinning mr-2" />
+                正在启动
+              </>
+            ) : isRunning ? (
+              <>
+                <PlayIcon size={12} className="mr-2 text-[hsl(var(--success))]" />
+                重新启动 OpenClaw
+              </>
+            ) : (
+              <>
+                <PlayIcon size={12} className="mr-2" />
+                启动 OpenClaw
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="secondary"
+            disabled={postInstallActionLoading || !status || !onOpenControlPanel || !isRunning}
+            onClick={() => void onOpenControlPanel?.(result.configPath)}
+            className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          >
+            {controlPanelOpening ? (
+              <>
+                <SpinnerIcon size={14} className="spinning mr-2" />
+                正在打开
+              </>
+            ) : (
+              <>
+                <EyeIcon size={14} className="mr-2" />
+                打开控制面板
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            disabled={!onOpenInstallationDirectory || installationDirOpening}
+            onClick={() => void onOpenInstallationDirectory?.(result.openclawDir)}
+            className="bg-transparent hover:bg-white/5 text-[hsl(var(--on-dark-soft))] hover:text-[hsl(var(--on-dark))] border border-white/5 h-9 transition-colors text-xs"
+          >
+            {installationDirOpening ? (
+              <>
+                <SpinnerIcon size={12} className="spinning mr-1.5" />
+                打开中
+              </>
+            ) : (
+              <>
+                <FolderIcon size={12} className="mr-1.5" />
+                主程序目录
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="secondary"
+            disabled={!onOpenLogsDirectory || logsDirOpening}
+            onClick={() => void onOpenLogsDirectory?.(result.configPath)}
+            className="bg-transparent hover:bg-white/5 text-[hsl(var(--on-dark-soft))] hover:text-[hsl(var(--on-dark))] border border-white/5 h-9 transition-colors text-xs"
+          >
+            {logsDirOpening ? (
+              <>
+                <SpinnerIcon size={12} className="spinning mr-1.5" />
+                打开中
+              </>
+            ) : (
+              <>
+                <ChevronRightIcon size={12} className="mr-1.5" />
+                日志目录
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>

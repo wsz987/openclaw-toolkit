@@ -122,8 +122,8 @@ export function Stage1InstallerApp({
     content = (
       <PostInstallHomeView
         result={bootstrapResult}
-        status={bootstrapStatus}
-        statusLoading={false}
+        status={postInstallStatus ?? bootstrapStatus}
+        statusLoading={postInstallLoading}
         providerSetupLoading={providerSetupLoading}
         providerSetupResult={providerSetupResult}
         runtimeLaunchLoading={runtimeLaunchLoading}
@@ -153,8 +153,8 @@ export function Stage1InstallerApp({
     content = (
       <PostInstallEntryView
         result={bootstrapResult}
-        status={bootstrapStatus}
-        statusLoading={false}
+        status={postInstallStatus ?? bootstrapStatus}
+        statusLoading={postInstallLoading}
         title={bootstrapState?.screen === 'recovery' ? '检测到已安装环境' : 'OpenClaw 已安装'}
         description={
           bootstrapState?.screen === 'recovery'

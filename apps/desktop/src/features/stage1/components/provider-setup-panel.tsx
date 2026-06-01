@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
 import { CheckIcon, FolderIcon, SettingsIcon, SpinnerIcon } from '../../../components/icons';
 import type {
   OpenClawPostInstallStatus,
@@ -41,6 +42,9 @@ export function ProviderSetupPanel({
   const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
   const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
 
+  const providerReady = status?.providerInitialized ?? false;
+  const [isEditing, setIsEditing] = useState(!providerReady);
+
   useEffect(() => {
     if (!status) {
       return;
@@ -60,156 +64,243 @@ export function ProviderSetupPanel({
   }, [status]);
 
   useEffect(() => {
-    if (providerId === 'volcengine') {
-      setApiUrl('https://ark.cn-beijing.volces.com/api/v3');
-      setPrimaryModel('volcengine/doubao-seed-1-8-251228');
-    } else {
-      setApiUrl('https://ark.cn-beijing.volces.com/api/coding/v3');
-      setPrimaryModel('volcengine-plan/ark-code-latest');
+    setIsEditing(!providerReady);
+  }, [providerReady]);
+
+  useEffect(() => {
+    // Only update values in edit mode when providerType changes manually
+    if (!providerReady || isEditing) {
+      if (providerId === 'volcengine') {
+        setApiUrl('https://ark.cn-beijing.volces.com/api/v3');
+        setPrimaryModel('volcengine/doubao-seed-1-8-251228');
+      } else {
+        setApiUrl('https://ark.cn-beijing.volces.com/api/coding/v3');
+        setPrimaryModel('volcengine-plan/ark-code-latest');
+      }
     }
   }, [providerId]);
 
-  const providerReady = status?.providerInitialized ?? false;
   const postInstallActionLoading = providerSetupLoading || runtimeLaunchLoading || statusLoading;
 
   return (
-    <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-5 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-6 flex flex-col gap-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4 border-b border-[hsl(var(--hairline))] pb-4">
         <div>
-          <h3 className="text-lg font-semibold text-[hsl(var(--ink))]">OpenClaw 初始化与授权</h3>
+          <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--ink))]">API 授权与接入</h3>
           <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1">
-            先接入 Provider，再开放 Agent 权限，并按需要启用飞书插件入口。
+            配置服务商 Provider、密钥模型并开放系统授权
           </p>
         </div>
         <span
-          className={`px-3 py-1 rounded-full text-[11px] font-semibold ${
+          className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
             providerReady
-              ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-              : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+              ? 'bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]'
+              : 'bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))]'
           }`}
         >
-          {providerReady ? 'Provider 已初始化' : '待初始化'}
+          {providerReady ? '已接入服务商' : '等待接入'}
         </span>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${providerReady ? 'opacity-70' : ''}`}>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Provider 类型</label>
-          <select
-            className="h-10 rounded-md border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-3 text-sm text-[hsl(var(--ink))]"
-            value={providerId}
-            onChange={(event) => setProviderId(event.target.value as 'volcengine' | 'volcengine-plan')}
-            disabled={providerSetupLoading || providerReady}
-          >
-            <option value="volcengine-plan">火山引擎 Ark Coding</option>
-            <option value="volcengine">火山引擎 Ark 通用模型</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认模型</label>
-          <Input
-            value={primaryModel}
-            onChange={(event) => setPrimaryModel(event.target.value)}
-            disabled={providerSetupLoading || providerReady}
-          />
-        </div>
-        <div className="flex flex-col gap-2 md:col-span-2">
-          <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API URL</label>
-          <Input value={apiUrl} onChange={(event) => setApiUrl(event.target.value)} disabled={providerSetupLoading || providerReady} />
-        </div>
-        <div className="flex flex-col gap-2 md:col-span-2">
-          <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API Key</label>
-          <Input
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            placeholder="填写火山引擎 API Key"
-            disabled={providerSetupLoading || providerReady}
-          />
-        </div>
-      </div>
+      {!isEditing && providerReady ? (
+        // Read-only State Summary Card
+        <div className="flex flex-col gap-5 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] p-3.5 rounded-lg flex flex-col gap-1">
+              <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">Provider 服务商</span>
+              <strong className="text-sm font-medium text-[hsl(var(--body-strong))]">
+                {status?.providerId === 'volcengine' ? '火山引擎 Ark 通用模型' : '火山引擎 Ark Coding'}
+              </strong>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label className="flex items-center gap-2 text-sm text-[hsl(var(--body))]">
-          <input
-            type="checkbox"
-            checked={enableFeishuPlugin}
-            onChange={(event) => setEnableFeishuPlugin(event.target.checked)}
-            disabled={providerSetupLoading || providerReady}
-          />
-          启用飞书插件入口
-        </label>
-        <label className="flex items-center gap-2 text-sm text-[hsl(var(--body))]">
-          <input
-            type="checkbox"
-            checked={grantAgentPermissions}
-            onChange={(event) => setGrantAgentPermissions(event.target.checked)}
-            disabled={providerSetupLoading || providerReady}
-          />
-          授权 OpenClaw Agent 权限
-        </label>
-      </div>
+            <div className="bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] p-3.5 rounded-lg flex flex-col gap-1">
+              <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">默认模型</span>
+              <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
+                {status?.providerModel ?? primaryModel}
+              </strong>
+            </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Button
-          variant="default"
-          disabled={postInstallActionLoading || !status || providerReady || apiKey.trim().length === 0}
-          onClick={() =>
-            void onProviderSetup({
-              configPath: result.configPath,
-              providerId,
-              apiKey,
-              apiUrl,
-              primaryModel,
-              enableFeishuPlugin,
-              grantAgentPermissions
-            })
-          }
-        >
-          {providerSetupLoading ? (
-            <>
-              <SpinnerIcon size={14} className="spinning mr-2" />
-              正在初始化
-            </>
-          ) : providerReady ? (
-            <>
-              <CheckIcon size={14} className="mr-2" />
-              初始化已完成
-            </>
-          ) : (
-            <>
+            <div className="bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] p-3.5 rounded-lg flex flex-col gap-1 md:col-span-2">
+              <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">API URL 终结点</span>
+              <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] break-all">
+                {status?.providerApiUrl ?? apiUrl}
+              </strong>
+            </div>
+
+            <div className="bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] p-3.5 rounded-lg flex flex-col gap-1 md:col-span-2">
+              <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">API 秘钥 (Key)</span>
+              <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))]">
+                ••••••••••••••••••••••••••••••••
+              </strong>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[hsl(var(--hairline-soft))] pt-4">
+            <div className="flex items-center gap-2 text-xs text-[hsl(var(--body))]">
+              <CheckIcon size={14} className="text-[hsl(var(--success))]" />
+              <span>飞书插件入口：{status?.feishuPluginEnabled ? '已启用' : '已禁用'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[hsl(var(--body))]">
+              <CheckIcon size={14} className="text-[hsl(var(--success))]" />
+              <span>OpenClaw Agent 权限已授予</span>
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsEditing(true)}
+              disabled={postInstallActionLoading}
+              className="w-full h-10 hover:bg-[hsl(var(--surface-soft))]"
+            >
               <SettingsIcon size={14} className="mr-2" />
-              初始化 OpenClaw
-            </>
-          )}
-        </Button>
-        {mode === 'recovery' && onImportInstallation ? (
-          <Button variant="secondary" disabled={importLoading} onClick={onImportInstallation}>
-            {importLoading ? (
-              <>
-                <SpinnerIcon size={14} className="spinning mr-2" />
-                导入中
-              </>
-            ) : (
-              <>
-                <FolderIcon size={14} className="mr-2" />
-                重新导入已有安装
-              </>
+              修改授权配置
+            </Button>
+          </div>
+        </div>
+      ) : (
+        // Edit Mode Form
+        <div className="flex flex-col gap-5 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Provider 类型</label>
+              <Select
+                value={providerId}
+                onChange={(event) => setProviderId(event.target.value as 'volcengine' | 'volcengine-plan')}
+                disabled={providerSetupLoading}
+              >
+                <option value="volcengine-plan">火山引擎 Ark Coding</option>
+                <option value="volcengine">火山引擎 Ark 通用模型</option>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认模型</label>
+              <Input
+                value={primaryModel}
+                onChange={(event) => setPrimaryModel(event.target.value)}
+                disabled={providerSetupLoading}
+                placeholder="模型标识符"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API URL</label>
+              <Input
+                value={apiUrl}
+                onChange={(event) => setApiUrl(event.target.value)}
+                disabled={providerSetupLoading}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">API Key</label>
+              <Input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={providerReady ? "填写新 Key 以覆盖 (隐藏已有 Key)" : "填写服务商 API Key"}
+                disabled={providerSetupLoading}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] rounded-lg p-4">
+            <label className="flex items-center gap-2.5 text-xs text-[hsl(var(--body))] cursor-pointer font-medium select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-[hsl(var(--hairline))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))/0.15] bg-[hsl(var(--canvas))] cursor-pointer transition-all"
+                checked={enableFeishuPlugin}
+                onChange={(event) => setEnableFeishuPlugin(event.target.checked)}
+                disabled={providerSetupLoading}
+              />
+              启用飞书插件入口
+            </label>
+            <label className="flex items-center gap-2.5 text-xs text-[hsl(var(--body))] cursor-pointer font-medium select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-[hsl(var(--hairline))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))/0.15] bg-[hsl(var(--canvas))] cursor-pointer transition-all"
+                checked={grantAgentPermissions}
+                onChange={(event) => setGrantAgentPermissions(event.target.checked)}
+                disabled={providerSetupLoading}
+              />
+              授权 OpenClaw Agent 权限
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mt-2">
+            <Button
+              variant="default"
+              disabled={postInstallActionLoading || !status || apiKey.trim().length === 0}
+              onClick={() =>
+                void onProviderSetup({
+                  configPath: result.configPath,
+                  providerId,
+                  apiKey,
+                  apiUrl,
+                  primaryModel,
+                  enableFeishuPlugin,
+                  grantAgentPermissions
+                })
+              }
+              className="flex-1 min-w-[140px] bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))]"
+            >
+              {providerSetupLoading ? (
+                <>
+                  <SpinnerIcon size={14} className="spinning mr-2" />
+                  正在保存配置...
+                </>
+              ) : (
+                <>
+                  <CheckIcon size={14} className="mr-2" />
+                  保存并初始化
+                </>
+              )}
+            </Button>
+
+            {providerReady && (
+              <Button
+                variant="secondary"
+                disabled={postInstallActionLoading}
+                onClick={() => setIsEditing(false)}
+                className="hover:bg-[hsl(var(--surface-soft))]"
+              >
+                取消
+              </Button>
             )}
-          </Button>
-        ) : null}
-      </div>
+
+            {mode === 'recovery' && onImportInstallation ? (
+              <Button
+                variant="secondary"
+                disabled={importLoading}
+                onClick={onImportInstallation}
+                className="hover:bg-[hsl(var(--surface-soft))]"
+              >
+                {importLoading ? (
+                  <>
+                    <SpinnerIcon size={14} className="spinning mr-2" />
+                    正在导入...
+                  </>
+                ) : (
+                  <>
+                    <FolderIcon size={14} className="mr-2" />
+                    重新导入已安装环境
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {providerSetupResult ? (
-        <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
-          Provider 已写入：`{providerSetupResult.providerId}`，默认模型：`{providerSetupResult.primaryModel}`，
-          飞书插件 {providerSetupResult.feishuPluginEnabled ? '已启用' : '未启用'}。
-        </div>
-      ) : null}
-
-      {providerReady ? (
-        <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.08)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
-          初始化已完成。你现在可以继续启动 OpenClaw、打开控制面板，或进行后续运行操作。
+        <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] animate-fade-in flex items-start gap-2.5">
+          <CheckIcon size={14} className="text-[hsl(var(--success))] mt-0.5 flex-shrink-0" />
+          <div>
+            <strong>配置保存成功：</strong>
+            <span>服务商 `{providerSetupResult.providerId}` 已写入，模型 `{providerSetupResult.primaryModel}` 已绑定。</span>
+          </div>
         </div>
       ) : null}
     </div>
