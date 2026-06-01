@@ -68,6 +68,49 @@ pub async fn launch_openclaw_runtime(config_path: String) -> Result<ManagedLaunc
     .map_err(render_error)
 }
 
+#[tauri::command]
+pub async fn read_openclaw_runtime_log_tail(
+    log_path: String,
+    max_lines: Option<usize>,
+) -> Result<crate::core::install_log::Stage1InstallLogTail, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let log_path = PathBuf::from(log_path);
+        if !log_path.exists() {
+            return Ok(crate::core::install_log::Stage1InstallLogTail {
+                path: log_path.to_string_lossy().to_string(),
+                lines: Vec::new(),
+                truncated: false,
+            });
+        }
+
+        let content = std::fs::read_to_string(&log_path)
+            .map_err(|e| format!("failed to read log file: {e}"))?;
+        let max_lines = max_lines.unwrap_or(200).max(1);
+        let mut queue = std::collections::VecDeque::with_capacity(max_lines);
+        let mut total_lines = 0;
+
+        for line in content.lines() {
+            total_lines += 1;
+            if queue.len() == max_lines {
+                queue.pop_front();
+            }
+            queue.push_back(line.to_string());
+        }
+
+        Ok(crate::core::install_log::Stage1InstallLogTail {
+            path: log_path.to_string_lossy().to_string(),
+            lines: queue.into_iter().collect(),
+            truncated: total_lines > max_lines,
+        })
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("read_openclaw_runtime_log_tail join failed:\n{}", rendered);
+        rendered
+    })?
+}
+
 fn map_launch_response(launch: ManagedOpenClawLaunchResult) -> ManagedLaunchResponse {
     ManagedLaunchResponse {
         pid: launch.pid,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   ChevronRightIcon,
@@ -9,7 +9,8 @@ import {
   SpinnerIcon,
   CheckIcon
 } from '../../../components/icons';
-import type { OpenClawLaunchResult, OpenClawPostInstallStatus, Stage1InstallResult } from '../model/types';
+import type { OpenClawLaunchResult, OpenClawPostInstallStatus, Stage1InstallResult, Stage1InstallLogTail } from '../model/types';
+import { readOpenClawRuntimeLogTail } from '../api/stage1-api';
 
 type RuntimeOperationsPanelProps = {
   result: Stage1InstallResult;
@@ -44,6 +45,37 @@ export function RuntimeOperationsPanel({
   const isRunning = Boolean(runtimeLaunchResult);
   const postInstallActionLoading = runtimeLaunchLoading || statusLoading;
   const [copied, setCopied] = useState(false);
+  const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isRunning || !runtimeLaunchResult?.logPath) {
+      setLogTail(null);
+      return;
+    }
+
+    const loadLogs = async () => {
+      try {
+        const response = await readOpenClawRuntimeLogTail(runtimeLaunchResult.logPath, 100);
+        setLogTail(response);
+      } catch (err) {
+        console.error('Failed to load openclaw runtime logs:', err);
+      }
+    };
+
+    void loadLogs();
+    const timer = setInterval(() => {
+      void loadLogs();
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isRunning, runtimeLaunchResult?.logPath]);
+
+  useEffect(() => {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [logTail?.lines]);
 
   const handleCopyConsoleUrl = async () => {
     const url = status?.controlUiUrl ?? 'http://127.0.0.1:18789/';
@@ -163,15 +195,25 @@ export function RuntimeOperationsPanel({
       </div>
 
       {/* Mock Terminal Output */}
-      <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text">
+      <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text h-48 overflow-y-auto">
         <div className="text-white/40">$ openclaw daemon --config=openclaw.json</div>
         {isRunning && runtimeLaunchResult ? (
           <>
             <div>[daemon] Spawning OpenClaw core instance...</div>
             <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimeLaunchResult.pid}</div>
-            <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
-            <div>[gateway] Control Panel ready, proxy route enabled.</div>
-            <div className="text-white/40 truncate">[logs] writing to {runtimeLaunchResult.logPath}</div>
+            {logTail && logTail.lines.length > 0 ? (
+              logTail.lines.map((line, index) => (
+                <div key={index} className="break-all whitespace-pre-wrap text-white/80">{line}</div>
+              ))
+            ) : (
+              <>
+                <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
+                <div>[gateway] Control Panel ready, proxy route enabled.</div>
+                <div>[openclaw] Starting pipeline runtime loops...</div>
+                <div>[openclaw] API Client initialized for provider: {status?.providerId ?? 'volcengine'}</div>
+                <div>[openclaw] Listening for incoming browser agent session requests...</div>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -180,9 +222,10 @@ export function RuntimeOperationsPanel({
             <div className="text-[hsl(var(--warning))]">[idle] Service instance is offline. Click &quot;启动 OpenClaw&quot; below.</div>
           </>
         )}
+        <div ref={terminalEndRef} />
         <div className="flex items-center gap-1">
           <span>_</span>
-          {runtimeLaunchLoading && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
+          {(runtimeLaunchLoading || (isRunning && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
         </div>
       </div>
 

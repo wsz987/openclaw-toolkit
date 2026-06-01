@@ -101,6 +101,16 @@ export async function launchOpenClawRuntime(configPath: string): Promise<OpenCla
   return invoke<OpenClawLaunchResult>('launch_openclaw_runtime', { configPath });
 }
 
+export async function readOpenClawRuntimeLogTail(
+  logPath: string,
+  maxLines = 200
+): Promise<Stage1InstallLogTail> {
+  return invoke<Stage1InstallLogTail>('read_openclaw_runtime_log_tail', {
+    logPath,
+    maxLines
+  });
+}
+
 export async function openControlPanel(configPath: string): Promise<string> {
   return invoke<string>('open_control_panel_command', { configPath });
 }

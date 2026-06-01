@@ -19,7 +19,8 @@ pub fn run() {
             commands::dialog::pick_file_dialog,
             commands::post_install::inspect_openclaw_status,
             commands::post_install::setup_openclaw_provider,
-            commands::post_install::launch_openclaw_runtime
+            commands::post_install::launch_openclaw_runtime,
+            commands::post_install::read_openclaw_runtime_log_tail
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
