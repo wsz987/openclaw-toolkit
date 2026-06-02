@@ -70,7 +70,7 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 ## Milestone 6：OpenClaw 配置与 Skill（已完成基础版）
 
 - openclaw.json 生成
-- 权限配置写入
+- Agent 工具策略写入
 - skill 安装记录写入
 - browser runtime 检测占位
 

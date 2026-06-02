@@ -258,6 +258,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  min-height: 0;
 }
 
 .product-mockup-card-dark .panel-heading h2 {
@@ -306,6 +307,25 @@ body {
   max-height: 400px;
   overflow-y: auto;
   padding-right: 0.65rem;
+}
+
+.split-layout-progress {
+  min-height: 0;
+}
+
+.split-layout-progress > * {
+  min-height: 0;
+}
+
+@media (min-width: 901px) {
+  .split-layout-progress {
+    max-height: min(62vh, 48rem);
+    align-items: stretch;
+  }
+
+  .split-layout-progress > * {
+    height: 100%;
+  }
 }
 
 .timeline-row {

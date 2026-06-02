@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import type { ProviderCatalogEntry } from '@openclaw-toolkit/schemas';
 import type { WorkflowStep } from '../types.js';
 
 const DEFAULT_GATEWAY_PORT = 18789;
@@ -7,6 +8,7 @@ const DEFAULT_GATEWAY_MODE = 'local';
 const DEFAULT_BROWSER_PLUGIN_ID = 'browser';
 const DEFAULT_FEISHU_PLUGIN_ID = 'feishu';
 const DEFAULT_OPENAI_PROVIDER_API = 'openai-completions';
+const DEFAULT_AGENT_SKILLS = ['browser-control', 'local-filesystem'];
 
 export const generateOpenClawConfigStep: WorkflowStep = {
   id: 'generateOpenClawConfig',
@@ -15,16 +17,20 @@ export const generateOpenClawConfigStep: WorkflowStep = {
   async run(ctx) {
     await fs.ensureDir(ctx.runtimeDir);
     const workspaceDir = `${ctx.runtimeDir}\\workspace`;
-    const configDir = `${ctx.runtimeDir}\\config`;
-    const nodeDir = ctx.nodeDir ?? `${ctx.runtimeDir}\\node`;
-    const providers = (ctx.providerCatalog?.providers?.length ? ctx.providerCatalog.providers : [fallbackProvider()])
-      .reduce<Record<string, unknown>>((acc, provider) => {
+    const releaseSkills = (ctx.artifact?.skills ?? [])
+      .map((skill) => skill.name.trim())
+      .filter((skill) => skill.length > 0);
+    const defaultSkills = releaseSkills.length > 0 ? releaseSkills : DEFAULT_AGENT_SKILLS;
+    const providerCatalog: ProviderCatalogEntry[] =
+      ctx.providerCatalog?.providers?.length ? ctx.providerCatalog.providers : [fallbackProvider()];
+    const providers = providerCatalog
+      .reduce<Record<string, unknown>>((acc, provider: ProviderCatalogEntry) => {
         const apiKeyEnv = provider.apiKeyEnv ?? inferApiKeyEnv(provider.id);
         acc[provider.id] = {
           api: provider.api || DEFAULT_OPENAI_PROVIDER_API,
           baseUrl: provider.baseUrl,
           apiKey: `\${${apiKeyEnv}}`,
-          models: provider.models.map((model) => ({
+          models: provider.models.map((model: ProviderCatalogEntry['models'][number]) => ({
             id: model.id,
             name: model.name,
             input: model.input ?? [],
@@ -34,18 +40,21 @@ export const generateOpenClawConfigStep: WorkflowStep = {
         };
         return acc;
       }, {});
-    const defaultProvider = ctx.providerCatalog?.providers?.[0] ?? fallbackProvider();
-    const defaultAgentModels = (ctx.providerCatalog?.providers?.length ? ctx.providerCatalog.providers : [fallbackProvider()])
-      .flatMap((provider) => provider.models.map((model) => [`${provider.id}/${model.id}`, {}] as const));
+    const defaultProvider = providerCatalog[0] ?? fallbackProvider();
+    const defaultAgentModels = providerCatalog
+      .flatMap((provider: ProviderCatalogEntry) =>
+        provider.models.map((model: ProviderCatalogEntry['models'][number]) => [`${provider.id}/${model.id}`, {}] as const)
+      );
 
     await fs.writeJson(ctx.configPath, {
       version: 1,
-      openclawVersion: ctx.selectedVersion,
-      tier: ctx.tier,
       gateway: {
         mode: DEFAULT_GATEWAY_MODE,
         bind: DEFAULT_GATEWAY_BIND,
         port: DEFAULT_GATEWAY_PORT,
+        auth: {
+          mode: 'none'
+        },
         controlUi: {
           allowedOrigins: [
             `http://127.0.0.1:${DEFAULT_GATEWAY_PORT}`,
@@ -60,36 +69,37 @@ export const generateOpenClawConfigStep: WorkflowStep = {
           },
           models: Object.fromEntries(defaultAgentModels),
           workspace: workspaceDir,
+          skills: defaultSkills,
           heartbeat: {
             every: '0m'
+          },
+          sandbox: {
+            mode: 'off'
           }
         }
       },
-      runtime: {
-        workspaceDir,
-        nodeDir
-      },
-      permissions: {
-        filesystem: {
-          allowRead: [workspaceDir, configDir],
-          allowWrite: [workspaceDir],
-          deny: ['C:\\Windows', 'C:\\Program Files']
+      tools: {
+        profile: 'coding',
+        deny: ['browser', 'canvas'],
+        fs: {
+          workspaceOnly: true
         },
-        shell: {
-          enabled: true,
-          allowCommands: ['node', 'npm', 'openclaw', 'powershell'],
-          denyPatterns: ['Remove-Item\\s+-Recurse', 'format\\s+', 'reg\\s+delete', 'net\\s+user']
-        },
-        browser: {
-          enabled: true,
-          mode: 'managed-edge',
-          allowDomains: ['localhost', '*.intranet.local']
+        exec: {
+          security: 'full',
+          ask: 'off',
+          applyPatch: {
+            workspaceOnly: true
+          }
         }
       },
-      skills: ctx.artifact?.skills ?? [],
       models: {
         mode: 'merge',
         providers
+      },
+      skills: {
+        load: {
+          extraDirs: [`${ctx.runtimeDir}\\skills`]
+        }
       },
       plugins: {
         entries: {

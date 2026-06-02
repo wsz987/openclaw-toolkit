@@ -98,7 +98,13 @@ OpenClaw 制品文件名，相对路径定位到：
 
 ### skills
 
-该版本随安装附带或要求安装的 skill 包列表。
+该字段表示安装器侧附带或建议启用的 skill 清单。
+
+注意：
+
+- 该清单用于安装器部署 `skills/` 资源和生成默认 `agents.defaults.skills`
+- 不应再直接写入 OpenClaw 最新版 `openclaw.json` 的根级 `skills: []`
+- OpenClaw 最新版配置里，根级 `skills` 是对象配置段，agent 可见技能列表应写入 `agents.defaults.skills` 或 `agents.list[].skills`
 
 ## 5. 版本选择规则
 

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
@@ -426,8 +426,22 @@ function InstallLogPanel({
   installLogTail: Stage1InstallLogTail | null;
   diagnosticsInfo: Stage1DiagnosticsInfo | null;
 }) {
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = logContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [installLogTail?.lines]);
+
   return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full">
+    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full min-h-0">
       <CardHeader className="p-0 mb-6">
         <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">安装日志面板</CardTitle>
         <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">
@@ -444,7 +458,10 @@ function InstallLogPanel({
           ) : null}
         </div>
 
-        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-4 flex-1 min-h-[18rem] overflow-auto">
+        <div
+          ref={logContainerRef}
+          className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-4 flex-1 min-h-0 max-h-[28rem] overflow-y-auto overscroll-contain"
+        >
           {installLogTail?.lines.length ? (
             <div className="flex flex-col gap-1">
               {installLogTail.lines.map((line, index) => (
@@ -512,7 +529,7 @@ export function ProgressStageView({
   animated = false
 }: ProgressStageViewProps) {
   return (
-    <div className={`product-mockup-card-dark view-container ${animated ? 'animate-fade-in' : ''}`.trim()}>
+    <div className={`product-mockup-card-dark view-container min-h-0 ${animated ? 'animate-fade-in' : ''}`.trim()}>
       <div className="panel-heading mb-4">
         <h2 className="text-[hsl(var(--on-dark))] text-2xl font-serif font-normal tracking-tight">{title}</h2>
         <span>{subtitle}</span>
@@ -539,7 +556,7 @@ export function ProgressStageView({
         </div>
       </div>
 
-      <div className="split-layout grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="split-layout split-layout-progress grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0 items-stretch">
         <TimelinePanel
           timelineDescription={timelineDescription}
           timelineItems={timelineItems}

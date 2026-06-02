@@ -1,2 +1,30 @@
-{"$schema":"https://schema.tauri.app/config/2","productName":"OpenClaw Toolkit","version":"0.1.0","identifier":"com.openclaw.toolkit","build":{"beforeDevCommand":"pnpm vite --host 127.0.0.1","devUrl":"http://127.0.0.1:1420","beforeBuildCommand":"pnpm vite build","frontendDist":"../dist"},"app":{"windows":[{"title":"OpenClaw Toolkit","width":1100,"height":760,"resizable":true}],"security":{"csp":null}},"bundle":{"active":true,"targets":["nsis"],"windows":{"nsis":{"installMode":"perMachine","installerIcon":null}}}}
-
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OpenClaw Toolkit",
+  "version": "0.1.0",
+  "identifier": "com.openclaw.toolkit",
+  "build": {
+    "beforeDevCommand": "pnpm vite --host 127.0.0.1",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm vite build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "OpenClaw Toolkit",
+        "width": 1200,
+        "height": 900,
+        "resizable": true
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "windows": {
+      "nsis": { "installMode": "perMachine", "installerIcon": null }
+    }
+  }
+}

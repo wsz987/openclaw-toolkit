@@ -97,7 +97,7 @@ export function ProviderSetupPanel({
         <div>
           <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--ink))]">API 授权与接入</h3>
           <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1">
-            配置服务商 Provider、密钥模型并开放系统授权
+            配置服务商 Provider、密钥模型并应用 Agent 工具策略
           </p>
         </div>
         <span
@@ -151,7 +151,7 @@ export function ProviderSetupPanel({
             </div>
             <div className="flex items-center gap-2 text-xs text-[hsl(var(--body))]">
               <CheckIcon size={14} className="text-[hsl(var(--success))]" />
-              <span>OpenClaw Agent 权限已授予</span>
+              <span>OpenClaw Agent 工具策略已启用</span>
             </div>
           </div>
 
@@ -237,7 +237,7 @@ export function ProviderSetupPanel({
                 onChange={(event) => setGrantAgentPermissions(event.target.checked)}
                 disabled={providerSetupLoading}
               />
-              授权 OpenClaw Agent 权限
+              启用 OpenClaw Agent 工具策略
             </label>
           </div>
 

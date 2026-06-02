@@ -43,7 +43,7 @@ OpenClaw Package + Skills = 被工具包安装和管理的目标环境
 - OpenClaw 专用 Node Runtime 版本锁定
 - openclaw.json 自动生成
 - Skill 插件安装
-- 本地权限白名单配置
+- Agent 工具策略配置
 - 浏览器控制环境检测
 - 安装日志、状态记录和失败回滚
 
@@ -288,12 +288,13 @@ Stage 2 features：
 
 Tauri NSIS 安装器使用 `requireAdministrator`。管理员权限用于安装、服务注册、浏览器自动化和受限目录写入。
 
-但 OpenClaw Agent 权限必须由 openclaw.json 白名单约束：
+但 OpenClaw Agent 权限必须由 openclaw.json 的新版策略约束：
 
-- filesystem allowRead / allowWrite / deny
-- shell allowCommands / denyPatterns
-- browser allowDomains
-- skill 权限声明
+- `tools.profile` / `tools.allow` / `tools.deny`
+- `tools.fs.workspaceOnly`
+- `tools.exec.security` / `tools.exec.ask`
+- `agents.defaults.sandbox.mode`
+- `agents.defaults.skills` 与 `skills.*`
 
 ## 配置生成
 

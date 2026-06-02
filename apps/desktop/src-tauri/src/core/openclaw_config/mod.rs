@@ -14,7 +14,7 @@ use crate::core::{
     artifact::{install_archive, verify_sha256},
     manifest::{
         load_provider_catalog_from_config_path,
-        models::{ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact},
+        models::{ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, ReleaseSkill},
     },
     node_runtime::{node_runtime_executable, node_runtime_npm_command},
     remote::download_remote_file,
@@ -93,6 +93,7 @@ const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
 const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
 const DEFAULT_NODE_DIST_MIRROR_URL: &str = "https://npmmirror.com/mirrors/node";
+const DEFAULT_AGENT_SKILLS: [&str; 2] = ["browser-control", "local-filesystem"];
 
 pub fn openclaw_dir(base_dir: &Path, release: &ReleaseArtifact) -> PathBuf {
     base_dir.join("openclaw").join(&release.version)
@@ -150,9 +151,9 @@ pub fn install_openclaw(
 pub fn write_openclaw_config(
     config_path: &Path,
     release: &ReleaseArtifact,
-    tier: &str,
+    _tier: &str,
     openclaw_dir: &Path,
-    node_dir: &Path,
+    _node_dir: &Path,
     provider_catalog: &[ProviderCatalogEntry],
 ) -> anyhow::Result<()> {
     if let Some(parent) = config_path.parent() {
@@ -161,7 +162,6 @@ pub fn write_openclaw_config(
     }
 
     let workspace_dir = openclaw_dir.join("workspace");
-    let config_dir = openclaw_dir.join("config");
     let provider_catalog = default_provider_catalog(provider_catalog);
     let providers = provider_catalog_json(&provider_catalog);
     let default_provider = provider_catalog
@@ -170,15 +170,17 @@ pub fn write_openclaw_config(
         .unwrap_or_else(fallback_provider_entry);
 
     let default_agent_models = default_agent_models_map(&provider_catalog);
+    let default_skills = default_skill_allowlist(&release.skills);
 
     let config = json!({
         "version": 1,
-        "openclawVersion": release.version,
-        "tier": tier,
         "gateway": {
             "mode": DEFAULT_GATEWAY_MODE,
             "bind": DEFAULT_GATEWAY_BIND,
             "port": DEFAULT_GATEWAY_PORT,
+            "auth": {
+                "mode": "none"
+            },
             "controlUi": {
                 "allowedOrigins": [
                     format!("http://127.0.0.1:{DEFAULT_GATEWAY_PORT}"),
@@ -193,36 +195,37 @@ pub fn write_openclaw_config(
                 },
                 "models": default_agent_models,
                 "workspace": workspace_dir.to_string_lossy(),
+                "skills": default_skills,
                 "heartbeat": {
                     "every": "0m"
+                },
+                "sandbox": {
+                    "mode": "off"
                 }
             }
         },
-        "runtime": {
-            "workspaceDir": workspace_dir.to_string_lossy(),
-            "nodeDir": node_dir.to_string_lossy()
-        },
-        "permissions": {
-            "filesystem": {
-                "allowRead": [workspace_dir.to_string_lossy(), config_dir.to_string_lossy()],
-                "allowWrite": [workspace_dir.to_string_lossy()],
-                "deny": ["C:\\Windows", "C:\\Program Files"]
+        "tools": {
+            "profile": "coding",
+            "deny": ["browser", "canvas"],
+            "fs": {
+                "workspaceOnly": true
             },
-            "shell": {
-                "enabled": true,
-                "allowCommands": ["node", "npm", "openclaw", "powershell"],
-                "denyPatterns": ["Remove-Item\\s+-Recurse", "format\\s+", "reg\\s+delete", "net\\s+user"]
-            },
-            "browser": {
-                "enabled": true,
-                "mode": "managed-edge",
-                "allowDomains": ["localhost", "*.intranet.local"]
+            "exec": {
+                "security": "full",
+                "ask": "off",
+                "applyPatch": {
+                    "workspaceOnly": true
+                }
             }
         },
-        "skills": release.skills,
         "models": {
             "mode": "merge",
             "providers": providers
+        },
+        "skills": {
+            "load": {
+                "extraDirs": [openclaw_dir.join("skills").to_string_lossy()]
+            }
         },
         "plugins": {
             "entries": {
@@ -248,9 +251,13 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
     let openclaw_dir = config_path
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
-    let workspace_dir = string_at_path(&config, &["runtime", "workspaceDir"])
+    let installed_manifest = read_installed_manifest_from_openclaw_dir(openclaw_dir).ok();
+    let workspace_dir = string_at_path(&config, &["agents", "defaults", "workspace"])
         .unwrap_or_else(|| openclaw_dir.join("workspace").to_string_lossy().to_string());
-    let node_dir = string_at_path(&config, &["runtime", "nodeDir"]).unwrap_or_default();
+    let node_dir = installed_manifest
+        .as_ref()
+        .map(|manifest| manifest.node_dir.clone())
+        .unwrap_or_default();
     let gateway_port =
         number_at_path(&config, &["gateway", "port"]).unwrap_or(DEFAULT_GATEWAY_PORT as u64);
     let control_ui_url = format!("http://127.0.0.1:{gateway_port}/");
@@ -282,7 +289,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
             &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
         )
         .unwrap_or(false),
-        skills_installed: string_array_at_path(&config, &["skills"]),
+        skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
         plugins_enabled: enabled_plugin_ids(&config),
     })
 }
@@ -358,6 +365,15 @@ fn read_openclaw_config_value(config_path: &Path) -> anyhow::Result<Value> {
     let raw = fs::read_to_string(config_path)
         .with_context(|| format!("read {}", config_path.display()))?;
     serde_json::from_str(&raw).with_context(|| format!("parse {}", config_path.display()))
+}
+
+fn read_installed_manifest_from_openclaw_dir(
+    openclaw_dir: &Path,
+) -> anyhow::Result<crate::core::manifest::models::InstalledManifest> {
+    let manifest_path = openclaw_dir.join("installed-manifest.json");
+    let raw = fs::read_to_string(&manifest_path)
+        .with_context(|| format!("read {}", manifest_path.display()))?;
+    serde_json::from_str(&raw).with_context(|| format!("parse {}", manifest_path.display()))
 }
 
 fn write_config_value(config_path: &Path, config: &Value) -> anyhow::Result<()> {
@@ -456,33 +472,56 @@ fn set_value_at_path(root: &mut Value, path: &[&str], value: Value) {
 }
 
 fn merge_agent_permissions(config: &mut Value) {
-    let workspace_dir =
-        string_at_path(config, &["runtime", "workspaceDir"]).unwrap_or_else(|| ".".to_string());
-    let config_dir = Path::new(&workspace_dir)
-        .parent()
-        .map(|path| path.join("config").to_string_lossy().to_string())
-        .unwrap_or_else(|| workspace_dir.clone());
+    set_value_at_path(
+        config,
+        &["tools", "profile"],
+        Value::String("coding".to_string()),
+    );
+    set_value_at_path(
+        config,
+        &["tools", "deny"],
+        json!(["browser", "canvas"]),
+    );
+    set_value_at_path(
+        config,
+        &["tools", "fs", "workspaceOnly"],
+        Value::Bool(true),
+    );
+    set_value_at_path(
+        config,
+        &["tools", "exec", "security"],
+        Value::String("full".to_string()),
+    );
+    set_value_at_path(
+        config,
+        &["tools", "exec", "ask"],
+        Value::String("off".to_string()),
+    );
+    set_value_at_path(
+        config,
+        &["tools", "exec", "applyPatch", "workspaceOnly"],
+        Value::Bool(true),
+    );
+    set_value_at_path(
+        config,
+        &["agents", "defaults", "sandbox", "mode"],
+        Value::String("off".to_string()),
+    );
+}
 
-    set_value_at_path(
-        config,
-        &["permissions", "filesystem", "allowRead"],
-        json!([workspace_dir, config_dir]),
-    );
-    set_value_at_path(
-        config,
-        &["permissions", "filesystem", "allowWrite"],
-        json!([workspace_dir]),
-    );
-    set_value_at_path(
-        config,
-        &["permissions", "shell", "enabled"],
-        Value::Bool(true),
-    );
-    set_value_at_path(
-        config,
-        &["permissions", "browser", "enabled"],
-        Value::Bool(true),
-    );
+fn default_skill_allowlist(skills: &[ReleaseSkill]) -> Value {
+    let names: Vec<String> = skills
+        .iter()
+        .map(|skill| skill.name.trim().to_string())
+        .filter(|name| !name.is_empty())
+        .collect();
+
+    let fallback: Vec<String> = DEFAULT_AGENT_SKILLS
+        .iter()
+        .map(|skill| skill.to_string())
+        .collect();
+
+    json!(if names.is_empty() { fallback } else { names })
 }
 
 #[derive(Debug, Clone)]

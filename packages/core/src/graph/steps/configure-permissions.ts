@@ -4,13 +4,14 @@ import type { WorkflowStep } from '../types.js';
 
 export const configurePermissionsStep: WorkflowStep = {
   id: 'configurePermissions',
-  title: '配置本地权限白名单',
-  description: '写入本地文件、Shell 和浏览器权限策略',
+  title: '配置 Agent 工具策略',
+  description: '记录已应用的 tools 与 sandbox 配置策略',
   async run(ctx) {
     await fs.ensureDir(path.join(ctx.runtimeDir, 'config'));
     await fs.writeJson(path.join(ctx.runtimeDir, 'config', 'permissions.applied.json'), {
       appliedAt: new Date().toISOString(),
-      configPath: ctx.configPath
+      configPath: ctx.configPath,
+      strategy: 'tools-and-sandbox'
     }, { spaces: 2 });
   }
 };

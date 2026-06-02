@@ -8,7 +8,8 @@ pub fn configure_permissions(openclaw_dir: &Path, config_path: &Path) -> anyhow:
         .with_context(|| format!("create config dir {}", config_dir.display()))?;
     let payload = serde_json::json!({
         "appliedAt": chrono::Utc::now().to_rfc3339(),
-        "configPath": config_path.to_string_lossy()
+        "configPath": config_path.to_string_lossy(),
+        "strategy": "tools-and-sandbox"
     });
     fs::write(
         config_dir.join("permissions.applied.json"),
