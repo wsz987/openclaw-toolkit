@@ -173,7 +173,6 @@ pub fn write_openclaw_config(
     let default_skills = default_skill_allowlist(&release.skills);
 
     let config = json!({
-        "version": 1,
         "gateway": {
             "mode": DEFAULT_GATEWAY_MODE,
             "bind": DEFAULT_GATEWAY_BIND,
@@ -1099,4 +1098,96 @@ fn build_augmented_path_env(node_exe: &Path) -> String {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use serde_json::Value;
+
+    use super::write_openclaw_config;
+    use crate::core::manifest::models::{
+        ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
+    };
+
+    #[test]
+    fn generated_config_omits_root_version_field() {
+        let temp_dir = unique_temp_dir("openclaw-config");
+        let openclaw_dir = temp_dir.join("openclaw");
+        fs::create_dir_all(&openclaw_dir).unwrap();
+        let config_path = openclaw_dir.join("openclaw.json");
+
+        write_openclaw_config(
+            &config_path,
+            &sample_release(),
+            "community",
+            &openclaw_dir,
+            &temp_dir.join("node"),
+            &[sample_provider()],
+        )
+        .unwrap();
+
+        let raw = fs::read_to_string(&config_path).unwrap();
+        let json: Value = serde_json::from_str(&raw).unwrap();
+
+        assert!(json.get("version").is_none());
+        assert_eq!(
+            json.get("gateway")
+                .and_then(|gateway| gateway.get("port"))
+                .and_then(Value::as_u64),
+            Some(18789)
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    fn sample_release() -> ReleaseArtifact {
+        ReleaseArtifact {
+            name: "openclaw".to_string(),
+            version: "2026.5.20".to_string(),
+            platform: "win-x64".to_string(),
+            artifact: "openclaw-2026.5.20.tgz".to_string(),
+            sha256: "sha256".to_string(),
+            signature: None,
+            required_node: RequiredNodeRuntime {
+                version: "22.19.0".to_string(),
+                range: ">=22.19.0 <23".to_string(),
+                artifact: "node-v22.19.0-win-x64.zip".to_string(),
+                sha256: "sha256".to_string(),
+                signature: None,
+            },
+            skills: Vec::new(),
+        }
+    }
+
+    fn sample_provider() -> ProviderCatalogEntry {
+        ProviderCatalogEntry {
+            id: "deepseek".to_string(),
+            label: "DeepSeek".to_string(),
+            api: "openai-completions".to_string(),
+            base_url: "https://api.deepseek.com/v1".to_string(),
+            default_model: "deepseek/deepseek-v4-pro".to_string(),
+            api_key_env: Some("DEEPSEEK_API_KEY".to_string()),
+            aliases: Vec::new(),
+            models: vec![ProviderModelCatalogEntry {
+                id: "deepseek-v4-pro".to_string(),
+                name: "DeepSeek V4 Pro".to_string(),
+                input: vec!["text".to_string()],
+                context_window: Some(1024000),
+                max_tokens: Some(65536),
+            }],
+        }
+    }
+
+    fn unique_temp_dir(label: &str) -> std::path::PathBuf {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("openclaw-{label}-{suffix}"))
+    }
 }

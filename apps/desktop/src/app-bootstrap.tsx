@@ -15,6 +15,13 @@ import {
 import { SpinnerIcon } from './components/icons';
 import type { AppBootstrapState } from './features/stage1/model/types';
 import { hasMissingInstallationRecord } from './features/stage1/model/app-flow';
+import { DebugFlowPanel } from './features/stage1/components/debug-flow-panel';
+import {
+  canForceInstalledHome,
+  getEffectiveBootstrapState,
+  readStage1DebugFlowState,
+  writeStage1DebugFlowState
+} from './features/stage1/model/debug-flow';
 
 export function AppBootstrap() {
   const [state, setState] = useState<AppBootstrapState | null>(null);
@@ -22,6 +29,7 @@ export function AppBootstrap() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [recoveryAlertOpen, setRecoveryAlertOpen] = useState(true);
+  const [debugFlowState, setDebugFlowState] = useState(() => readStage1DebugFlowState());
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +60,13 @@ export function AppBootstrap() {
     };
   }, [refreshKey]);
 
+  useEffect(() => {
+    writeStage1DebugFlowState(debugFlowState);
+  }, [debugFlowState]);
+
+  const isDev = import.meta.env.DEV;
+  const effectiveState = getEffectiveBootstrapState(state, debugFlowState.mode);
+
   if (loading) {
     return (
       <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
@@ -78,6 +93,15 @@ export function AppBootstrap() {
     return (
       <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
         <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
+          {isDev ? (
+            <DebugFlowPanel
+              mode={debugFlowState.mode}
+              canForceInstalledHome={canForceInstalledHome(state)}
+              installerStep={debugFlowState.installerStep}
+              onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
+              onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
+            />
+          ) : null}
           <Card className="max-w-2xl mx-auto border-[hsl(var(--error)/0.3)]">
             <CardHeader>
               <CardTitle>启动恢复失败</CardTitle>
@@ -100,27 +124,38 @@ export function AppBootstrap() {
     );
   }
 
-  const shouldReturnToInstaller = hasMissingInstallationRecord(state);
+  const shouldReturnToInstaller =
+    debugFlowState.mode !== 'installed-home' && hasMissingInstallationRecord(effectiveState);
 
   if (shouldReturnToInstaller) {
     return (
       <>
+        {isDev ? (
+          <DebugFlowPanel
+            mode={debugFlowState.mode}
+            canForceInstalledHome={canForceInstalledHome(state)}
+            installerStep={debugFlowState.installerStep}
+            onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
+            onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
+          />
+        ) : null}
         <Stage1InstallerApp
           bootstrapState={null}
-          initialBaseDir={state?.settings.lastSelectedBaseDir ?? state?.activeInstallation?.baseDir ?? null}
+          initialBaseDir={effectiveState?.settings.lastSelectedBaseDir ?? effectiveState?.activeInstallation?.baseDir ?? null}
+          initialWizardStep={debugFlowState.installerStep}
           onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
         />
         <AlertDialog open={recoveryAlertOpen} onOpenChange={setRecoveryAlertOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>检测到安装记录已丢失</AlertDialogTitle>
-              <AlertDialogDescription>
-                当前恢复到的 OpenClaw 实例缺少 `installed-manifest.json`，无法继续按已安装环境进入操作首页。
-                请回到安装页面重新安装，或重新选择一个完整的已有安装目录导入。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="rounded-lg border border-[hsl(var(--warning)/0.18)] bg-[hsl(var(--warning)/0.08)] p-4 text-sm leading-6 text-[hsl(var(--body-strong))] break-all">
-              {state?.message}
+            <AlertDialogDescription>
+              当前恢复到的 OpenClaw 实例缺少 `installed-manifest.json`，无法继续按已安装环境进入操作首页。
+              请回到安装页面重新安装，或重新选择一个完整的已有安装目录导入。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-lg border border-[hsl(var(--warning)/0.18)] bg-[hsl(var(--warning)/0.08)] p-4 text-sm leading-6 text-[hsl(var(--body-strong))] break-all">
+              {effectiveState?.message}
             </div>
             <AlertDialogFooter>
               <AlertDialogAction>返回安装页</AlertDialogAction>
@@ -131,5 +166,22 @@ export function AppBootstrap() {
     );
   }
 
-  return <Stage1InstallerApp bootstrapState={state} onExitInstalledHome={() => setRefreshKey((value) => value + 1)} />;
+  return (
+    <>
+      {isDev ? (
+        <DebugFlowPanel
+          mode={debugFlowState.mode}
+          canForceInstalledHome={canForceInstalledHome(state)}
+          installerStep={debugFlowState.installerStep}
+          onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
+          onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
+        />
+      ) : null}
+      <Stage1InstallerApp
+        bootstrapState={effectiveState}
+        initialWizardStep={debugFlowState.installerStep}
+        onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
+      />
+    </>
+  );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
+import { AnsiLogLine } from '../../../components/ansi-log-line';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
@@ -143,44 +144,100 @@ export function PrecheckStepView({
   onNext
 }: PrecheckStepViewProps) {
   return (
-    <div className="split-layout grid grid-cols-1 lg:grid-cols-2 gap-6 precheck-mode animate-fade-in">
-      <Card>
-        <CardHeader>
-          <CardTitle>步骤 1: 部署路径配置</CardTitle>
-          <CardDescription>指定 OpenClaw 安装目录，安装资源将由程序自动定位</CardDescription>
-        </CardHeader>
-        <CardContent className="form-stack">
-          <div className="form-group flex flex-col gap-2">
-            <label className="flex justify-between text-xs font-semibold text-[hsl(var(--body-strong))]">
-              <span>OpenClaw 安装目录</span>
-              <span className="text-[10px] text-[hsl(var(--muted-soft))] font-normal">用于存放运行环境与配置文件</span>
-            </label>
-            <div className="directory-input-wrapper flex gap-2">
-              <Input value={baseDir} onChange={(event) => onBaseDirChange(event.target.value)} placeholder="如 D:\OpenClaw" />
-              <Button variant="secondary" onClick={onPickDirectory}>
-                <FolderIcon size={13} className="mr-1.5" /> 选择
-              </Button>
+    <Card className="flex-1 flex flex-col min-h-0 border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))/0.3] shadow-md rounded-xl overflow-hidden animate-fade-in">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 min-h-0 divide-y lg:divide-y-0 lg:divide-x divide-[hsl(var(--hairline))]">
+        {/* Left Side: Setup Form (3/5 width) */}
+        <div className="lg:col-span-3 p-8 flex flex-col justify-between h-full overflow-y-auto">
+          <div className="flex flex-col gap-6">
+            <div>
+              <h2 className="text-xl font-semibold text-[hsl(var(--ink))]">部署路径配置</h2>
+              <p className="text-xs text-[hsl(var(--muted))] mt-1">
+                指定 OpenClaw 部署的基准目录，我们将自动检测和配置所需要的受管隔离环境。
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 mt-2">
+              <label className="flex justify-between text-xs font-semibold text-[hsl(var(--body-strong))]">
+                <span>OpenClaw 安装目录</span>
+                <span className="text-[10px] text-[hsl(var(--muted-soft))] font-normal">指定空目录或已有运行目录</span>
+              </label>
+              <div className="flex gap-2.5">
+                <Input
+                  className="bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]"
+                  value={baseDir}
+                  onChange={(event) => onBaseDirChange(event.target.value)}
+                  placeholder="如 D:\OpenClaw"
+                />
+                <Button variant="secondary" onClick={onPickDirectory} className="bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]">
+                  <FolderIcon size={13} className="mr-1.5" /> 选择
+                </Button>
+              </div>
             </div>
           </div>
 
-          <Button variant="default" className="mt-4 h-10 w-full" onClick={onNext} disabled={!step1Ready}>
-            下一步：配置授权与提取模式 <ChevronRightIcon size={14} className="ml-1.5" />
-          </Button>
-          {dashboardLoading ? (
-            <div className="text-[11px] text-[hsl(var(--muted-soft))] text-center mt-2">
-              正在同步校验本地配置状态...
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+          <div className="flex flex-col gap-3 mt-8">
+            <Button variant="default" className="h-11 w-full text-sm font-medium" onClick={onNext} disabled={!step1Ready}>
+              下一步：配置授权与提取模式 <ChevronRightIcon size={14} className="ml-1.5" />
+            </Button>
+            {dashboardLoading ? (
+              <div className="text-[11px] text-[hsl(var(--muted-soft))] text-center">
+                正在同步校验本地配置状态...
+              </div>
+            ) : null}
+          </div>
+        </div>
 
-      <ChecksCard
-        title="项目就绪性检测"
-        description="自动识别基础运行与目录结构"
-        items={step1Checks}
-        ready={step1Ready}
-      />
-    </div>
+        {/* Right Side: Environment Checks (2/5 width) */}
+        <div className="lg:col-span-2 p-8 bg-[hsl(var(--canvas))/0.4] flex flex-col h-full min-h-0 overflow-y-auto">
+          <div className="flex items-center justify-between pb-4 border-b border-[hsl(var(--hairline))] mb-4 flex-shrink-0">
+            <div>
+              <h3 className="text-sm font-semibold text-[hsl(var(--body-strong))]">项目就绪性检测</h3>
+              <p className="text-[10px] text-[hsl(var(--muted))] mt-0.5">自动识别基础运行与目录结构</p>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step1Ready ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'}`}>
+              {step1Checks.filter((item) => item.state === 'ok').length}/{step1Checks.length} 项通过
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-1 min-h-0">
+            {step1Checks.map((item) => (
+              <div
+                className="flex gap-3 p-3.5 rounded-lg bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] transition-all duration-200 hover:border-[hsl(var(--muted-soft)/0.4)]"
+                key={item.id}
+                data-state={item.state}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    item.state === 'ok'
+                      ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                      : item.state === 'error'
+                        ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
+                        : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                  }`}
+                >
+                  {item.state === 'ok' ? (
+                    <CheckIcon size={10} />
+                  ) : item.state === 'error' ? (
+                    <XIcon size={10} />
+                  ) : (
+                    <AlertIcon size={10} />
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                  <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] truncate">{item.label}</strong>
+                  <p className="text-[10px] text-[hsl(var(--muted))] break-all leading-normal">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+            {step1Checks.length === 0 ? (
+              <div className="flex items-center justify-center text-[hsl(var(--muted-soft))] text-xs py-8">
+                等待环境初始化...
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -224,85 +281,93 @@ export function ConfigStepView({
   onInstall
 }: ConfigStepViewProps) {
   return (
-    <div className="split-layout grid grid-cols-1 lg:grid-cols-2 gap-6 precheck-mode animate-fade-in">
-      <Card>
-        <CardHeader>
-          <CardTitle>步骤 2: 授权激活与模式</CardTitle>
-          <CardDescription>验证激活密钥，设定组件获取源与安装版本</CardDescription>
-        </CardHeader>
-        <CardContent className="form-stack">
-          <SecretField
-            label="离线激活授权密钥"
-            value={licenseKey}
-            onChange={onLicenseKeyChange}
-            placeholder="输入激活许可证密钥"
-          />
-
-          <div className="form-group flex flex-col gap-2">
-            <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
-              <span>使用源</span>
-            </label>
-            <Select value={installMode} onChange={(event) => onInstallModeChange(event.target.value as InstallMode)}>
-              <option value="local">本地离线包</option>
-              <option value="remote">远程包</option>
-              <option value="npm">NPM 官方包分发</option>
-            </Select>
-          </div>
-
-          <div className="form-group flex flex-col gap-2">
-            <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
-              <span>版本列表</span>
-            </label>
-            <Select
-              value={selectedVersion}
-              onChange={(event) => onSelectedVersionChange(event.target.value)}
-              disabled={versionCatalogLoading || !versionCatalog || versionCatalog.options.length === 0}
-            >
-              {!versionCatalog || versionCatalog.options.length === 0 ? (
-                <option value={selectedVersion}>
-                  {versionCatalogLoading ? '版本目录加载中...' : '暂无可选版本'}
-                </option>
-              ) : null}
-              {versionCatalog?.options.map((option) => (
-                <option key={option.value} value={option.value} disabled={!option.selectable}>
-                  {option.label}
-                  {option.selectable ? '' : ' · 当前不可安装'}
-                </option>
-              ))}
-            </Select>
-            <p className="text-[11px] leading-relaxed text-[hsl(var(--muted-soft))]">
-              {versionCatalogLoading
-                ? '正在按当前使用源加载版本目录...'
-                : selectedVersionOption?.detail ?? versionCatalog?.message ?? '按当前使用源自动加载可用版本。'}
-            </p>
-            {versionCatalog?.latestVersion ? (
-              <p className="text-[11px] leading-relaxed text-[hsl(var(--muted))]">
-                `latest` 当前将解析为 `{versionCatalog.latestVersion}`。
+    <Card className="flex-1 flex flex-col min-h-0 border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))/0.3] shadow-md rounded-xl overflow-hidden animate-fade-in">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 min-h-0 divide-y lg:divide-y-0 lg:divide-x divide-[hsl(var(--hairline))]">
+        {/* Left Side: Setup Form (3/5 width) */}
+        <div className="lg:col-span-3 p-8 flex flex-col justify-between h-full overflow-y-auto">
+          <div className="flex flex-col gap-5">
+            <div>
+              <h2 className="text-xl font-semibold text-[hsl(var(--ink))]">授权激活与模式</h2>
+              <p className="text-xs text-[hsl(var(--muted))] mt-1">
+                验证激活密钥并设定依赖组件的获取源，准备开始拉取运行制品。
               </p>
+            </div>
+
+            <div className="flex flex-col gap-4 mt-1">
+              <SecretField
+                label="离线激活授权密钥"
+                value={licenseKey}
+                onChange={onLicenseKeyChange}
+                placeholder="输入激活许可证密钥"
+              />
+
+              <div className="form-group flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
+                  <span>使用源</span>
+                </label>
+                <Select value={installMode} onChange={(event) => onInstallModeChange(event.target.value as InstallMode)}>
+                  <option value="local">本地离线包</option>
+                  <option value="remote">远程包</option>
+                  <option value="npm">NPM 官方包分发</option>
+                </Select>
+              </div>
+
+              <div className="form-group flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
+                  <span>版本列表</span>
+                </label>
+                <Select
+                  value={selectedVersion}
+                  onChange={(event) => onSelectedVersionChange(event.target.value)}
+                  disabled={versionCatalogLoading || !versionCatalog || versionCatalog.options.length === 0}
+                >
+                  {!versionCatalog || versionCatalog.options.length === 0 ? (
+                    <option value={selectedVersion}>
+                      {versionCatalogLoading ? '版本目录加载中...' : '暂无可选版本'}
+                    </option>
+                  ) : null}
+                  {versionCatalog?.options.map((option) => (
+                    <option key={option.value} value={option.value} disabled={!option.selectable}>
+                      {option.label}
+                      {option.selectable ? '' : ' · 当前不可安装'}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-[10px] leading-relaxed text-[hsl(var(--muted-soft))]">
+                  {versionCatalogLoading
+                    ? '正在按当前使用源加载版本目录...'
+                    : selectedVersionOption?.detail ?? versionCatalog?.message ?? '按当前使用源自动加载可用版本。'}
+                </p>
+                {versionCatalog?.latestVersion ? (
+                  <p className="text-[10px] leading-relaxed text-[hsl(var(--muted))] mt-0.5">
+                    `latest` 当前将解析为 `{versionCatalog.latestVersion}`。
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            {systemOpenclaw.detected ? (
+              <div className="system-openclaw-banner mt-1">
+                <div className="system-openclaw-banner__icon">
+                  <AlertIcon size={14} />
+                </div>
+                <div className="system-openclaw-banner__body">
+                  <strong>检测到系统 OpenClaw，需在部署前确认</strong>
+                  <p>
+                    {systemOpenclaw.version
+                      ? `本机版本 ${systemOpenclaw.version}，即将${installActionLabel}到 ${confirmationTargetVersion}。`
+                      : `已检测到本机 OpenClaw，版本读取失败；即将按官方安装规范执行${installActionLabel}。`}
+                  </p>
+                </div>
+              </div>
             ) : null}
           </div>
 
-          {systemOpenclaw.detected ? (
-            <div className="system-openclaw-banner">
-              <div className="system-openclaw-banner__icon">
-                <AlertIcon size={14} />
-              </div>
-              <div className="system-openclaw-banner__body">
-                <strong>检测到系统 OpenClaw，需在部署前确认</strong>
-                <p>
-                  {systemOpenclaw.version
-                    ? `本机版本 ${systemOpenclaw.version}，即将${installActionLabel}到 ${confirmationTargetVersion}。`
-                    : `已检测到本机 OpenClaw，版本读取失败；即将按官方安装规范执行${installActionLabel}。`}
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex gap-4 mt-2">
-            <Button variant="secondary" className="flex-1" onClick={onBack}>
+          <div className="flex gap-4 mt-8">
+            <Button variant="secondary" className="flex-1 h-11" onClick={onBack}>
               <ArrowLeftIcon size={14} className="mr-1.5" /> 上一步
             </Button>
-            <Button variant="default" className="flex-1" onClick={onInstall} disabled={loading || !canStartInstall}>
+            <Button variant="default" className="flex-1 h-11" onClick={onInstall} disabled={loading || !canStartInstall}>
               {loading ? (
                 <>
                   <SpinnerIcon size={14} className="spinning mr-2" />
@@ -316,16 +381,59 @@ export function ConfigStepView({
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <ChecksCard
-        title="授权与配置预检"
-        description="校验激活包密钥及包源可用状态"
-        items={step2Checks}
-        ready={canStartInstall}
-      />
-    </div>
+        {/* Right Side: Environment Checks (2/5 width) */}
+        <div className="lg:col-span-2 p-8 bg-[hsl(var(--canvas))/0.4] flex flex-col h-full min-h-0 overflow-y-auto">
+          <div className="flex items-center justify-between pb-4 border-b border-[hsl(var(--hairline))] mb-4 flex-shrink-0">
+            <div>
+              <h3 className="text-sm font-semibold text-[hsl(var(--body-strong))]">授权与配置预检</h3>
+              <p className="text-[10px] text-[hsl(var(--muted))] mt-0.5">校验激活包密钥及包源可用状态</p>
+            </div>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${canStartInstall ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'}`}>
+              {step2Checks.filter((item) => item.state === 'ok').length}/{step2Checks.length} 项通过
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-1 min-h-0">
+            {step2Checks.map((item) => (
+              <div
+                className="flex gap-3 p-3.5 rounded-lg bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] transition-all duration-200 hover:border-[hsl(var(--muted-soft)/0.4)]"
+                key={item.id}
+                data-state={item.state}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    item.state === 'ok'
+                      ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                      : item.state === 'error'
+                        ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
+                        : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                  }`}
+                >
+                  {item.state === 'ok' ? (
+                    <CheckIcon size={10} />
+                  ) : item.state === 'error' ? (
+                    <XIcon size={10} />
+                  ) : (
+                    <AlertIcon size={10} />
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                  <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] truncate">{item.label}</strong>
+                  <p className="text-[10px] text-[hsl(var(--muted))] break-all leading-normal">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+            {step2Checks.length === 0 ? (
+              <div className="flex items-center justify-center text-[hsl(var(--muted-soft))] text-xs py-8">
+                等待环境初始化...
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -350,12 +458,12 @@ function TimelinePanel({
   timelineContainerRef
 }: Pick<ProgressStageViewProps, 'timelineDescription' | 'timelineItems' | 'timelineContainerRef'>) {
   return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full">
-      <CardHeader className="p-0 mb-6">
+    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full min-h-0">
+      <CardHeader className="p-0 mb-6 flex-shrink-0">
         <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">流程微步骤流水</CardTitle>
         <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">{timelineDescription}</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
         <div className="sub-steps-timeline" ref={timelineContainerRef}>
           {timelineItems.map((step) => {
             const isActive = step.state === 'current';
@@ -406,19 +514,6 @@ function TimelinePanel({
   );
 }
 
-function LogLine({ line }: { line: string }) {
-  const lowered = line.toLowerCase();
-  const tone = lowered.includes('error') || lowered.includes('failed')
-    ? 'text-[hsl(var(--error))]'
-    : lowered.includes('warn')
-      ? 'text-[hsl(var(--warning))]'
-      : lowered.includes('完成') || lowered.includes('success') || lowered.includes('added ')
-        ? 'text-[hsl(var(--success))]'
-        : 'text-[hsl(var(--on-dark-soft))]';
-
-  return <div className={`font-mono text-[11px] leading-5 whitespace-pre-wrap break-all ${tone}`}>{line}</div>;
-}
-
 function InstallLogPanel({
   installLogTail,
   diagnosticsInfo
@@ -442,14 +537,14 @@ function InstallLogPanel({
 
   return (
     <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full min-h-0">
-      <CardHeader className="p-0 mb-6">
+      <CardHeader className="p-0 mb-6 flex-shrink-0">
         <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">安装日志面板</CardTitle>
         <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">
           最近 200 行安装日志，自动刷新并高亮错误/警告
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-1 flex flex-col gap-4 min-h-0">
-        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg px-4 py-3">
+        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg px-4 py-3 flex-shrink-0">
           <div className="text-[11px] text-[hsl(var(--on-dark-soft))] leading-relaxed">
             {installLogTail?.path ?? '日志文件尚未生成'}
           </div>
@@ -465,7 +560,7 @@ function InstallLogPanel({
           {installLogTail?.lines.length ? (
             <div className="flex flex-col gap-1">
               {installLogTail.lines.map((line, index) => (
-                <LogLine key={`${index}-${line.slice(0, 16)}`} line={line} />
+                <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} stripTimestamp />
               ))}
             </div>
           ) : (
@@ -476,7 +571,7 @@ function InstallLogPanel({
         </div>
 
         {diagnosticsInfo ? (
-          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4">
+          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4 flex-shrink-0">
             <div className="diagnostic-title flex items-center gap-2.5 text-base font-semibold text-[hsl(var(--primary))] border-b border-white/5 pb-3">
               <SettingsIcon size={14} className="spinning text-[hsl(var(--primary))]" style={{ animationDuration: '12s' }} />
               {diagnosticsInfo.title}
@@ -505,7 +600,7 @@ function InstallLogPanel({
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-[hsl(var(--on-dark-soft))] text-sm">
+          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex items-center justify-center text-[hsl(var(--on-dark-soft))] text-sm flex-shrink-0 min-h-[120px]">
             等待执行引擎激活...
           </div>
         )}
@@ -529,18 +624,16 @@ export function ProgressStageView({
   animated = false
 }: ProgressStageViewProps) {
   return (
-    <div className={`product-mockup-card-dark view-container min-h-0 ${animated ? 'animate-fade-in' : ''}`.trim()}>
-      <div className="panel-heading mb-4">
-        <h2 className="text-[hsl(var(--on-dark))] text-2xl font-serif font-normal tracking-tight">{title}</h2>
-        <span>{subtitle}</span>
-      </div>
-
-      <div className="progress-wrapper">
+    <div className={`product-mockup-card-dark view-container flex-1 flex flex-col min-h-0 ${animated ? 'animate-fade-in' : ''}`.trim()}>
+      <div className="progress-wrapper flex-shrink-0">
         <div className="progress-info flex flex-col min-w-[5rem]">
           <span className="text-[10px] text-[hsl(var(--on-dark-soft))] uppercase tracking-wide">整体进度</span>
           <strong className="font-serif text-3.5xl text-[hsl(var(--primary))] font-normal">{progressValue}%</strong>
         </div>
         <div className="progress-bar-container flex-1 flex flex-col gap-2">
+          <div className="text-[11px] text-[hsl(var(--on-dark-soft))] leading-relaxed max-w-[600px] mb-1 font-sans">
+            {subtitle}
+          </div>
           <div className="progress-bar-text flex justify-between text-xs font-medium text-[hsl(var(--on-dark))]">
             <span>{currentStepLabel}</span>
             <span className="text-[hsl(var(--on-dark-soft))]">
@@ -556,7 +649,7 @@ export function ProgressStageView({
         </div>
       </div>
 
-      <div className="split-layout split-layout-progress grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0 items-stretch">
+      <div className="split-layout split-layout-progress grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 items-stretch">
         <TimelinePanel
           timelineDescription={timelineDescription}
           timelineItems={timelineItems}

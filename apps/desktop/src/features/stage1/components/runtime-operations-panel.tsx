@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnsiLogLine } from '../../../components/ansi-log-line';
 import { Button } from '../../../components/ui/button';
 import {
   ChevronRightIcon,
@@ -203,7 +204,7 @@ export function RuntimeOperationsPanel({
             <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimeLaunchResult.pid}</div>
             {logTail && logTail.lines.length > 0 ? (
               logTail.lines.map((line, index) => (
-                <div key={index} className="break-all whitespace-pre-wrap text-white/80">{line}</div>
+                <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} className="text-white/80" />
               ))
             ) : (
               <>

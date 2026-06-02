@@ -304,9 +304,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 400px;
   overflow-y: auto;
   padding-right: 0.65rem;
+  max-height: 400px;
+}
+
+@media (min-width: 901px) {
+  .sub-steps-timeline {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+  }
 }
 
 .split-layout-progress {
@@ -319,7 +327,8 @@ body {
 
 @media (min-width: 901px) {
   .split-layout-progress {
-    max-height: min(62vh, 48rem);
+    flex: 1;
+    min-height: 0;
     align-items: stretch;
   }
 

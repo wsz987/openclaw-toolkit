@@ -51,7 +51,8 @@ import {
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
-  initialShowPostInstallHome = false
+  initialShowPostInstallHome = false,
+  initialWizardStep: InstallerWizardStep = 0
 ) {
   const DASHBOARD_DEBOUNCE_MS = 350;
 
@@ -78,7 +79,7 @@ export function useStage1Installer(
   const [importingInstallation, setImportingInstallation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState<InstallerWizardStep>(0);
+  const [wizardStep, setWizardStep] = useState<InstallerWizardStep>(initialWizardStep);
   const [showPostInstallHome, setShowPostInstallHome] = useState(initialShowPostInstallHome);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -449,6 +450,18 @@ export function useStage1Installer(
   }, [initialShowPostInstallHome]);
 
   useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (result || showPostInstallHome) {
+      return;
+    }
+
+    setWizardStep(initialWizardStep);
+  }, [initialWizardStep, loading, result, showPostInstallHome]);
+
+  useEffect(() => {
     const container = timelineContainerRef.current;
     if (!container) {
       return;
@@ -473,11 +486,15 @@ export function useStage1Installer(
   }, [debouncedPayload, loading]);
 
   useEffect(() => {
+    if (result || showPostInstallHome) {
+      return;
+    }
+
     const nextWizardStep = deriveWizardStepFromDashboard(dashboard);
     if (nextWizardStep !== null) {
       setWizardStep(nextWizardStep);
     }
-  }, [dashboard]);
+  }, [dashboard, result, showPostInstallHome]);
 
   useEffect(() => {
     if (!loading) {

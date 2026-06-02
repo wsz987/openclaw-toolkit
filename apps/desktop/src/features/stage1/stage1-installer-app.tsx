@@ -17,11 +17,13 @@ import {
 export function Stage1InstallerApp({
   bootstrapState,
   onExitInstalledHome,
-  initialBaseDir
+  initialBaseDir,
+  initialWizardStep
 }: {
   bootstrapState?: AppBootstrapState | null;
   onExitInstalledHome?: () => void;
   initialBaseDir?: string | null;
+  initialWizardStep?: 0 | 1 | 2 | 3;
 }) {
   const shouldOpenInstalledHomeDirectly = isRecoveredInstallationState(bootstrapState);
 
@@ -87,7 +89,8 @@ export function Stage1InstallerApp({
     confirmInstall
   } = useStage1Installer(
     initialBaseDir ?? bootstrapState?.settings.lastSelectedBaseDir ?? bootstrapState?.activeInstallation?.baseDir ?? null,
-    shouldOpenInstalledHomeDirectly
+    shouldOpenInstalledHomeDirectly,
+    initialWizardStep
   );
 
   const bootstrapResult = bootstrapState?.activeInstallation ? createInstallResultFromRecord(bootstrapState.activeInstallation) : null;
@@ -244,15 +247,38 @@ export function Stage1InstallerApp({
 
   const showInstallerChrome = shouldShowInstallerChrome(screen);
 
-  return (
-    <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
-      <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
-        {showInstallerChrome ? <Stage1Header openclawVersion={dashboard?.openclawVersion} nodeVersion={dashboard?.nodeVersion} /> : null}
-        {showInstallerChrome ? <Stage1Stepper phase={phase} wizardStep={wizardStep} onStepSelect={setWizardStep} /> : null}
-        {content}
-      </div>
+  if (showInstallerChrome) {
+    return (
+      <main className="app-shell flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] animate-fade-in">
+        {/* Left Sidebar */}
+        <aside className="w-80 border-r border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-8 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
+          <div className="flex flex-col gap-8">
+            <Stage1Header
+              openclawVersion={dashboard?.openclawVersion}
+              nodeVersion={dashboard?.nodeVersion}
+              layout="vertical"
+            />
+            <Stage1Stepper
+              phase={phase}
+              wizardStep={wizardStep}
+              onStepSelect={setWizardStep}
+              layout="vertical"
+            />
+          </div>
+          {/* Subtle brand footer */}
+          <div className="text-[10px] text-[hsl(var(--muted-soft))] font-medium pt-4 border-t border-[hsl(var(--hairline))] flex items-center justify-between">
+            <span>OpenClaw Core</span>
+            <span>v{dashboard?.openclawVersion || '1.0.0'}</span>
+          </div>
+        </aside>
 
-      {showInstallerChrome ? (
+        {/* Right Main Content */}
+        <section className="flex-1 flex flex-col min-h-0 bg-[hsl(var(--canvas))] p-10 overflow-y-auto">
+          <div className="max-w-[1000px] w-full mx-auto flex-1 flex flex-col min-h-0">
+            {content}
+          </div>
+        </section>
+
         <ConfirmInstallDialog
           open={confirmDialogOpen}
           onOpenChange={setConfirmDialogOpen}
@@ -264,7 +290,15 @@ export function Stage1InstallerApp({
           installActionLabel={installActionLabel}
           onConfirm={() => void confirmInstall()}
         />
-      ) : null}
+      </main>
+    );
+  }
+
+  return (
+    <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
+      <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
+        {content}
+      </div>
     </main>
   );
 }
