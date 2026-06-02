@@ -1,11 +1,12 @@
 import { CheckIcon } from '../../../components/icons';
 import { masterPhases } from '../model/graph';
 import type { Stage1Phase } from '../model/types';
+import type { InstallerWizardStep } from '../model/app-flow';
 
 type Props = {
   phase: Stage1Phase;
-  wizardStep: number;
-  onStepSelect: (index: number) => void;
+  wizardStep: InstallerWizardStep;
+  onStepSelect: (index: InstallerWizardStep) => void;
 };
 
 export function Stage1Stepper({ phase, wizardStep, onStepSelect }: Props) {
@@ -26,7 +27,7 @@ export function Stage1Stepper({ phase, wizardStep, onStepSelect }: Props) {
             className={`step-node group ${state}`}
             onClick={() => {
               if (phase !== 'running' && phase !== 'succeeded' && index <= 1) {
-                onStepSelect(index);
+                onStepSelect(index as InstallerWizardStep);
               }
             }}
           >

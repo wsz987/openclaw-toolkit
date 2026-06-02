@@ -210,7 +210,7 @@ export function RuntimeOperationsPanel({
                 <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
                 <div>[gateway] Control Panel ready, proxy route enabled.</div>
                 <div>[openclaw] Starting pipeline runtime loops...</div>
-                <div>[openclaw] API Client initialized for provider: {status?.providerId ?? 'volcengine'}</div>
+                <div>[openclaw] API Client initialized for provider: {status?.providerId ?? 'default-provider'}</div>
                 <div>[openclaw] Listening for incoming browser agent session requests...</div>
               </>
             )}

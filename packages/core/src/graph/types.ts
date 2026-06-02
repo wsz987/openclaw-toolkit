@@ -1,10 +1,17 @@
 import type { InstallMode, ServiceTier } from '@openclaw-toolkit/shared';
-import type { LicensePayload, ReleaseArtifact, ReleaseManifest, ToolkitManifest } from '@openclaw-toolkit/schemas';
+import type {
+  LicensePayload,
+  ProviderCatalogManifest,
+  ReleaseArtifact,
+  ReleaseManifest,
+  ToolkitManifest
+} from '@openclaw-toolkit/schemas';
 
 export interface WorkflowContext {
   workflowId: string;
   projectRoot: string;
   runtimeDir: string;
+  nodeDir?: string;
   configPath: string;
   licenseKey?: string;
   license?: LicensePayload;
@@ -12,6 +19,7 @@ export interface WorkflowContext {
   installMode?: InstallMode;
   selectedVersion?: string;
   toolkitManifest?: ToolkitManifest;
+  providerCatalog?: ProviderCatalogManifest;
   releaseManifest?: ReleaseManifest;
   artifact?: ReleaseArtifact;
   errors: string[];

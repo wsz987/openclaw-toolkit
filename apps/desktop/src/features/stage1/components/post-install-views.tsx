@@ -73,7 +73,7 @@ export function PostInstallHomeView({
               OpenClaw 服务配置与控制
             </h2>
             <p className="text-xs text-[hsl(var(--muted))] mt-1 max-w-2xl">
-              在此管理您的 OpenClaw 实例。配置火山引擎 API 授权接入，管理主程序服务生命周期，并快速访问日志与控制面板。
+              在此管理您的 OpenClaw 实例。配置 OpenAI 兼容 Provider 授权接入，管理主程序服务生命周期，并快速访问日志与控制面板。
             </p>
           </div>
         </div>

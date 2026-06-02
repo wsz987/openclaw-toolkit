@@ -16,7 +16,7 @@ use crate::core::{
     environment::{validate_windows_environment, windows_environment_status},
     license::verify_offline_license,
     manifest::{
-        load_toolkit_manifest, load_toolkit_settings,
+        load_provider_catalog, load_toolkit_manifest, load_toolkit_settings,
         models::{InstalledManifest, ReleaseArtifact, ToolkitManifest},
         write_installed_manifest,
     },
@@ -359,6 +359,11 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
     )?;
 
     let toolkit_settings = load_toolkit_settings(&project_root)?;
+    let provider_catalog = load_provider_catalog(&project_root).unwrap_or_else(|_| {
+        crate::core::manifest::models::ProviderCatalogManifest {
+            providers: Vec::new(),
+        }
+    });
 
     let license = run_step(
         &base_dir,
@@ -571,6 +576,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
                 &license.tier,
                 &openclaw_dir,
                 &node_dir,
+                &provider_catalog.providers,
             )
         },
     )?;
@@ -1314,7 +1320,7 @@ fn resolve_resource_root(project_root: Option<&str>) -> anyhow::Result<PathBuf> 
         }
     }
 
-    anyhow::bail!("未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json")
+    anyhow::bail!("未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json 和 artifacts/providers.json")
 }
 
 fn resource_root_candidates() -> Vec<PathBuf> {
@@ -1362,6 +1368,7 @@ fn has_toolkit_manifest(root: &Path) -> bool {
     root.join("artifacts")
         .join("toolkit-manifest.json")
         .exists()
+        && root.join("artifacts").join("providers.json").exists()
 }
 
 fn stage1_status_path(base_dir: &Path) -> PathBuf {

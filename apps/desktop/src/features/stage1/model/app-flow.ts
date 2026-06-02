@@ -10,13 +10,15 @@ export type Stage1Screen =
   | 'progress-deps'
   | 'progress-verify';
 
+export type InstallerWizardStep = 0 | 1 | 2 | 3;
+
 type ResolveStage1ScreenInput = {
   bootstrapState?: AppBootstrapState | null;
   hasError: boolean;
   hasInstallResult: boolean;
   phase: Stage1Phase;
   showPostInstallHome: boolean;
-  wizardStep: number;
+  wizardStep: InstallerWizardStep;
 };
 
 export function hasMissingInstallationRecord(state?: AppBootstrapState | null): boolean {

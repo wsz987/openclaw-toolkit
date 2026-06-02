@@ -5,6 +5,7 @@ import { Select } from '../../../components/ui/select';
 import { CheckIcon, FolderIcon, SettingsIcon, SpinnerIcon } from '../../../components/icons';
 import type {
   OpenClawPostInstallStatus,
+  ProviderCatalogEntry,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1InstallResult
@@ -35,33 +36,43 @@ export function ProviderSetupPanel({
   importLoading,
   onImportInstallation
 }: ProviderSetupPanelProps) {
-  const [providerId, setProviderId] = useState<'volcengine' | 'volcengine-plan'>('volcengine-plan');
-  const [apiUrl, setApiUrl] = useState('https://ark.cn-beijing.volces.com/api/coding/v3');
+  const availableProviders = status?.availableProviders ?? [];
+  const fallbackProvider = availableProviders[0] ?? null;
+  const [providerId, setProviderId] = useState<string>(fallbackProvider?.id ?? 'volcengine-plan');
+  const [apiUrl, setApiUrl] = useState(fallbackProvider?.baseUrl ?? 'https://ark.cn-beijing.volces.com/api/coding/v3');
   const [apiKey, setApiKey] = useState('');
-  const [primaryModel, setPrimaryModel] = useState('volcengine-plan/ark-code-latest');
+  const [primaryModel, setPrimaryModel] = useState(fallbackProvider?.defaultModel ?? 'volcengine-plan/ark-code-latest');
   const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
   const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
 
   const providerReady = status?.providerInitialized ?? false;
   const [isEditing, setIsEditing] = useState(!providerReady);
 
+  function findProviderById(id: string | null | undefined): ProviderCatalogEntry | null {
+    if (!id) {
+      return fallbackProvider;
+    }
+
+    return (
+      availableProviders.find((provider) => provider.id === id || provider.aliases.includes(id)) ??
+      fallbackProvider
+    );
+  }
+
   useEffect(() => {
     if (!status) {
       return;
     }
 
-    if (status.providerId === 'volcengine') {
-      setProviderId('volcengine');
-      setApiUrl(status.providerApiUrl ?? 'https://ark.cn-beijing.volces.com/api/v3');
-      setPrimaryModel(status.providerModel ?? 'volcengine/doubao-seed-1-8-251228');
-    } else {
-      setProviderId('volcengine-plan');
-      setApiUrl(status.providerApiUrl ?? 'https://ark.cn-beijing.volces.com/api/coding/v3');
-      setPrimaryModel(status.providerModel ?? 'volcengine-plan/ark-code-latest');
+    const resolvedProvider = findProviderById(status.providerId);
+    if (resolvedProvider) {
+      setProviderId(resolvedProvider.id);
+      setApiUrl(status.providerApiUrl ?? resolvedProvider.baseUrl);
+      setPrimaryModel(status.providerModel ?? resolvedProvider.defaultModel);
     }
 
     setEnableFeishuPlugin(!status.feishuPluginEnabled ? true : status.feishuPluginEnabled);
-  }, [status]);
+  }, [status, availableProviders, fallbackProvider]);
 
   useEffect(() => {
     setIsEditing(!providerReady);
@@ -70,15 +81,13 @@ export function ProviderSetupPanel({
   useEffect(() => {
     // Only update values in edit mode when providerType changes manually
     if (!providerReady || isEditing) {
-      if (providerId === 'volcengine') {
-        setApiUrl('https://ark.cn-beijing.volces.com/api/v3');
-        setPrimaryModel('volcengine/doubao-seed-1-8-251228');
-      } else {
-        setApiUrl('https://ark.cn-beijing.volces.com/api/coding/v3');
-        setPrimaryModel('volcengine-plan/ark-code-latest');
+      const resolvedProvider = findProviderById(providerId);
+      if (resolvedProvider) {
+        setApiUrl(resolvedProvider.baseUrl);
+        setPrimaryModel(resolvedProvider.defaultModel);
       }
     }
-  }, [providerId]);
+  }, [providerId, providerReady, isEditing, availableProviders, fallbackProvider]);
 
   const postInstallActionLoading = providerSetupLoading || runtimeLaunchLoading || statusLoading;
 
@@ -109,7 +118,7 @@ export function ProviderSetupPanel({
             <div className="bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] p-3.5 rounded-lg flex flex-col gap-1">
               <span className="text-[10px] font-semibold text-[hsl(var(--muted))] uppercase tracking-wider">Provider 服务商</span>
               <strong className="text-sm font-medium text-[hsl(var(--body-strong))]">
-                {status?.providerId === 'volcengine' ? '火山引擎 Ark 通用模型' : '火山引擎 Ark Coding'}
+                {findProviderById(status?.providerId)?.label ?? status?.providerId ?? '未配置'}
               </strong>
             </div>
 
@@ -166,11 +175,14 @@ export function ProviderSetupPanel({
               <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Provider 类型</label>
               <Select
                 value={providerId}
-                onChange={(event) => setProviderId(event.target.value as 'volcengine' | 'volcengine-plan')}
+                onChange={(event) => setProviderId(event.target.value)}
                 disabled={providerSetupLoading}
               >
-                <option value="volcengine-plan">火山引擎 Ark Coding</option>
-                <option value="volcengine">火山引擎 Ark 通用模型</option>
+                {availableProviders.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.label}
+                  </option>
+                ))}
               </Select>
             </div>
 

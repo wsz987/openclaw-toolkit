@@ -92,14 +92,32 @@ export type OpenClawPostInstallStatus = {
   providerId: string | null;
   providerModel: string | null;
   providerApiUrl: string | null;
+  availableProviders: ProviderCatalogEntry[];
   feishuPluginEnabled: boolean;
   skillsInstalled: string[];
   pluginsEnabled: string[];
 };
 
+export type ProviderCatalogModelEntry = {
+  id: string;
+  name: string;
+  input: string[];
+};
+
+export type ProviderCatalogEntry = {
+  id: string;
+  label: string;
+  api: string;
+  baseUrl: string;
+  defaultModel: string;
+  apiKeyEnv: string | null;
+  aliases: string[];
+  models: ProviderCatalogModelEntry[];
+};
+
 export type OpenClawProviderSetupPayload = {
   configPath: string;
-  providerId: 'volcengine' | 'volcengine-plan';
+  providerId: string;
   apiKey: string;
   apiUrl?: string;
   primaryModel?: string;

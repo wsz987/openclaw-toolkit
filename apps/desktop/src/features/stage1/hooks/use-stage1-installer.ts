@@ -6,6 +6,7 @@ import {
   stage1Steps,
   isInstallStep,
 } from '../model/graph';
+import type { InstallerWizardStep } from '../model/app-flow';
 import {
   buildDiagnosticsInfo,
   createPendingStepProgress,
@@ -77,7 +78,7 @@ export function useStage1Installer(
   const [importingInstallation, setImportingInstallation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardStep, setWizardStep] = useState<InstallerWizardStep>(0);
   const [showPostInstallHome, setShowPostInstallHome] = useState(initialShowPostInstallHome);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -420,7 +421,6 @@ export function useStage1Installer(
 
   function handleEnterPostInstallHome() {
     setShowPostInstallHome(true);
-    setWizardStep(4);
   }
 
   function handleBackToConfig() {
@@ -445,7 +445,6 @@ export function useStage1Installer(
   useEffect(() => {
     if (initialShowPostInstallHome) {
       setShowPostInstallHome(true);
-      setWizardStep(4);
     }
   }, [initialShowPostInstallHome]);
 

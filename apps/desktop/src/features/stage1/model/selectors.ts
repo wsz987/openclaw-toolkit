@@ -1,4 +1,5 @@
 import { STEP3_SPLIT_INDEX, stage1Steps, stepDiagnosticsMap } from './graph';
+import type { InstallerWizardStep } from './app-flow';
 import type {
   InstallStep,
   Stage1CheckState,
@@ -130,7 +131,9 @@ export function buildDiagnosticsInfo(params: {
   };
 }
 
-export function deriveWizardStepFromDashboard(dashboard: Stage1Dashboard | null): number | null {
+export function deriveWizardStepFromDashboard(
+  dashboard: Stage1Dashboard | null
+): InstallerWizardStep | null {
   if (!dashboard) {
     return null;
   }
@@ -150,13 +153,15 @@ export function deriveWizardStepFromDashboard(dashboard: Stage1Dashboard | null)
   return null;
 }
 
-export function getWizardStepForInstallStep(step: InstallStep | null) {
+export function getWizardStepForInstallStep(
+  step: InstallStep | null
+): InstallerWizardStep | null {
   if (!step) {
     return null;
   }
 
   const stepIndex = stage1Steps.findIndex((item) => item.id === step);
-  return stepIndex >= STEP3_SPLIT_INDEX ? 3 : 2;
+  return (stepIndex >= STEP3_SPLIT_INDEX ? 3 : 2) as InstallerWizardStep;
 }
 
 export function findStepTitle(step: InstallStep | null | undefined) {

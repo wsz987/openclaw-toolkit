@@ -3,6 +3,25 @@ import { z } from 'zod';
 export const serviceTierSchema = z.enum(['stage-1', 'stage-2']);
 export const installModeSchema = z.enum(['local', 'remote', 'npm']);
 
+export const providerCatalogEntrySchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  api: z.string().min(1),
+  baseUrl: z.string().url(),
+  defaultModel: z.string().min(1),
+  apiKeyEnv: z.string().min(1).optional(),
+  aliases: z.array(z.string().min(1)).default([]),
+  models: z.array(z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    input: z.array(z.string().min(1)).default([])
+  })).default([])
+});
+
+export const providerCatalogManifestSchema = z.object({
+  providers: z.array(providerCatalogEntrySchema).default([])
+});
+
 export const toolkitManifestSchema = z.object({
   toolkitVersion: z.string().min(1),
   schemaVersion: z.string().min(1),
@@ -63,6 +82,8 @@ export const licensePayloadSchema = z.object({
 });
 
 export type ToolkitManifest = z.infer<typeof toolkitManifestSchema>;
+export type ProviderCatalogManifest = z.infer<typeof providerCatalogManifestSchema>;
+export type ProviderCatalogEntry = z.infer<typeof providerCatalogEntrySchema>;
 export type ReleaseManifest = z.infer<typeof releaseManifestSchema>;
 export type RequiredNodeRuntime = z.infer<typeof requiredNodeRuntimeSchema>;
 export type ReleaseArtifact = z.infer<typeof releaseArtifactSchema>;

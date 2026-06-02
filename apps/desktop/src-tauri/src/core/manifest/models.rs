@@ -29,6 +29,37 @@ pub struct WindowsRequirements {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProviderCatalogEntry {
+    pub id: String,
+    pub label: String,
+    pub api: String,
+    pub base_url: String,
+    pub default_model: String,
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub models: Vec<ProviderModelCatalogEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderModelCatalogEntry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub input: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderCatalogManifest {
+    #[serde(default)]
+    pub providers: Vec<ProviderCatalogEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RequiredNodeRuntime {
     pub version: String,
     pub range: String,
