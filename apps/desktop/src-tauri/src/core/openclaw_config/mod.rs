@@ -163,13 +163,12 @@ pub fn write_openclaw_config(
 
     let workspace_dir = openclaw_dir.join("workspace");
     let provider_catalog = default_provider_catalog(provider_catalog);
-    let providers = provider_catalog_json(&provider_catalog);
     let default_provider = provider_catalog
         .first()
         .cloned()
         .unwrap_or_else(fallback_provider_entry);
 
-    let default_agent_models = default_agent_models_map(&provider_catalog);
+    let default_agent_models = default_agent_models_map(std::slice::from_ref(&default_provider));
     let default_skills = default_skill_allowlist(&release.skills);
 
     let config = json!({
@@ -219,7 +218,7 @@ pub fn write_openclaw_config(
         },
         "models": {
             "mode": "merge",
-            "providers": providers
+            "providers": {}
         },
         "skills": {
             "load": {
@@ -306,11 +305,17 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         .clone()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| provider.default_model.clone());
+    let active_provider = provider_catalog_entry_from_choice(&provider);
 
     set_value_at_path(
         &mut config,
         &["agents", "defaults", "model", "primary"],
         Value::String(primary_model.clone()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["models", "providers"],
+        provider_catalog_json(std::slice::from_ref(&active_provider)),
     );
     set_value_at_path(
         &mut config,
@@ -332,8 +337,7 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         &["models", "providers", provider.id.as_str(), "models"],
         provider_models_value(&provider.models),
     );
-    let merged_catalog = merge_provider_catalog(&manifest_catalog, &config);
-    let agent_models = default_agent_models_map_from_descriptors(&merged_catalog);
+    let agent_models = default_agent_models_map(std::slice::from_ref(&active_provider));
     set_value_at_path(&mut config, &["agents", "defaults", "models"], agent_models);
 
     if input.grant_agent_permissions {
@@ -599,6 +603,29 @@ fn default_provider_catalog(provider_catalog: &[ProviderCatalogEntry]) -> Vec<Pr
     }
 
     provider_catalog.to_vec()
+}
+
+fn provider_catalog_entry_from_choice(choice: &ProviderChoice) -> ProviderCatalogEntry {
+    ProviderCatalogEntry {
+        id: choice.id.clone(),
+        label: choice.id.clone(),
+        api: choice.api.clone(),
+        base_url: choice.base_url.clone(),
+        default_model: choice.default_model.clone(),
+        api_key_env: Some(inferred_api_key_env(&choice.id)),
+        aliases: Vec::new(),
+        models: choice
+            .models
+            .iter()
+            .map(|model| ProviderModelCatalogEntry {
+                id: model.id.clone(),
+                name: model.name.clone(),
+                input: model.input.clone(),
+                context_window: model.context_window,
+                max_tokens: model.max_tokens,
+            })
+            .collect(),
+    }
 }
 
 fn fallback_provider_entry() -> ProviderCatalogEntry {
@@ -1145,6 +1172,45 @@ mod tests {
         fs::remove_dir_all(temp_dir).unwrap();
     }
 
+    #[test]
+    fn generated_config_does_not_preconfigure_all_provider_secrets() {
+        let temp_dir = unique_temp_dir("openclaw-config-empty-providers");
+        let openclaw_dir = temp_dir.join("openclaw");
+        fs::create_dir_all(&openclaw_dir).unwrap();
+        let config_path = openclaw_dir.join("openclaw.json");
+
+        write_openclaw_config(
+            &config_path,
+            &sample_release(),
+            "community",
+            &openclaw_dir,
+            &temp_dir.join("node"),
+            &[sample_provider(), sample_qwen_provider()],
+        )
+        .unwrap();
+
+        let raw = fs::read_to_string(&config_path).unwrap();
+        let json: Value = serde_json::from_str(&raw).unwrap();
+
+        assert_eq!(
+            json.get("models")
+                .and_then(|models| models.get("providers"))
+                .and_then(Value::as_object)
+                .map(|providers| providers.len()),
+            Some(0)
+        );
+        assert_eq!(
+            json.get("agents")
+                .and_then(|agents| agents.get("defaults"))
+                .and_then(|defaults| defaults.get("models"))
+                .and_then(Value::as_object)
+                .map(|models| models.keys().cloned().collect::<Vec<_>>()),
+            Some(vec!["deepseek/deepseek-v4-pro".to_string()])
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
     fn sample_release() -> ReleaseArtifact {
         ReleaseArtifact {
             name: "openclaw".to_string(),
@@ -1179,6 +1245,25 @@ mod tests {
                 input: vec!["text".to_string()],
                 context_window: Some(1024000),
                 max_tokens: Some(65536),
+            }],
+        }
+    }
+
+    fn sample_qwen_provider() -> ProviderCatalogEntry {
+        ProviderCatalogEntry {
+            id: "qwen".to_string(),
+            label: "Qwen".to_string(),
+            api: "openai-completions".to_string(),
+            base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1".to_string(),
+            default_model: "qwen/qwen3-coder-plus".to_string(),
+            api_key_env: Some("DASHSCOPE_API_KEY".to_string()),
+            aliases: vec!["dashscope".to_string()],
+            models: vec![ProviderModelCatalogEntry {
+                id: "qwen3-coder-plus".to_string(),
+                name: "Qwen3 Coder Plus".to_string(),
+                input: vec!["text".to_string()],
+                context_window: Some(262144),
+                max_tokens: Some(32768),
             }],
         }
     }

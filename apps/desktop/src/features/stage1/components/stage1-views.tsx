@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { AnsiLogLine } from '../../../components/ansi-log-line';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -13,6 +13,7 @@ import {
   ChevronRightIcon,
   FolderIcon,
   InfoIcon,
+  MonitorIcon,
   PlayIcon,
   SettingsIcon,
   SpinnerIcon,
@@ -57,13 +58,12 @@ function ChecksCard({ title, description, items, ready }: ChecksCardProps) {
             data-state={item.state}
           >
             <div
-              className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                item.state === 'ok'
-                  ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                  : item.state === 'error'
-                    ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
-                    : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-              }`}
+              className={`check-status-indicator w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok'
+                ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                : item.state === 'error'
+                  ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
+                  : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                }`}
             >
               {item.state === 'ok' ? (
                 <CheckIcon size={12} />
@@ -207,13 +207,12 @@ export function PrecheckStepView({
                 data-state={item.state}
               >
                 <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    item.state === 'ok'
-                      ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                      : item.state === 'error'
-                        ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
-                        : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-                  }`}
+                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok'
+                    ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                    : item.state === 'error'
+                      ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
+                      : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    }`}
                 >
                   {item.state === 'ok' ? (
                     <CheckIcon size={10} />
@@ -403,13 +402,12 @@ export function ConfigStepView({
                 data-state={item.state}
               >
                 <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    item.state === 'ok'
-                      ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                      : item.state === 'error'
-                        ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
-                        : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-                  }`}
+                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.state === 'ok'
+                    ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                    : item.state === 'error'
+                      ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
+                      : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                    }`}
                 >
                   {item.state === 'ok' ? (
                     <CheckIcon size={10} />
@@ -452,162 +450,23 @@ type ProgressStageViewProps = {
   animated?: boolean;
 };
 
-function TimelinePanel({
-  timelineDescription,
-  timelineItems,
-  timelineContainerRef
-}: Pick<ProgressStageViewProps, 'timelineDescription' | 'timelineItems' | 'timelineContainerRef'>) {
-  return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full min-h-0">
-      <CardHeader className="p-0 mb-6 flex-shrink-0">
-        <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">流程微步骤流水</CardTitle>
-        <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">{timelineDescription}</CardDescription>
-      </CardHeader>
-      <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
-        <div className="sub-steps-timeline" ref={timelineContainerRef}>
-          {timelineItems.map((step) => {
-            const isActive = step.state === 'current';
-            const isDone = step.state === 'done';
-            const isFailed = step.state === 'failed';
-
-            return (
-              <div
-                key={step.id}
-                className={`timeline-row transition-all duration-200 ${
-                  isActive ? 'active' : isDone ? 'done' : isFailed ? 'failed' : ''
-                }`}
-              >
-                <div className="timeline-icon-slot w-5 h-5 flex items-center justify-center flex-shrink-0">
-                  {isDone ? (
-                    <CheckIcon size={14} className="text-[hsl(var(--success))]" />
-                  ) : isFailed ? (
-                    <XIcon size={14} className="text-[hsl(var(--error))]" />
-                  ) : isActive ? (
-                    <SpinnerIcon size={14} className="spinning text-[hsl(var(--primary))]" />
-                  ) : (
-                    <InfoIcon size={14} className="text-white/15" />
-                  )}
-                </div>
-                <div className="timeline-text flex-1 flex flex-col gap-0.5">
-                  <strong className="text-sm font-medium text-[hsl(var(--on-dark))]">{step.title}</strong>
-                  <p className="text-[11px] text-[hsl(var(--on-dark-soft))]">{step.description}</p>
-                </div>
-                <div
-                  className={`timeline-status-badge text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
-                    isDone
-                      ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                      : isActive
-                        ? 'bg-[hsl(var(--primary)/0.2)] text-[hsl(var(--on-dark))]'
-                        : isFailed
-                          ? 'bg-[hsl(var(--error)/0.15)] text-[hsl(var(--error))]'
-                          : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-                  }`}
-                >
-                  {step.state === 'done' ? '已就绪' : step.state === 'current' ? '运行中' : step.state === 'failed' ? '受阻' : '等待中'}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function InstallLogPanel({
-  installLogTail,
-  diagnosticsInfo
-}: {
-  installLogTail: Stage1InstallLogTail | null;
-  diagnosticsInfo: Stage1DiagnosticsInfo | null;
-}) {
-  const logContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = logContainerRef.current;
-    if (!container) {
-      return;
-    }
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: 'smooth'
-    });
-  }, [installLogTail?.lines]);
-
-  return (
-    <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex flex-col h-full min-h-0">
-      <CardHeader className="p-0 mb-6 flex-shrink-0">
-        <CardTitle className="text-[hsl(var(--on-dark))] text-lg font-sans font-medium">安装日志面板</CardTitle>
-        <CardDescription className="text-xs text-[hsl(var(--on-dark-soft))]">
-          最近 200 行安装日志，自动刷新并高亮错误/警告
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0 flex-1 flex flex-col gap-4 min-h-0">
-        <div className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg px-4 py-3 flex-shrink-0">
-          <div className="text-[11px] text-[hsl(var(--on-dark-soft))] leading-relaxed">
-            {installLogTail?.path ?? '日志文件尚未生成'}
-          </div>
-          {installLogTail?.truncated ? (
-            <div className="mt-1 text-[10px] text-[hsl(var(--warning))]">已截取最近 200 行，较早日志已省略</div>
-          ) : null}
-        </div>
-
-        <div
-          ref={logContainerRef}
-          className="bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-4 flex-1 min-h-0 max-h-[28rem] overflow-y-auto overscroll-contain"
-        >
-          {installLogTail?.lines.length ? (
-            <div className="flex flex-col gap-1">
-              {installLogTail.lines.map((line, index) => (
-                <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} stripTimestamp />
-              ))}
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center text-sm text-[hsl(var(--on-dark-soft))]">
-              等待安装任务写入日志...
-            </div>
-          )}
-        </div>
-
-        {diagnosticsInfo ? (
-          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex flex-col gap-4 flex-shrink-0">
-            <div className="diagnostic-title flex items-center gap-2.5 text-base font-semibold text-[hsl(var(--primary))] border-b border-white/5 pb-3">
-              <SettingsIcon size={14} className="spinning text-[hsl(var(--primary))]" style={{ animationDuration: '12s' }} />
-              {diagnosticsInfo.title}
-            </div>
-            <p className="diagnostic-desc text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">{diagnosticsInfo.description}</p>
-            <div className="diagnostic-tasks-list flex flex-col gap-3.5 mt-2">
-              {diagnosticsInfo.tasks.map((task, index) => (
-                <div
-                  key={`${task.key}-${index}`}
-                  className={`diagnostic-task-item flex gap-3 text-sm items-start text-[hsl(var(--on-dark-soft))] ${
-                    task.status === 'checked' ? 'text-[hsl(var(--on-dark))]' : ''
-                  }`}
-                >
-                  <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    {task.status === 'checked' ? (
-                      <CheckIcon size={12} className="text-[hsl(var(--success))]" />
-                    ) : task.status === 'pending' ? (
-                      <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />
-                    ) : (
-                      <div className="w-3 h-3 rounded-full border border-white/20" />
-                    )}
-                  </div>
-                  <span className="leading-tight">{task.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="diagnostic-step-info bg-[hsl(var(--surface-dark))] border border-white/5 rounded-lg p-6 flex items-center justify-center text-[hsl(var(--on-dark-soft))] text-sm flex-shrink-0 min-h-[120px]">
-            等待执行引擎激活...
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+const CopyIcon = ({ size = 12, className }: { size?: number; className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
 
 export function ProgressStageView({
   title,
@@ -623,8 +482,57 @@ export function ProgressStageView({
   timelineContainerRef,
   animated = false
 }: ProgressStageViewProps) {
+  const [isLogsExpanded, setIsLogsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll logic for expanded console logs
+  useEffect(() => {
+    const container = logContainerRef.current;
+    if (!container || !isLogsExpanded) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [installLogTail?.lines, isLogsExpanded]);
+
+  // Copy plain logs (without ANSI codes)
+  const copyToClipboard = () => {
+    if (!installLogTail?.lines) return;
+    const cleanLogs = installLogTail.lines
+      .map(line => line.replace(/\u001b\[[0-9;]*m/g, ''))
+      .join('\n');
+    navigator.clipboard.writeText(cleanLogs);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getDiagnosticDetail = (label: string) => {
+    const lbl = label.toLowerCase();
+    if (lbl.includes('python')) {
+      return '系统将自动检测并部署受管的嵌入式 Python 容器环境。';
+    }
+    if (lbl.includes('pip') || lbl.includes('依赖') || lbl.includes('库')) {
+      return '下载并安全安装 OpenClaw 执行所需的第三方核心算法依赖库。';
+    }
+    if (lbl.includes('授权') || lbl.includes('密钥') || lbl.includes('激活') || lbl.includes('license')) {
+      return '连接验证服务器，校验本地激活包或离线授权密钥的有效性。';
+    }
+    if (lbl.includes('拉取') || lbl.includes('包') || lbl.includes('分发') || lbl.includes('下载')) {
+      return '从安全节点获取主运行引擎程序，解压释放至工作目录。';
+    }
+    if (lbl.includes('环境') || lbl.includes('初始化')) {
+      return '建立工作目录的事件缓存回环，分配底层临时资源存储。';
+    }
+    return '检验主引擎就绪依赖状态，为 OpenClaw 启动做最终校验。';
+  };
+
   return (
     <div className={`product-mockup-card-dark view-container flex-1 flex flex-col min-h-0 ${animated ? 'animate-fade-in' : ''}`.trim()}>
+      {/* 1. Header Progress Bar Hero Section */}
       <div className="progress-wrapper flex-shrink-0">
         <div className="progress-info flex flex-col min-w-[5rem]">
           <span className="text-[10px] text-[hsl(var(--on-dark-soft))] uppercase tracking-wide">整体进度</span>
@@ -649,14 +557,222 @@ export function ProgressStageView({
         </div>
       </div>
 
-      <div className="split-layout split-layout-progress grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 items-stretch">
-        <TimelinePanel
-          timelineDescription={timelineDescription}
-          timelineItems={timelineItems}
-          timelineContainerRef={timelineContainerRef}
-        />
-        <InstallLogPanel installLogTail={installLogTail} diagnosticsInfo={diagnosticsInfo} />
-      </div>
+      {/* 2. Unified Steps Milestone Card Container */}
+      <Card className="bg-[hsl(var(--surface-dark-soft))] border-white/5 p-8 flex-1 min-h-0 flex flex-col overflow-hidden shadow-2xl rounded-xl">
+        {/* Card Header Chrome */}
+        <div className="flex items-center gap-3 border-b border-white/5 pb-5 mb-6 flex-shrink-0">
+          <div className="flex gap-1.5 flex-shrink-0">
+            <span className="w-3 h-3 rounded-full bg-[#c64545]/80" />
+            <span className="w-3 h-3 rounded-full bg-[#d4a017]/80" />
+            <span className="w-3 h-3 rounded-full bg-[#5db872]/80" />
+          </div>
+          <span className="text-[hsl(var(--on-dark))] text-sm font-sans font-medium">{title} · {timelineDescription}</span>
+        </div>
+
+        {/* Vertical Pipeline Stepper */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 py-1" ref={timelineContainerRef}>
+          <div className="relative flex flex-col gap-6 pl-1 py-1">
+            {timelineItems.map((step, index) => {
+              const isActive = step.state === 'current';
+              const isDone = step.state === 'done';
+              const isFailed = step.state === 'failed';
+              const isLast = index === timelineItems.length - 1;
+
+              return (
+                <div key={step.id} className="relative flex gap-4 items-start">
+                  {/* Connecting vertical line segment */}
+                  {!isLast && (
+                    <div
+                      className={`w-[2px] absolute left-3 top-6 bottom-[-24px] z-0 transition-colors duration-300 -translate-x-1/2 ${isDone
+                        ? 'bg-[hsl(var(--success))]'
+                        : isActive
+                          ? 'bg-gradient-to-b from-[hsl(var(--primary))] to-white/5 animate-pulse'
+                          : 'bg-white/5'
+                        }`}
+                    />
+                  )}
+
+                  {/* Left timeline node */}
+                  <div className="flex flex-col items-center flex-shrink-0 relative w-6">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all duration-300 z-10 ${isDone
+                        ? 'bg-[hsl(var(--success)/0.15)] border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] shadow-[0_0_8px_rgba(93,184,114,0.15)]'
+                        : isActive
+                          ? 'bg-[hsl(var(--primary)/0.15)] border-[hsl(var(--primary)/0.4)] text-[hsl(var(--primary))] shadow-[0_0_8px_rgba(204,120,92,0.15)]'
+                          : 'bg-black/20 border-white/10 text-white/20'
+                        }`}
+                    >
+                      {isDone ? (
+                        <CheckIcon size={11} strokeWidth={3} />
+                      ) : isFailed ? (
+                        <XIcon size={11} strokeWidth={3} />
+                      ) : isActive ? (
+                        <SpinnerIcon size={11} className="spinning" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/25" />
+                      )}
+                    </div>
+
+                    {/* Connecting vertical line segment */}
+                    {!isLast && (
+                      <div
+                        className={`w-[2px] absolute top-6 bottom-[-24px] z-0 transition-colors duration-300 ${isDone
+                          ? 'bg-[hsl(var(--success))]'
+                          : isActive
+                            ? 'bg-gradient-to-b from-[hsl(var(--primary))] to-white/5 animate-pulse'
+                            : 'bg-white/5'
+                          }`}
+                      />
+                    )}
+                  </div>
+
+                  {/* Milestone step detail */}
+                  <div className="flex-1 min-w-0 pt-0.5 pb-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <h5
+                        className={`text-xs font-semibold transition-colors duration-200 ${isActive
+                          ? 'text-[hsl(var(--primary))] font-bold'
+                          : isDone
+                            ? 'text-[hsl(var(--on-dark))] font-medium'
+                            : 'text-[hsl(var(--on-dark-soft))]'
+                          }`}
+                      >
+                        {step.title}
+                      </h5>
+                      <span
+                        className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition-all duration-200 ${isDone
+                          ? 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]'
+                          : isActive
+                            ? 'bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] animate-pulse'
+                            : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                          }`}
+                      >
+                        {isDone ? '就绪' : isActive ? '进行中' : '等待'}
+                      </span>
+                    </div>
+                    <p className={`text-[10px] leading-relaxed mt-1 transition-colors duration-200 ${isActive ? 'text-[hsl(var(--on-dark))] font-medium' : isDone ? 'text-[hsl(var(--on-dark-soft))]' : 'text-white/25'
+                      }`}>
+                      {step.description}
+                    </p>
+
+                    {/* Inline diagnostics tasks - Rendered ONLY inside the currently active step */}
+                    {isActive && diagnosticsInfo && diagnosticsInfo.tasks.length > 0 && (
+                      <div className="mt-3.5 bg-black/25 border border-white/5 rounded-xl p-4.5 flex flex-col gap-3.5 animate-fade-in shadow-inner text-left max-w-2xl">
+                        <div className="text-[10px] text-[hsl(var(--primary))] font-semibold uppercase tracking-wider border-b border-white/5 pb-2.5 flex items-center gap-1.5">
+                          <SettingsIcon size={12} className="spinning" />
+                          <span>正在执行诊断校验 ({diagnosticsInfo.title})</span>
+                        </div>
+                        {diagnosticsInfo.tasks.map((task, subIndex) => {
+                          const isSubChecked = task.status === 'checked';
+                          const isSubPending = task.status === 'pending';
+
+                          return (
+                            <div key={task.key} className="flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center flex-shrink-0 border transition-all duration-200 ${isSubChecked
+                                      ? 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.25)] text-[hsl(var(--success))]'
+                                      : isSubPending
+                                        ? 'bg-[hsl(var(--primary)/0.1)] border-[hsl(var(--primary)/0.25)] text-[hsl(var(--primary))]'
+                                        : 'bg-white/5 border-white/10 text-white/20'
+                                      }`}
+                                  >
+                                    {isSubChecked ? (
+                                      <CheckIcon size={9} strokeWidth={3} />
+                                    ) : isSubPending ? (
+                                      <SpinnerIcon size={9} className="spinning" />
+                                    ) : (
+                                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                                    )}
+                                  </div>
+                                  <span
+                                    className={`text-[11px] truncate font-medium transition-colors duration-200 ${isSubChecked
+                                      ? 'text-[hsl(var(--on-dark))]'
+                                      : isSubPending
+                                        ? 'text-[hsl(var(--primary))]'
+                                        : 'text-[hsl(var(--on-dark-soft))]'
+                                      }`}
+                                  >
+                                    {task.label}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${isSubChecked
+                                    ? 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]'
+                                    : isSubPending
+                                      ? 'bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]'
+                                      : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+                                    }`}
+                                >
+                                  {isSubChecked ? '完成' : isSubPending ? '进行中' : '等待'}
+                                </span>
+                              </div>
+                              <p className="text-[10px] leading-relaxed text-[hsl(var(--on-dark-soft))] pl-7">
+                                {getDiagnosticDetail(task.label)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3. Collapsible logs section at the bottom of the card */}
+        <div className="flex-shrink-0 flex flex-col min-h-0 mt-6 border-t border-white/5 pt-6">
+          <button
+            onClick={() => setIsLogsExpanded(!isLogsExpanded)}
+            className="w-full flex items-center justify-between py-2.5 px-4 rounded-lg bg-black/20 border border-white/5 hover:bg-white/5 transition-all text-xs font-medium text-[hsl(var(--on-dark-soft))] hover:text-white cursor-pointer select-none"
+          >
+            <span className="flex items-center gap-2">
+              <MonitorIcon size={12} className={isLogsExpanded ? 'text-[hsl(var(--primary))]' : ''} />
+              展开查看实时安装控制台日志 (高级选项)
+            </span>
+            <span className="text-[10px] font-sans">
+              {isLogsExpanded ? '隐藏 ▲' : '展开 ▼'}
+            </span>
+          </button>
+
+          {isLogsExpanded && (
+            <div className="flex flex-col min-h-0 mt-3 animate-slide-in">
+              <div
+                ref={logContainerRef}
+                className="bg-black/45 border border-white/5 rounded-lg p-4 max-h-[12rem] overflow-y-auto overscroll-contain font-mono text-[10px] select-text text-left"
+              >
+                {installLogTail?.lines.length ? (
+                  <div className="flex flex-col gap-1">
+                    {installLogTail.lines.map((line, index) => (
+                      <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} stripTimestamp />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-[hsl(var(--on-dark-soft))] py-8 text-[11px]">
+                    等待安装日志输出...
+                  </div>
+                )}
+              </div>
+              {installLogTail?.lines.length ? (
+                <div className="flex justify-between items-center mt-2 text-[10px] text-[hsl(var(--on-dark-soft))] font-sans px-1">
+                  {/* <span className="truncate max-w-[280px]" title={installLogTail.path}>路径: {installLogTail.path}</span> */}
+                  <button
+                    onClick={copyToClipboard}
+                    className={`cursor-pointer hover:text-white transition-colors flex items-center ml-auto gap-1.5 ${copied ? 'text-[hsl(var(--success))] font-semibold' : ''
+                      }`}
+                  >
+                    <CopyIcon size={10} />
+                    {copied ? '已复制' : '复制日志'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

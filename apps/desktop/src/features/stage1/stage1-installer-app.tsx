@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { findStepTitle } from './model/selectors';
 import { createInstallResultFromRecord, useStage1Installer } from './hooks/use-stage1-installer';
 import { Stage1Header } from './components/stage1-header';
@@ -7,12 +8,73 @@ import { PostInstallEntryView } from './components/post-install-entry-view';
 import { PostInstallHomeView } from './components/post-install-views';
 import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './components/stage1-views';
 import type { AppBootstrapState } from './model/types';
+import { BrandSpike } from './components/brand-spike';
+import { Button } from '../../components/ui/button';
+import { MonitorIcon, KeyIcon, ArrowLeftIcon } from '../../components/icons';
 import {
   getRecoveredInstallationMode,
   isRecoveredInstallationState,
   resolveStage1Screen,
   shouldShowInstallerChrome
 } from './model/app-flow';
+
+type PostInstallMenuProps = {
+  activeTab: 'operations' | 'provider';
+  onTabSelect: (tab: 'operations' | 'provider') => void;
+  providerReady: boolean;
+};
+
+export function PostInstallMenu({ activeTab, onTabSelect, providerReady }: PostInstallMenuProps) {
+  return (
+    <div className="flex flex-col gap-4 w-full py-4 select-none">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted))] mb-1 pl-1">
+        管理与配置
+      </div>
+      <div className="flex flex-col gap-2.5">
+        <button
+          onClick={() => onTabSelect('operations')}
+          className={`w-full text-left px-4 py-3.5 rounded-lg flex items-center gap-3 transition-all duration-200 cursor-pointer border ${activeTab === 'operations'
+            ? 'bg-[hsl(var(--canvas))] text-[hsl(var(--primary))] border-[hsl(var(--hairline))] shadow-[0_2px_6px_rgba(20,20,19,0.04)] ring-3 ring-[hsl(var(--primary)/0.12)] font-semibold'
+            : 'bg-transparent hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--muted))] border-transparent'
+            }`}
+        >
+          <MonitorIcon size={14} className={activeTab === 'operations' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-soft))]'} />
+          <div className="flex flex-col">
+            <span className={`text-xs font-semibold leading-tight ${activeTab === 'operations' ? 'text-[hsl(var(--ink))]' : 'text-[hsl(var(--body-strong))]'}`}>
+              运行控制中心
+            </span>
+            <span className="text-[9px] text-[hsl(var(--muted-soft))]">
+              实例服务生命周期管理
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onTabSelect('provider')}
+          className={`w-full text-left px-4 py-3.5 rounded-lg flex items-center gap-3 transition-all duration-200 cursor-pointer border ${activeTab === 'provider'
+            ? 'bg-[hsl(var(--canvas))] text-[hsl(var(--primary))] border-[hsl(var(--hairline))] shadow-[0_2px_6px_rgba(20,20,19,0.04)] ring-3 ring-[hsl(var(--primary)/0.12)] font-semibold'
+            : 'bg-transparent hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--muted))] border-transparent'
+            }`}
+        >
+          <div className="relative">
+            <KeyIcon size={14} className={activeTab === 'provider' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-soft))]'} />
+            {!providerReady && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--warning))] animate-pulse absolute -top-1 -right-1" />
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className={`text-xs font-semibold leading-tight ${activeTab === 'provider' ? 'text-[hsl(var(--ink))]' : 'text-[hsl(var(--body-strong))]'}`}>
+              API 授权与接入
+            </span>
+            <span className="text-[9px] text-[hsl(var(--muted-soft))]">
+              服务商与工具策略配置
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function Stage1InstallerApp({
   bootstrapState,
@@ -95,6 +157,19 @@ export function Stage1InstallerApp({
 
   const bootstrapResult = bootstrapState?.activeInstallation ? createInstallResultFromRecord(bootstrapState.activeInstallation) : null;
   const bootstrapStatus = bootstrapState?.status ?? null;
+
+  const providerReady = (postInstallStatus ?? bootstrapStatus)?.providerInitialized ?? false;
+  const [activeTab, setActiveTab] = useState<'operations' | 'provider'>('operations');
+  const [hasInitializedTab, setHasInitializedTab] = useState(false);
+
+  useEffect(() => {
+    const resolvedStatus = postInstallStatus ?? bootstrapStatus;
+    if (resolvedStatus && !hasInitializedTab) {
+      setActiveTab(resolvedStatus.providerInitialized ? 'operations' : 'provider');
+      setHasInitializedTab(true);
+    }
+  }, [postInstallStatus, bootstrapStatus, hasInitializedTab]);
+
   const screen = resolveStage1Screen({
     bootstrapState,
     hasError: Boolean(error),
@@ -124,17 +199,17 @@ export function Stage1InstallerApp({
         onOpenControlPanel={handleOpenControlPanel}
         onOpenInstallationDirectory={handleOpenInstallationDirectory}
         onOpenLogsDirectory={handleOpenLogsDirectory}
-        onBack={() => onExitInstalledHome?.()}
         mode={getRecoveredInstallationMode(bootstrapState)}
         recoveryMessage={bootstrapState?.message ?? null}
         importLoading={importingInstallation}
-        backLabel="返回安装向导"
         onImportInstallation={async () => {
           const imported = await handleImportInstallation();
           if (imported) {
             onExitInstalledHome?.();
           }
         }}
+        activeTab={activeTab}
+        onNavigateToProvider={() => setActiveTab('provider')}
       />
     );
   } else if (screen === 'install-failed') {
@@ -163,7 +238,8 @@ export function Stage1InstallerApp({
         onOpenControlPanel={handleOpenControlPanel}
         onOpenInstallationDirectory={handleOpenInstallationDirectory}
         onOpenLogsDirectory={handleOpenLogsDirectory}
-        onBack={handleBackToConfig}
+        activeTab={activeTab}
+        onNavigateToProvider={() => setActiveTab('provider')}
       />
     );
   } else if (screen === 'post-install-entry' && result) {
@@ -245,7 +321,9 @@ export function Stage1InstallerApp({
     );
   }
 
-  const showInstallerChrome = shouldShowInstallerChrome(screen);
+  const isPostInstall = screen === 'installed-home' || screen === 'post-install-home';
+  const showInstallerChrome = shouldShowInstallerChrome(screen) || isPostInstall;
+  const onBackAction = screen === 'installed-home' ? (() => onExitInstalledHome?.()) : (screen === 'post-install-home' ? handleBackToConfig : undefined);
 
   if (showInstallerChrome) {
     return (
@@ -253,28 +331,73 @@ export function Stage1InstallerApp({
         {/* Left Sidebar */}
         <aside className="w-80 border-r border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-8 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
           <div className="flex flex-col gap-8">
-            <Stage1Header
-              openclawVersion={dashboard?.openclawVersion}
-              nodeVersion={dashboard?.nodeVersion}
-              layout="vertical"
-            />
-            <Stage1Stepper
-              phase={phase}
-              wizardStep={wizardStep}
-              onStepSelect={setWizardStep}
-              layout="vertical"
-            />
+            {isPostInstall ? (
+              <header className="flex flex-col gap-6 select-none">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <BrandSpike size={14} className="text-[hsl(var(--ink))]" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--primary))]">
+                      OpenClaw Dashboard
+                    </span>
+                  </div>
+                  <h1 className="font-serif text-2xl text-[hsl(var(--ink))] font-normal tracking-tight leading-tight">
+                    服务配置与控制
+                  </h1>
+                </div>
+
+                {dashboard?.openclawVersion ? (
+                  <div className="flex flex-col gap-1 bg-[hsl(var(--surface-cream-strong))] border border-[hsl(var(--hairline))] rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="badge-pill bg-[hsl(var(--surface-card))] text-[hsl(var(--ink))] text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                        ACTIVE
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted))] font-medium">
+                        当前运行版本
+                      </span>
+                    </div>
+                    <strong className="font-serif text-xl text-[hsl(var(--primary))] font-normal leading-none mt-1">
+                      v{dashboard.openclawVersion}
+                    </strong>
+                    <span className="text-xs text-[hsl(var(--muted-soft))] font-medium mt-0.5">
+                      Node {dashboard.nodeVersion || 'v20.11.0'}
+                    </span>
+                  </div>
+                ) : null}
+              </header>
+            ) : (
+              <Stage1Header
+                openclawVersion={dashboard?.openclawVersion}
+                nodeVersion={dashboard?.nodeVersion}
+                layout="vertical"
+              />
+            )}
+            {isPostInstall ? (
+              <PostInstallMenu
+                activeTab={activeTab}
+                onTabSelect={setActiveTab}
+                providerReady={providerReady}
+              />
+            ) : (
+              <Stage1Stepper
+                phase={phase}
+                wizardStep={wizardStep}
+                onStepSelect={setWizardStep}
+                layout="vertical"
+              />
+            )}
           </div>
-          {/* Subtle brand footer */}
-          <div className="text-[10px] text-[hsl(var(--muted-soft))] font-medium pt-4 border-t border-[hsl(var(--hairline))] flex items-center justify-between">
-            <span>OpenClaw Core</span>
-            <span>v{dashboard?.openclawVersion || '1.0.0'}</span>
+          {/* Footer actions & info */}
+          <div className="flex flex-col gap-4 pt-4 border-t border-[hsl(var(--hairline))]">
+            <div className="text-[10px] text-[hsl(var(--muted-soft))] font-medium flex items-center justify-between">
+              <span>OpenClaw Core</span>
+              <span>v{dashboard?.openclawVersion || '1.0.0'}</span>
+            </div>
           </div>
         </aside>
 
         {/* Right Main Content */}
-        <section className="flex-1 flex flex-col min-h-0 bg-[hsl(var(--canvas))] p-10 overflow-y-auto">
-          <div className="max-w-[1000px] w-full mx-auto flex-1 flex flex-col min-h-0">
+        <section className="flex-1 flex flex-col min-h-0 bg-[hsl(var(--canvas))] overflow-y-auto">
+          <div className={`max-w-[1000px] w-full mx-auto flex-1 flex flex-col min-h-0 ${isPostInstall ? 'py-8 px-6' : ''}`}>
             {content}
           </div>
         </section>

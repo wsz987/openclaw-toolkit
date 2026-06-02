@@ -7,115 +7,84 @@
       "baseUrl": "https://ark.cn-beijing.volces.com/api/plan/v3",
       "defaultModel": "volcengine-agent-plan/ark-code-latest",
       "apiKeyEnv": "VOLCANO_ENGINE_API_KEY",
-      "aliases": [
-        "ark-plan",
-        "volcengine-plan"
-      ],
+      "aliases": ["ark-plan", "volcengine-plan"],
       "models": [
         {
           "id": "ark-code-latest",
           "name": "ark-code-latest",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "glm-5.1",
           "name": "glm-5.1",
           "contextWindow": 200000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "deepseek-v3.2",
           "name": "deepseek-v3.2",
           "contextWindow": 128000,
           "maxTokens": 32000,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "deepseek-v4-flash",
           "name": "deepseek-v4-flash",
           "contextWindow": 1024000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "deepseek-v4-pro",
           "name": "deepseek-v4-pro",
           "contextWindow": 1024000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "doubao-seed-2.0-code",
           "name": "doubao-seed-2.0-code",
           "contextWindow": 256000,
           "maxTokens": 65536,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "doubao-seed-2.0-pro",
           "name": "doubao-seed-2.0-pro",
           "contextWindow": 256000,
           "maxTokens": 65536,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "doubao-seed-2.0-lite",
           "name": "doubao-seed-2.0-lite",
           "contextWindow": 256000,
           "maxTokens": 65536,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "doubao-seed-2.0-mini",
           "name": "doubao-seed-2.0-mini",
           "contextWindow": 256000,
           "maxTokens": 65536,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "minimax-m2.7",
           "name": "minimax-m2.7",
           "contextWindow": 200000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "kimi-k2.6",
           "name": "kimi-k2.6",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         }
       ]
     },
@@ -133,20 +102,14 @@
           "name": "Doubao Seed 1.8",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "doubao-seed-code-preview-251028",
           "name": "Doubao Seed Code Preview",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         }
       ]
     },
@@ -157,38 +120,28 @@
       "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "defaultModel": "qwen/qwen3-coder-plus",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
-      "aliases": [
-        "dashscope"
-      ],
+      "aliases": ["dashscope"],
       "models": [
         {
           "id": "qwen-plus",
           "name": "Qwen Plus",
           "contextWindow": 131072,
           "maxTokens": 16384,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "qwen3.5-plus",
           "name": "Qwen 3.5 Plus",
           "contextWindow": 131072,
           "maxTokens": 16384,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "qwen3-coder-plus",
           "name": "Qwen3 Coder Plus",
           "contextWindow": 262144,
           "maxTokens": 32768,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         }
       ]
     },
@@ -206,36 +159,14 @@
           "name": "DeepSeek V4 Pro",
           "contextWindow": 1024000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
           "contextWindow": 1024000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
-        },
-        {
-          "id": "deepseek-chat",
-          "name": "DeepSeek Chat (Legacy Alias)",
-          "contextWindow": 128000,
-          "maxTokens": 8192,
-          "input": [
-            "text"
-          ]
-        },
-        {
-          "id": "deepseek-reasoner",
-          "name": "DeepSeek Reasoner (Legacy Alias)",
-          "contextWindow": 128000,
-          "maxTokens": 8192,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         }
       ]
     },
@@ -246,28 +177,21 @@
       "baseUrl": "https://api.moonshot.cn/v1",
       "defaultModel": "moonshot/kimi-k2.5",
       "apiKeyEnv": "MOONSHOT_API_KEY",
-      "aliases": [
-        "kimi"
-      ],
+      "aliases": ["kimi"],
       "models": [
         {
           "id": "kimi-k2.5",
           "name": "Kimi K2.5",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text",
-            "image"
-          ]
+          "input": ["text", "image"]
         },
         {
           "id": "kimi-k2-turbo-preview",
           "name": "Kimi K2 Turbo Preview",
           "contextWindow": 256000,
           "maxTokens": 32000,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         }
       ]
     },
@@ -278,37 +202,28 @@
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
       "defaultModel": "zhipu/glm-4.5",
       "apiKeyEnv": "ZHIPU_API_KEY",
-      "aliases": [
-        "bigmodel",
-        "glm"
-      ],
+      "aliases": ["bigmodel", "glm"],
       "models": [
         {
           "id": "glm-4.5",
           "name": "GLM 4.5",
           "contextWindow": 128000,
           "maxTokens": 16384,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "glm-4.5-air",
           "name": "GLM 4.5 Air",
           "contextWindow": 128000,
           "maxTokens": 16384,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         },
         {
           "id": "glm-5.1",
           "name": "GLM 5.1",
           "contextWindow": 200000,
           "maxTokens": 65536,
-          "input": [
-            "text"
-          ]
+          "input": ["text"]
         }
       ]
     }

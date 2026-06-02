@@ -26,6 +26,7 @@ type RuntimeOperationsPanelProps = {
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
   onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
+  onNavigateToProvider?: () => void;
 };
 
 export function RuntimeOperationsPanel({
@@ -40,7 +41,8 @@ export function RuntimeOperationsPanel({
   onLaunchRuntime,
   onOpenControlPanel,
   onOpenInstallationDirectory,
-  onOpenLogsDirectory
+  onOpenLogsDirectory,
+  onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
   const isRunning = Boolean(runtimeLaunchResult);
@@ -95,26 +97,35 @@ export function RuntimeOperationsPanel({
       <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between">
         <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
           <div>
-            <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行后操作控制台</h3>
+            <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
             <p className="text-xs leading-relaxed text-[hsl(var(--on-dark-soft))] mt-1">
-              完成 API 接入后解锁系统运行与环境入口
+              完成 API 授权与接入后解锁服务控制中心
             </p>
           </div>
           <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/5 text-[hsl(var(--on-dark-soft))] tracking-wide">
-            锁定中
+            未激活
           </span>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-6 px-4 gap-4 animate-fade-in">
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-8 px-4 gap-4 animate-fade-in">
           <div className="w-14 h-14 rounded-full border border-dashed border-white/20 flex items-center justify-center text-[hsl(var(--on-dark-soft))]">
             <MonitorIcon size={24} />
           </div>
           <div className="flex flex-col gap-1.5 max-w-sm">
             <strong className="text-sm font-medium text-[hsl(var(--on-dark))]">等待 API 授权配置就绪</strong>
             <p className="text-xs text-[hsl(var(--on-dark-soft))] leading-relaxed">
-              请先在左侧完成 OpenClaw 的 API 授权与 Provider 参数配置。配置就绪后，此操作面板将自动解锁启动入口与运行状态面板。
+              请先在导航菜单中选择 “API 授权与接入” 完成服务商参数配置。配置就绪后，此操作面板将自动解锁启动入口与运行状态面板。
             </p>
           </div>
+          {onNavigateToProvider && (
+            <Button
+              variant="default"
+              onClick={onNavigateToProvider}
+              className="mt-2 h-9 text-xs bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] border-0 px-4 rounded-md font-medium"
+            >
+              前往配置 API
+            </Button>
+          )}
         </div>
 
         <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-white/40">
