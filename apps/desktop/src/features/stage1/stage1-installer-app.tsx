@@ -7,17 +7,12 @@ import { PostInstallEntryView } from './components/post-install-entry-view';
 import { PostInstallHomeView } from './components/post-install-views';
 import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './components/stage1-views';
 import type { AppBootstrapState } from './model/types';
-
-type Stage1Screen =
-  | 'installed-post-install-entry'
-  | 'installed-post-install-home'
-  | 'install-failed'
-  | 'post-install-entry'
-  | 'post-install-home'
-  | 'precheck'
-  | 'config'
-  | 'progress-deps'
-  | 'progress-verify';
+import {
+  getRecoveredInstallationMode,
+  isRecoveredInstallationState,
+  resolveStage1Screen,
+  shouldShowInstallerChrome
+} from './model/app-flow';
 
 export function Stage1InstallerApp({
   bootstrapState,
@@ -28,6 +23,8 @@ export function Stage1InstallerApp({
   onExitInstalledHome?: () => void;
   initialBaseDir?: string | null;
 }) {
+  const shouldOpenInstalledHomeDirectly = isRecoveredInstallationState(bootstrapState);
+
   const {
     baseDir,
     canStartInstall,
@@ -88,37 +85,25 @@ export function Stage1InstallerApp({
     wizardStep,
     handleImportInstallation,
     confirmInstall
-  } = useStage1Installer(initialBaseDir ?? bootstrapState?.settings.lastSelectedBaseDir ?? bootstrapState?.activeInstallation?.baseDir ?? null);
+  } = useStage1Installer(
+    initialBaseDir ?? bootstrapState?.settings.lastSelectedBaseDir ?? bootstrapState?.activeInstallation?.baseDir ?? null,
+    shouldOpenInstalledHomeDirectly
+  );
 
   const bootstrapResult = bootstrapState?.activeInstallation ? createInstallResultFromRecord(bootstrapState.activeInstallation) : null;
   const bootstrapStatus = bootstrapState?.status ?? null;
-  const showInstalledHome = Boolean(
-    bootstrapState &&
-      (bootstrapState.screen === 'installedHome' || bootstrapState.screen === 'recovery') &&
-      bootstrapResult
-  );
-
-  const screen: Stage1Screen = showInstalledHome
-    ? showPostInstallHome
-      ? 'installed-post-install-home'
-      : 'installed-post-install-entry'
-    : phase === 'failed' || Boolean(error)
-      ? 'install-failed'
-      : phase === 'succeeded' && result
-        ? showPostInstallHome
-          ? 'post-install-home'
-          : 'post-install-entry'
-        : wizardStep === 0
-          ? 'precheck'
-          : wizardStep === 1
-            ? 'config'
-            : wizardStep === 2
-              ? 'progress-deps'
-              : 'progress-verify';
+  const screen = resolveStage1Screen({
+    bootstrapState,
+    hasError: Boolean(error),
+    hasInstallResult: Boolean(result),
+    phase,
+    showPostInstallHome,
+    wizardStep
+  });
 
   let content: React.ReactNode;
 
-  if (screen === 'installed-post-install-home' && bootstrapResult) {
+  if (screen === 'installed-home' && bootstrapResult) {
     content = (
       <PostInstallHomeView
         result={bootstrapResult}
@@ -137,7 +122,7 @@ export function Stage1InstallerApp({
         onOpenInstallationDirectory={handleOpenInstallationDirectory}
         onOpenLogsDirectory={handleOpenLogsDirectory}
         onBack={() => onExitInstalledHome?.()}
-        mode={bootstrapState?.screen === 'recovery' ? 'recovery' : 'installed'}
+        mode={getRecoveredInstallationMode(bootstrapState)}
         recoveryMessage={bootstrapState?.message ?? null}
         importLoading={importingInstallation}
         backLabel="返回安装向导"
@@ -147,23 +132,6 @@ export function Stage1InstallerApp({
             onExitInstalledHome?.();
           }
         }}
-      />
-    );
-  } else if (screen === 'installed-post-install-entry' && bootstrapResult) {
-    content = (
-      <PostInstallEntryView
-        result={bootstrapResult}
-        status={postInstallStatus ?? bootstrapStatus}
-        statusLoading={postInstallLoading}
-        title={bootstrapState?.screen === 'recovery' ? '检测到已安装环境' : 'OpenClaw 已安装'}
-        description={
-          bootstrapState?.screen === 'recovery'
-            ? '应用已恢复上次识别到的 OpenClaw 安装实例。请点击下一步，再进入初始化与授权或运行后操作。'
-            : '当前设备已经安装 OpenClaw。请点击下一步，再进入初始化与授权或运行后操作。'
-        }
-        backLabel="返回安装向导"
-        onContinue={handleEnterPostInstallHome}
-        onBack={() => onExitInstalledHome?.()}
       />
     );
   } else if (screen === 'install-failed') {
@@ -274,7 +242,7 @@ export function Stage1InstallerApp({
     );
   }
 
-  const showInstallerChrome = screen === 'precheck' || screen === 'config' || screen === 'progress-deps' || screen === 'progress-verify';
+  const showInstallerChrome = shouldShowInstallerChrome(screen);
 
   return (
     <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">

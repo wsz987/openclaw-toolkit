@@ -79,11 +79,10 @@ export function PostInstallEntryView({
               </p>
             </div>
             <span
-              className={`inline-flex px-3 py-1 rounded-full text-[11px] font-semibold ${
-                providerReady
+              className={`inline-flex px-3 py-1 rounded-full text-[11px] font-semibold ${providerReady
                   ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                   : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
-              }`}
+                }`}
             >
               {statusLoading ? '状态检查中' : providerReady ? '已完成初始化' : '待初始化'}
             </span>
@@ -95,9 +94,9 @@ export function PostInstallEntryView({
           {statusLoading ? '下一步' : providerReady ? '进入运行后操作' : '下一步：初始化 OpenClaw'}
           <ChevronRightIcon size={14} className="ml-1.5" />
         </Button>
-        <Button variant="secondary" onClick={onBack}>
+        {/* <Button variant="secondary" onClick={onBack}>
           {backLabel}
-        </Button>
+        </Button> */}
       </div>
     </Card>
   );

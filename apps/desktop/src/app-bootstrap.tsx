@@ -14,6 +14,7 @@ import {
 } from './components/ui/alert-dialog';
 import { SpinnerIcon } from './components/icons';
 import type { AppBootstrapState } from './features/stage1/model/types';
+import { hasMissingInstallationRecord } from './features/stage1/model/app-flow';
 
 export function AppBootstrap() {
   const [state, setState] = useState<AppBootstrapState | null>(null);
@@ -99,7 +100,7 @@ export function AppBootstrap() {
     );
   }
 
-  const shouldReturnToInstaller = Boolean(state?.message?.includes('安装记录丢失'));
+  const shouldReturnToInstaller = hasMissingInstallationRecord(state);
 
   if (shouldReturnToInstaller) {
     return (
@@ -128,10 +129,6 @@ export function AppBootstrap() {
         </AlertDialog>
       </>
     );
-  }
-
-  if (state?.screen === 'installedHome' || state?.screen === 'recovery') {
-    return <Stage1InstallerApp bootstrapState={state} onExitInstalledHome={() => setRefreshKey((value) => value + 1)} />;
   }
 
   return <Stage1InstallerApp bootstrapState={state} onExitInstalledHome={() => setRefreshKey((value) => value + 1)} />;

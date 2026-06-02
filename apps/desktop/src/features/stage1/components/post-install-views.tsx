@@ -77,12 +77,12 @@ export function PostInstallHomeView({
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        {/* <div className="flex items-center gap-3">
           <Button variant="secondary" onClick={onBack} className="hover:bg-[hsl(var(--surface-soft))] h-10 px-5 shadow-sm text-xs font-semibold">
             {resolvedBackLabel}
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {/* Recovery/Warning Message if present */}

@@ -48,7 +48,10 @@ import {
   startStage1Install
 } from '../api/stage1-api';
 
-export function useStage1Installer(initialBaseDir?: string | null) {
+export function useStage1Installer(
+  initialBaseDir?: string | null,
+  initialShowPostInstallHome = false
+) {
   const DASHBOARD_DEBOUNCE_MS = 350;
 
   const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : 'D:\\OpenClaw');
@@ -75,7 +78,7 @@ export function useStage1Installer(initialBaseDir?: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const [showPostInstallHome, setShowPostInstallHome] = useState(false);
+  const [showPostInstallHome, setShowPostInstallHome] = useState(initialShowPostInstallHome);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const dashboardRequestGuard = useLatestRequestGuard();
@@ -438,6 +441,13 @@ export function useStage1Installer(initialBaseDir?: string | null) {
       });
     }
   }
+
+  useEffect(() => {
+    if (initialShowPostInstallHome) {
+      setShowPostInstallHome(true);
+      setWizardStep(4);
+    }
+  }, [initialShowPostInstallHome]);
 
   useEffect(() => {
     const container = timelineContainerRef.current;

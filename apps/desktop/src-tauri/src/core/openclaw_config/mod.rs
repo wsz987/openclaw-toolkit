@@ -3,6 +3,7 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    thread,
 };
 
 use anyhow::Context;
@@ -80,7 +81,7 @@ pub fn install_openclaw(
     install_mode: &str,
     node_dir: &Path,
     remote_base_url: Option<&str>,
-    progress_callback: Option<&dyn Fn(&str)>,
+    progress_callback: Option<&(dyn Fn(&str) + Sync)>,
 ) -> anyhow::Result<PathBuf> {
     let openclaw_dir = openclaw_dir(base_dir, release);
 
@@ -537,7 +538,7 @@ fn install_openclaw_via_npm(
 fn ensure_openclaw_package_dependencies(
     openclaw_dir: &Path,
     node_dir: &Path,
-    progress_callback: Option<&dyn Fn(&str)>,
+    progress_callback: Option<&(dyn Fn(&str) + Sync)>,
 ) -> anyhow::Result<()> {
     let package_dir = openclaw_dir.join("package");
     if !package_dir.exists() {
@@ -574,7 +575,7 @@ fn ensure_openclaw_package_dependencies(
 fn install_openclaw_package_dependencies(
     package_dir: &Path,
     node_dir: &Path,
-    progress_callback: Option<&dyn Fn(&str)>,
+    progress_callback: Option<&(dyn Fn(&str) + Sync)>,
 ) -> anyhow::Result<()> {
     let node_exe = node_runtime_executable(node_dir);
     if !node_exe.exists() {
@@ -645,7 +646,7 @@ fn run_command_with_progress(
     working_dir: &Path,
     context_message: &str,
     node_exe: &Path,
-    progress_callback: Option<&dyn Fn(&str)>,
+    progress_callback: Option<&(dyn Fn(&str) + Sync)>,
     command: &str,
     args: &[&str],
 ) -> anyhow::Result<std::process::ExitStatus> {
@@ -668,22 +669,40 @@ fn run_command_with_progress(
         .env("npm_config_python", "python")
         .env("PATH", build_augmented_path_env(node_exe))
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .spawn()
         .with_context(|| context_message.to_string())?;
 
-    if let Some(stdout) = child.stdout.take() {
-        stream_lines(stdout, progress_callback, false);
-    }
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
 
-    let status = child.wait().with_context(|| context_message.to_string())?;
+    let status = thread::scope(|scope| -> anyhow::Result<std::process::ExitStatus> {
+        let stdout_task = stdout
+            .map(|stream| scope.spawn(move || stream_lines(stream, progress_callback, false)));
+        let stderr_task = stderr
+            .map(|stream| scope.spawn(move || stream_lines(stream, progress_callback, true)));
+
+        let status = child.wait().with_context(|| context_message.to_string())?;
+
+        if let Some(task) = stdout_task {
+            task.join()
+                .map_err(|_| anyhow::anyhow!("stdout log stream thread panicked"))?;
+        }
+
+        if let Some(task) = stderr_task {
+            task.join()
+                .map_err(|_| anyhow::anyhow!("stderr log stream thread panicked"))?;
+        }
+
+        Ok(status)
+    })?;
 
     Ok(status)
 }
 
 fn stream_lines(
     stream: impl std::io::Read,
-    progress_callback: Option<&dyn Fn(&str)>,
+    progress_callback: Option<&(dyn Fn(&str) + Sync)>,
     is_stderr: bool,
 ) {
     let reader = BufReader::new(stream);
@@ -709,6 +728,8 @@ fn stream_lines(
 fn should_surface_progress_line(line: &str) -> bool {
     let lowered = line.to_ascii_lowercase();
     lowered.contains("npm http fetch")
+        || lowered.contains("npm verbose")
+        || lowered.contains("npm info")
         || lowered.contains("added ")
         || lowered.contains("changed ")
         || lowered.contains("audited ")
