@@ -101,6 +101,12 @@ export const generateOpenClawConfigStep: WorkflowStep = {
           extraDirs: [`${ctx.runtimeDir}\\skills`]
         }
       },
+      update: {
+        checkOnStart: false,
+        auto: {
+          enabled: false
+        }
+      },
       plugins: {
         entries: {
           [DEFAULT_BROWSER_PLUGIN_ID]: {
