@@ -102,6 +102,8 @@ export type ProviderCatalogModelEntry = {
   id: string;
   name: string;
   input: string[];
+  contextWindow?: number;
+  maxTokens?: number;
 };
 
 export type ProviderCatalogEntry = {

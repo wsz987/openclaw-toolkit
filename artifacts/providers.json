@@ -1,28 +1,120 @@
 {
   "providers": [
     {
-      "id": "volcengine-plan",
-      "label": "火山引擎 Ark Coding",
+      "id": "volcengine-agent-plan",
+      "label": "火山引擎 Ark Agent Plan",
       "api": "openai-completions",
-      "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
-      "defaultModel": "volcengine-plan/ark-code-latest",
+      "baseUrl": "https://ark.cn-beijing.volces.com/api/plan/v3",
+      "defaultModel": "volcengine-agent-plan/ark-code-latest",
       "apiKeyEnv": "VOLCANO_ENGINE_API_KEY",
       "aliases": [
-        "ark-plan"
+        "ark-plan",
+        "volcengine-plan"
       ],
       "models": [
         {
           "id": "ark-code-latest",
-          "name": "Ark Code Latest",
+          "name": "ark-code-latest",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
+          "input": [
+            "text",
+            "image"
+          ]
+        },
+        {
+          "id": "glm-5.1",
+          "name": "glm-5.1",
+          "contextWindow": 200000,
+          "maxTokens": 65536,
           "input": [
             "text"
           ]
         },
         {
-          "id": "doubao-seed-code",
-          "name": "Doubao Seed Code",
+          "id": "deepseek-v3.2",
+          "name": "deepseek-v3.2",
+          "contextWindow": 128000,
+          "maxTokens": 32000,
           "input": [
             "text"
+          ]
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "deepseek-v4-flash",
+          "contextWindow": 1024000,
+          "maxTokens": 65536,
+          "input": [
+            "text"
+          ]
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "deepseek-v4-pro",
+          "contextWindow": 1024000,
+          "maxTokens": 65536,
+          "input": [
+            "text"
+          ]
+        },
+        {
+          "id": "doubao-seed-2.0-code",
+          "name": "doubao-seed-2.0-code",
+          "contextWindow": 256000,
+          "maxTokens": 65536,
+          "input": [
+            "text",
+            "image"
+          ]
+        },
+        {
+          "id": "doubao-seed-2.0-pro",
+          "name": "doubao-seed-2.0-pro",
+          "contextWindow": 256000,
+          "maxTokens": 65536,
+          "input": [
+            "text",
+            "image"
+          ]
+        },
+        {
+          "id": "doubao-seed-2.0-lite",
+          "name": "doubao-seed-2.0-lite",
+          "contextWindow": 256000,
+          "maxTokens": 65536,
+          "input": [
+            "text",
+            "image"
+          ]
+        },
+        {
+          "id": "doubao-seed-2.0-mini",
+          "name": "doubao-seed-2.0-mini",
+          "contextWindow": 256000,
+          "maxTokens": 65536,
+          "input": [
+            "text",
+            "image"
+          ]
+        },
+        {
+          "id": "minimax-m2.7",
+          "name": "minimax-m2.7",
+          "contextWindow": 200000,
+          "maxTokens": 65536,
+          "input": [
+            "text"
+          ]
+        },
+        {
+          "id": "kimi-k2.6",
+          "name": "kimi-k2.6",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
+          "input": [
+            "text",
+            "image"
           ]
         }
       ]
@@ -39,6 +131,8 @@
         {
           "id": "doubao-seed-1-8-251228",
           "name": "Doubao Seed 1.8",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
           "input": [
             "text",
             "image"
@@ -47,6 +141,8 @@
         {
           "id": "doubao-seed-code-preview-251028",
           "name": "Doubao Seed Code Preview",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
           "input": [
             "text",
             "image"
@@ -68,6 +164,8 @@
         {
           "id": "qwen-plus",
           "name": "Qwen Plus",
+          "contextWindow": 131072,
+          "maxTokens": 16384,
           "input": [
             "text",
             "image"
@@ -76,6 +174,8 @@
         {
           "id": "qwen3.5-plus",
           "name": "Qwen 3.5 Plus",
+          "contextWindow": 131072,
+          "maxTokens": 16384,
           "input": [
             "text",
             "image"
@@ -84,6 +184,8 @@
         {
           "id": "qwen3-coder-plus",
           "name": "Qwen3 Coder Plus",
+          "contextWindow": 262144,
+          "maxTokens": 32768,
           "input": [
             "text"
           ]
@@ -102,6 +204,8 @@
         {
           "id": "deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
+          "contextWindow": 1024000,
+          "maxTokens": 65536,
           "input": [
             "text"
           ]
@@ -109,6 +213,8 @@
         {
           "id": "deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
+          "contextWindow": 1024000,
+          "maxTokens": 65536,
           "input": [
             "text"
           ]
@@ -116,6 +222,8 @@
         {
           "id": "deepseek-chat",
           "name": "DeepSeek Chat (Legacy Alias)",
+          "contextWindow": 128000,
+          "maxTokens": 8192,
           "input": [
             "text"
           ]
@@ -123,6 +231,8 @@
         {
           "id": "deepseek-reasoner",
           "name": "DeepSeek Reasoner (Legacy Alias)",
+          "contextWindow": 128000,
+          "maxTokens": 8192,
           "input": [
             "text"
           ]
@@ -143,6 +253,8 @@
         {
           "id": "kimi-k2.5",
           "name": "Kimi K2.5",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
           "input": [
             "text",
             "image"
@@ -151,6 +263,8 @@
         {
           "id": "kimi-k2-turbo-preview",
           "name": "Kimi K2 Turbo Preview",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
           "input": [
             "text"
           ]
@@ -172,6 +286,8 @@
         {
           "id": "glm-4.5",
           "name": "GLM 4.5",
+          "contextWindow": 128000,
+          "maxTokens": 16384,
           "input": [
             "text"
           ]
@@ -179,6 +295,8 @@
         {
           "id": "glm-4.5-air",
           "name": "GLM 4.5 Air",
+          "contextWindow": 128000,
+          "maxTokens": 16384,
           "input": [
             "text"
           ]
@@ -186,6 +304,8 @@
         {
           "id": "glm-5.1",
           "name": "GLM 5.1",
+          "contextWindow": 200000,
+          "maxTokens": 65536,
           "input": [
             "text"
           ]

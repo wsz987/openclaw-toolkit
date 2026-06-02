@@ -50,6 +50,10 @@ pub struct ProviderModelCatalogEntry {
     pub name: String,
     #[serde(default)]
     pub input: Vec<String>,
+    #[serde(default)]
+    pub context_window: Option<u64>,
+    #[serde(default)]
+    pub max_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -27,12 +27,16 @@ export const generateOpenClawConfigStep: WorkflowStep = {
           models: provider.models.map((model) => ({
             id: model.id,
             name: model.name,
-            input: model.input ?? []
+            input: model.input ?? [],
+            contextWindow: model.contextWindow,
+            maxTokens: model.maxTokens
           }))
         };
         return acc;
       }, {});
     const defaultProvider = ctx.providerCatalog?.providers?.[0] ?? fallbackProvider();
+    const defaultAgentModels = (ctx.providerCatalog?.providers?.length ? ctx.providerCatalog.providers : [fallbackProvider()])
+      .flatMap((provider) => provider.models.map((model) => [`${provider.id}/${model.id}`, {}] as const));
 
     await fs.writeJson(ctx.configPath, {
       version: 1,
@@ -54,6 +58,7 @@ export const generateOpenClawConfigStep: WorkflowStep = {
           model: {
             primary: defaultProvider.defaultModel
           },
+          models: Object.fromEntries(defaultAgentModels),
           workspace: workspaceDir,
           heartbeat: {
             every: '0m'
@@ -102,18 +107,20 @@ export const generateOpenClawConfigStep: WorkflowStep = {
 
 function fallbackProvider() {
   return {
-    id: 'volcengine-plan',
-    label: '火山引擎 Ark Coding',
+    id: 'volcengine-agent-plan',
+    label: '火山引擎 Ark Agent Plan',
     api: DEFAULT_OPENAI_PROVIDER_API,
-    baseUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3',
-    defaultModel: 'volcengine-plan/ark-code-latest',
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/plan/v3',
+    defaultModel: 'volcengine-agent-plan/ark-code-latest',
     apiKeyEnv: 'VOLCANO_ENGINE_API_KEY',
     aliases: ['ark-plan'],
     models: [
       {
         id: 'ark-code-latest',
         name: 'Ark Code Latest',
-        input: ['text']
+        input: ['text', 'image'],
+        contextWindow: 256000,
+        maxTokens: 32000
       }
     ]
   };
@@ -123,6 +130,7 @@ function inferApiKeyEnv(providerId: string): string {
   switch (providerId) {
     case 'volcengine':
     case 'volcengine-plan':
+    case 'volcengine-agent-plan':
       return 'VOLCANO_ENGINE_API_KEY';
     case 'qwen':
       return 'DASHSCOPE_API_KEY';

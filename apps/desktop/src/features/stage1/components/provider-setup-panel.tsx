@@ -38,10 +38,10 @@ export function ProviderSetupPanel({
 }: ProviderSetupPanelProps) {
   const availableProviders = status?.availableProviders ?? [];
   const fallbackProvider = availableProviders[0] ?? null;
-  const [providerId, setProviderId] = useState<string>(fallbackProvider?.id ?? 'volcengine-plan');
-  const [apiUrl, setApiUrl] = useState(fallbackProvider?.baseUrl ?? 'https://ark.cn-beijing.volces.com/api/coding/v3');
+  const [providerId, setProviderId] = useState<string>(fallbackProvider?.id ?? 'volcengine-agent-plan');
+  const [apiUrl, setApiUrl] = useState(fallbackProvider?.baseUrl ?? 'https://ark.cn-beijing.volces.com/api/plan/v3');
   const [apiKey, setApiKey] = useState('');
-  const [primaryModel, setPrimaryModel] = useState(fallbackProvider?.defaultModel ?? 'volcengine-plan/ark-code-latest');
+  const [primaryModel, setPrimaryModel] = useState(fallbackProvider?.defaultModel ?? 'volcengine-agent-plan/ark-code-latest');
   const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
   const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
 

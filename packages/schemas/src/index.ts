@@ -14,7 +14,9 @@ export const providerCatalogEntrySchema = z.object({
   models: z.array(z.object({
     id: z.string().min(1),
     name: z.string().min(1),
-    input: z.array(z.string().min(1)).default([])
+    input: z.array(z.string().min(1)).default([]),
+    contextWindow: z.number().int().positive().optional(),
+    maxTokens: z.number().int().positive().optional()
   })).default([])
 });
 

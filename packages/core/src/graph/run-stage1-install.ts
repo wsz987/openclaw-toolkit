@@ -31,6 +31,7 @@ export async function runStage1InstallWorkflow(input: Stage1InstallInput): Promi
     workflowId: randomUUID(),
     projectRoot: input.projectRoot,
     runtimeDir,
+    nodeDir: path.join(input.projectRoot, 'runtime', 'node'),
     configPath: path.join(runtimeDir, 'openclaw.json'),
     licenseKey: input.licenseKey,
     installMode: input.installMode,

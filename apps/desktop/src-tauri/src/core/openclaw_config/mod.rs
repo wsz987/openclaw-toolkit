@@ -58,6 +58,8 @@ pub struct ProviderModelDescriptor {
     pub id: String,
     pub name: String,
     pub input: Vec<String>,
+    pub context_window: Option<u64>,
+    pub max_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,6 +169,8 @@ pub fn write_openclaw_config(
         .cloned()
         .unwrap_or_else(fallback_provider_entry);
 
+    let default_agent_models = default_agent_models_map(&provider_catalog);
+
     let config = json!({
         "version": 1,
         "openclawVersion": release.version,
@@ -187,6 +191,7 @@ pub fn write_openclaw_config(
                 "model": {
                     "primary": default_provider.default_model
                 },
+                "models": default_agent_models,
                 "workspace": workspace_dir.to_string_lossy(),
                 "heartbeat": {
                     "every": "0m"
@@ -321,6 +326,9 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         &["models", "providers", provider.id.as_str(), "models"],
         provider_models_value(&provider.models),
     );
+    let merged_catalog = merge_provider_catalog(&manifest_catalog, &config);
+    let agent_models = default_agent_models_map_from_descriptors(&merged_catalog);
+    set_value_at_path(&mut config, &["agents", "defaults", "models"], agent_models);
 
     if input.grant_agent_permissions {
         merge_agent_permissions(&mut config);
@@ -536,6 +544,8 @@ fn provider_catalog_json(provider_catalog: &[ProviderCatalogEntry]) -> Value {
                         "id": model.id,
                         "name": model.name,
                         "input": model.input,
+                        "contextWindow": model.context_window,
+                        "maxTokens": model.max_tokens,
                     })
                 }).collect::<Vec<_>>()
             }),
@@ -555,17 +565,19 @@ fn default_provider_catalog(provider_catalog: &[ProviderCatalogEntry]) -> Vec<Pr
 
 fn fallback_provider_entry() -> ProviderCatalogEntry {
     ProviderCatalogEntry {
-        id: "volcengine-plan".to_string(),
-        label: "火山引擎 Ark Coding".to_string(),
+        id: "volcengine-agent-plan".to_string(),
+        label: "火山引擎 Ark Agent Plan".to_string(),
         api: DEFAULT_OPENAI_PROVIDER_API.to_string(),
-        base_url: "https://ark.cn-beijing.volces.com/api/coding/v3".to_string(),
-        default_model: "volcengine-plan/ark-code-latest".to_string(),
+        base_url: "https://ark.cn-beijing.volces.com/api/plan/v3".to_string(),
+        default_model: "volcengine-agent-plan/ark-code-latest".to_string(),
         api_key_env: Some("VOLCANO_ENGINE_API_KEY".to_string()),
-        aliases: vec!["ark-plan".to_string()],
+        aliases: vec!["ark-plan".to_string(), "volcengine-plan".to_string()],
         models: vec![ProviderModelCatalogEntry {
             id: "ark-code-latest".to_string(),
             name: "Ark Code Latest".to_string(),
-            input: vec!["text".to_string()],
+            input: vec!["text".to_string(), "image".to_string()],
+            context_window: Some(256000),
+            max_tokens: Some(32000),
         }],
     }
 }
@@ -668,6 +680,8 @@ fn provider_descriptor_from_catalog(provider: &ProviderCatalogEntry) -> Provider
                 id: model.id.clone(),
                 name: model.name.clone(),
                 input: model.input.clone(),
+                context_window: model.context_window,
+                max_tokens: model.max_tokens,
             })
             .collect(),
     }
@@ -698,8 +712,16 @@ fn provider_models_from_value(models_value: Option<&Value>) -> Vec<ProviderModel
                         .collect()
                 })
                 .unwrap_or_default();
+            let context_window = item.get("contextWindow").and_then(Value::as_u64);
+            let max_tokens = item.get("maxTokens").and_then(Value::as_u64);
 
-            Some(ProviderModelDescriptor { id, name, input })
+            Some(ProviderModelDescriptor {
+                id,
+                name,
+                input,
+                context_window,
+                max_tokens,
+            })
         })
         .collect()
 }
@@ -713,15 +735,39 @@ fn provider_models_value(models: &[ProviderModelDescriptor]) -> Value {
                     "id": model.id,
                     "name": model.name,
                     "input": model.input,
+                    "contextWindow": model.context_window,
+                    "maxTokens": model.max_tokens,
                 })
             })
             .collect(),
     )
 }
 
+fn default_agent_models_map(provider_catalog: &[ProviderCatalogEntry]) -> Value {
+    let provider_descriptors: Vec<ProviderDescriptor> = provider_catalog
+        .iter()
+        .map(provider_descriptor_from_catalog)
+        .collect();
+    default_agent_models_map_from_descriptors(&provider_descriptors)
+}
+
+fn default_agent_models_map_from_descriptors(provider_catalog: &[ProviderDescriptor]) -> Value {
+    let mut models = serde_json::Map::new();
+
+    for provider in provider_catalog {
+        for model in &provider.models {
+            models.insert(format!("{}/{}", provider.id, model.id), json!({}));
+        }
+    }
+
+    Value::Object(models)
+}
+
 fn inferred_api_key_env(provider_id: &str) -> String {
     match provider_id {
-        "volcengine" | "volcengine-plan" => "VOLCANO_ENGINE_API_KEY".to_string(),
+        "volcengine" | "volcengine-plan" | "volcengine-agent-plan" => {
+            "VOLCANO_ENGINE_API_KEY".to_string()
+        }
         "qwen" => "DASHSCOPE_API_KEY".to_string(),
         "deepseek" => "DEEPSEEK_API_KEY".to_string(),
         "moonshot" => "MOONSHOT_API_KEY".to_string(),
