@@ -61,8 +61,6 @@ export function Stage1InstallerApp({
         <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
           <PostInstallEntryView
             result={controller.result}
-            status={controller.postInstallStatus}
-            statusLoading={controller.postInstallLoading}
             onContinue={controller.handleEnterPostInstallHome}
             onBack={controller.handleBackToConfig}
           />

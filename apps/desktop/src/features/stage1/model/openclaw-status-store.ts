@@ -131,17 +131,6 @@ function getStore(configPath: string) {
   return store;
 }
 
-export function invalidateOpenClawStatus(configPath: string) {
-  const store = storeRegistry.get(configPath);
-  if (!store) {
-    const nextStore = getStore(configPath);
-    void nextStore.refresh();
-    return;
-  }
-
-  void store.refresh();
-}
-
 export function useOpenClawStatusSubscription(configPath: string | null | undefined) {
   const store = configPath ? getStore(configPath) : null;
 

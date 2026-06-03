@@ -25,7 +25,6 @@ import {
 import type {
   InstallMode,
   OpenClawLaunchResult,
-  OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1Dashboard,
@@ -36,7 +35,6 @@ import type {
 } from '../model/types';
 import {
   importInstallationFromPath,
-  inspectOpenClawStatus,
   inspectStage1Dashboard,
   inspectVersionCatalog,
   launchOpenClawRuntime,
@@ -48,7 +46,6 @@ import {
   setupOpenClawProvider,
   startStage1Install
 } from '../api/stage1-api';
-import { invalidateOpenClawStatus } from '../model/openclaw-status-store';
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
@@ -69,8 +66,6 @@ export function useStage1Installer(
   const [versionCatalog, setVersionCatalog] = useState<VersionCatalogResult | null>(null);
   const [result, setResult] = useState<Stage1InstallResult | null>(null);
   const [installLogTail, setInstallLogTail] = useState<Stage1InstallLogTail | null>(null);
-  const [postInstallStatus, setPostInstallStatus] = useState<OpenClawPostInstallStatus | null>(null);
-  const [postInstallLoading, setPostInstallLoading] = useState(false);
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
   const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
@@ -87,7 +82,6 @@ export function useStage1Installer(
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const dashboardRequestGuard = useLatestRequestGuard();
   const versionCatalogRequestGuard = useLatestRequestGuard();
-  const postInstallStatusRequestGuard = useLatestRequestGuard();
   const providerSetupRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
   const installLogRequestGuard = useLatestRequestGuard();
@@ -220,7 +214,6 @@ export function useStage1Installer(
     setError(null);
     setResult(null);
     setInstallLogTail(null);
-    setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
@@ -271,7 +264,6 @@ export function useStage1Installer(
     try {
       const response = await startStage1Install(payload);
       setResult(response);
-      await loadPostInstallStatus(response.configPath);
       await loadDashboard(payload);
       await loadInstallLog(payload.baseDir);
     } catch (err) {
@@ -300,32 +292,6 @@ export function useStage1Installer(
     await startInstall();
   }
 
-  async function loadPostInstallStatus(configPath: string) {
-    const requestId = postInstallStatusRequestGuard.begin();
-    setPostInstallLoading(true);
-    try {
-      const response = await inspectOpenClawStatus(configPath);
-
-      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
-        return null;
-      }
-
-      setPostInstallStatus(response);
-      return response;
-    } catch (err) {
-      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
-        return null;
-      }
-
-      setError(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      if (postInstallStatusRequestGuard.isCurrent(requestId)) {
-        setPostInstallLoading(false);
-      }
-    }
-  }
-
   async function handleProviderSetup(input: OpenClawProviderSetupPayload) {
     const requestId = providerSetupRequestGuard.begin();
     setProviderSetupLoading(true);
@@ -338,8 +304,6 @@ export function useStage1Installer(
       }
 
       setProviderSetupResult(response);
-      await loadPostInstallStatus(response.configPath);
-      invalidateOpenClawStatus(response.configPath);
       handleEnterPostInstallHome();
       return response;
     } catch (err) {
@@ -368,8 +332,6 @@ export function useStage1Installer(
       }
 
       setRuntimeLaunchResult(response);
-      await loadPostInstallStatus(configPath);
-      invalidateOpenClawStatus(configPath);
       return response;
     } catch (err) {
       if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
@@ -431,7 +393,6 @@ export function useStage1Installer(
   function handleBackToConfig() {
     setError(null);
     setResult(null);
-    setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
@@ -452,14 +413,6 @@ export function useStage1Installer(
       setShowPostInstallHome(true);
     }
   }, [initialShowPostInstallHome]);
-
-  useEffect(() => {
-    if (!initialConfigPath) {
-      return;
-    }
-
-    void loadPostInstallStatus(initialConfigPath);
-  }, [initialConfigPath]);
 
   useEffect(() => {
     if (loading) {
@@ -603,8 +556,6 @@ export function useStage1Installer(
     logsDirOpening,
     loading,
     phase,
-    postInstallLoading,
-    postInstallStatus,
     progressValue,
     readyChecks,
     result,
@@ -642,8 +593,7 @@ export function useStage1Installer(
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
     handleOpenLogsDirectory,
-    handleProviderSetup,
-    loadPostInstallStatus
+    handleProviderSetup
   };
 }
 

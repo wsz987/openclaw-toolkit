@@ -25,7 +25,7 @@ export function PostInstallHomeScreen({
   const bootstrapStatus = bootstrapState?.status ?? null;
   const result = controller.result ?? bootstrapResult;
   const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result?.configPath);
-  const resolvedStatus = subscribedStatus ?? controller.postInstallStatus ?? bootstrapStatus;
+  const resolvedStatus = subscribedStatus ?? bootstrapStatus;
   const providerReady = resolvedStatus?.providerInitialized ?? false;
 
   const [activeTab, setActiveTab] = useState<'operations' | 'provider'>('operations');
@@ -95,7 +95,7 @@ export function PostInstallHomeScreen({
         <PostInstallHomeView
           result={result}
           status={resolvedStatus}
-          statusLoading={controller.postInstallLoading || subscribedStatusLoading}
+          statusLoading={subscribedStatusLoading}
           providerSetupLoading={controller.providerSetupLoading}
           providerSetupResult={controller.providerSetupResult}
           runtimeLaunchLoading={controller.runtimeLaunchLoading}
