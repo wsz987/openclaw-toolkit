@@ -22,7 +22,7 @@ use crate::core::{
     remote::download_remote_file,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenClawStatusSummary {
     pub openclaw_dir: String,
@@ -44,7 +44,7 @@ pub struct OpenClawStatusSummary {
     pub plugins_enabled: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderDescriptor {
     pub id: String,
@@ -57,7 +57,7 @@ pub struct ProviderDescriptor {
     pub models: Vec<ProviderModelDescriptor>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderModelDescriptor {
     pub id: String,

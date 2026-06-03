@@ -4,9 +4,11 @@ use crate::core::app_state::{
     bootstrap_app_state, import_installation_from_path, open_control_panel,
     open_installation_directory, open_logs_directory,
 };
+use crate::core::status_watcher::OpenClawStatusWatcher;
 
 #[tauri::command]
 pub async fn bootstrap_app_state_command(
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
 ) -> Result<crate::core::app_state::AppBootstrapState, String> {
     tauri::async_runtime::spawn_blocking(bootstrap_app_state)
         .await
@@ -20,10 +22,19 @@ pub async fn bootstrap_app_state_command(
             eprintln!("bootstrap_app_state_command failed:\n{}", rendered);
             rendered
         })
+        .map(|state| {
+            if let Some(installation) = &state.active_installation {
+                watcher.watch_config_path(&installation.config_path);
+            } else {
+                watcher.clear_watch_target();
+            }
+            state
+        })
 }
 
 #[tauri::command]
 pub async fn import_installation_from_path_command(
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
     path: String,
 ) -> Result<crate::core::app_state::AppBootstrapState, String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -38,14 +49,20 @@ pub async fn import_installation_from_path_command(
         );
         rendered
     })?
-    .map_err(|error| {
-        let rendered = render_error_chain(&error);
-        eprintln!(
-            "import_installation_from_path_command failed:\n{}",
+        .map_err(|error| {
+            let rendered = render_error_chain(&error);
+            eprintln!(
+                "import_installation_from_path_command failed:\n{}",
+                rendered
+            );
             rendered
-        );
-        rendered
-    })
+        })
+        .map(|state| {
+            if let Some(installation) = &state.active_installation {
+                watcher.watch_config_path(&installation.config_path);
+            }
+            state
+        })
 }
 
 #[tauri::command]

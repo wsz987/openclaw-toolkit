@@ -15,6 +15,7 @@ import type {
   OpenClawProviderSetupResult,
   Stage1InstallResult
 } from '../model/types';
+import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 import { ProviderBrandIcon } from './provider-brand-icons';
 
 type ProviderSetupPanelProps = {
@@ -42,7 +43,9 @@ export function ProviderSetupPanel({
   importLoading,
   onImportInstallation
 }: ProviderSetupPanelProps) {
-  const availableProviders = status?.availableProviders ?? [];
+  const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result.configPath);
+  const resolvedStatus = subscribedStatus ?? status;
+  const availableProviders = resolvedStatus?.availableProviders ?? [];
   const fallbackProvider = availableProviders[0] ?? null;
 
   const [providerId, setProviderId] = useState<string>(fallbackProvider?.id ?? 'volcengine-agent-plan');
@@ -52,7 +55,7 @@ export function ProviderSetupPanel({
   const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
   const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
 
-  const providerReady = status?.providerInitialized ?? false;
+  const providerReady = resolvedStatus?.providerInitialized ?? false;
   const [isEditing, setIsEditing] = useState(!providerReady);
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -93,16 +96,16 @@ export function ProviderSetupPanel({
   }
 
   function resetFormToCurrentStatus() {
-    const resolvedProvider = findProviderById(status?.providerId ?? providerId);
+    const resolvedProvider = findProviderById(resolvedStatus?.providerId ?? providerId);
 
     if (resolvedProvider) {
       syncProviderFields(resolvedProvider, {
-        apiUrl: status?.providerApiUrl,
-        primaryModel: status?.providerModel
+        apiUrl: resolvedStatus?.providerApiUrl,
+        primaryModel: resolvedStatus?.providerModel
       });
     }
 
-    setEnableFeishuPlugin(status?.feishuPluginEnabled ?? true);
+    setEnableFeishuPlugin(resolvedStatus?.feishuPluginEnabled ?? true);
     setApiKey('');
     setTestResult(null);
   }
@@ -114,22 +117,22 @@ export function ProviderSetupPanel({
   };
 
   useEffect(() => {
-    if (!status) {
+    if (!resolvedStatus) {
       return;
     }
 
     if (providerReady && !isEditing) {
-      const resolvedProvider = findProviderById(status.providerId);
+      const resolvedProvider = findProviderById(resolvedStatus.providerId);
       if (resolvedProvider) {
         syncProviderFields(resolvedProvider, {
-          apiUrl: status.providerApiUrl,
-          primaryModel: status.providerModel
+          apiUrl: resolvedStatus.providerApiUrl,
+          primaryModel: resolvedStatus.providerModel
         });
       }
     }
 
-    setEnableFeishuPlugin(status.feishuPluginEnabled);
-  }, [status, providerReady, isEditing, availableProviders, fallbackProvider]);
+    setEnableFeishuPlugin(resolvedStatus.feishuPluginEnabled);
+  }, [resolvedStatus, providerReady, isEditing, availableProviders, fallbackProvider]);
 
   useEffect(() => {
     setIsEditing(!providerReady);
@@ -140,16 +143,16 @@ export function ProviderSetupPanel({
       return;
     }
 
-    const resolvedProvider = findProviderById(status?.providerId);
+    const resolvedProvider = findProviderById(resolvedStatus?.providerId);
     if (!resolvedProvider) {
       return;
     }
 
     syncProviderFields(resolvedProvider, {
-      apiUrl: providerReady && !isEditing ? status?.providerApiUrl : undefined,
-      primaryModel: providerReady && !isEditing ? status?.providerModel : undefined
+      apiUrl: providerReady && !isEditing ? resolvedStatus?.providerApiUrl : undefined,
+      primaryModel: providerReady && !isEditing ? resolvedStatus?.providerModel : undefined
     });
-  }, [providerId, status, providerReady, isEditing, availableProviders, fallbackProvider]);
+  }, [providerId, resolvedStatus, providerReady, isEditing, availableProviders, fallbackProvider]);
 
   useEffect(() => {
     // Only update values in edit mode when providerId changes manually
@@ -164,7 +167,8 @@ export function ProviderSetupPanel({
     setTestResult(null);
   }, [providerId, providerReady, isEditing, availableProviders, fallbackProvider]);
 
-  const postInstallActionLoading = providerSetupLoading || runtimeLaunchLoading || statusLoading;
+  const postInstallActionLoading =
+    providerSetupLoading || runtimeLaunchLoading || statusLoading || subscribedStatusLoading;
 
   const handleTestConnection = async () => {
     if (!apiKey.trim() && !providerReady) {
@@ -263,8 +267,8 @@ export function ProviderSetupPanel({
             <div className="flex items-center gap-2 self-start md:self-auto">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${providerReady
-                    ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                    : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
+                  ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
+                  : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
                   }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${providerReady ? 'bg-[hsl(var(--success))]' : 'bg-[hsl(var(--warning))] animate-pulse'}`} />
@@ -282,14 +286,14 @@ export function ProviderSetupPanel({
                   <CardContent className="p-5 flex items-center gap-4">
                     <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs">
                       <ProviderBrandIcon
-                        providerId={status?.providerId ?? providerId}
+                        providerId={resolvedStatus?.providerId ?? providerId}
                         className="w-6 h-6"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">当前服务商</span>
                       <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
-                        {findProviderById(status?.providerId)?.label ?? status?.providerId ?? '未配置'}
+                        {findProviderById(resolvedStatus?.providerId)?.label ?? resolvedStatus?.providerId ?? '未配置'}
                       </strong>
                     </div>
                   </CardContent>
@@ -305,14 +309,14 @@ export function ProviderSetupPanel({
                       <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">运行主模型</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
-                          {status?.providerModel ?? primaryModel}
+                          {resolvedStatus?.providerModel ?? primaryModel}
                         </strong>
                         <button
-                          onClick={() => copyToClipboard(status?.providerModel ?? primaryModel)}
+                          onClick={() => copyToClipboard(resolvedStatus?.providerModel ?? primaryModel)}
                           className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 rounded hover:bg-[hsl(var(--surface-soft))] transition-all"
                           title="复制模型名称"
                         >
-                          {copiedText === (status?.providerModel ?? primaryModel) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedText === (resolvedStatus?.providerModel ?? primaryModel) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
@@ -325,14 +329,14 @@ export function ProviderSetupPanel({
                     <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">API 终结点 (Endpoint)</span>
                     <div className="flex items-center justify-between gap-4 mt-1.5 bg-[hsl(var(--canvas))] p-2.5 rounded-lg border border-[hsl(var(--hairline))]">
                       <code className="text-xs font-mono font-medium text-[hsl(var(--body-strong))] break-all select-all">
-                        {status?.providerApiUrl ?? apiUrl}
+                        {resolvedStatus?.providerApiUrl ?? apiUrl}
                       </code>
                       <button
-                        onClick={() => copyToClipboard(status?.providerApiUrl ?? apiUrl)}
+                        onClick={() => copyToClipboard(resolvedStatus?.providerApiUrl ?? apiUrl)}
                         className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1.5 rounded hover:bg-[hsl(var(--surface-soft))] transition-all flex-shrink-0"
                         title="复制终结点"
                       >
-                        {copiedText === (status?.providerApiUrl ?? apiUrl) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedText === (resolvedStatus?.providerApiUrl ?? apiUrl) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </CardContent>
@@ -371,7 +375,7 @@ export function ProviderSetupPanel({
                     <div>
                       <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] block">飞书机器人插件入口</strong>
                       <p className="text-[11px] text-[hsl(var(--muted))] mt-0.5">
-                        通过 {status?.feishuPluginEnabled ? '已启用' : '已禁用'} 状态挂载。允许团队通过飞书单聊/群聊唤醒受管 Agent 进行协作开发。
+                        通过 {resolvedStatus?.feishuPluginEnabled ? '已启用' : '已禁用'} 状态挂载。允许团队通过飞书单聊/群聊唤醒受管 Agent 进行协作开发。
                       </p>
                     </div>
                   </div>
@@ -403,22 +407,22 @@ export function ProviderSetupPanel({
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {availableProviders.map((provider) => {
                     const isSelected = provider.id === providerId;
-                    const isCurrentlyActive = status?.providerId === provider.id;
+                    const isCurrentlyActive = resolvedStatus?.providerId === provider.id;
 
                     return (
                       <div
                         key={provider.id}
                         onClick={() => setProviderId(provider.id)}
                         className={`group relative p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-3 select-none ${isSelected
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-xs'
-                            : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
+                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-xs'
+                          : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
                           }`}
                       >
                         <div className="flex items-start justify-between">
                           <div
                             className={`p-2 rounded-lg transition-transform group-hover:scale-105 border ${isSelected
-                                ? 'bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--primary))/0.25] shadow-2xs'
-                                : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]'
+                              ? 'bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--primary))/0.25] shadow-2xs'
+                              : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]'
                               }`}
                           >
                             <ProviderBrandIcon providerId={provider.id} className="w-5 h-5" />
@@ -519,8 +523,8 @@ export function ProviderSetupPanel({
                                 key={model.id}
                                 onClick={() => setPrimaryModel(formattedModel)}
                                 className={`px-2.5 py-1 rounded-md text-[11px] font-mono border transition-all duration-150 cursor-pointer ${isSelected
-                                    ? 'bg-[hsl(var(--primary)/0.08)] border-[hsl(var(--primary))] text-[hsl(var(--primary))] font-semibold'
-                                    : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))] text-[hsl(var(--body))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))]'
+                                  ? 'bg-[hsl(var(--primary)/0.08)] border-[hsl(var(--primary))] text-[hsl(var(--primary))] font-semibold'
+                                  : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))] text-[hsl(var(--body))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))]'
                                   }`}
                               >
                                 {model.name}
@@ -541,7 +545,7 @@ export function ProviderSetupPanel({
                   应用平台安全与通道策略
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] rounded-xl p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-[hsl(var(--canvas))] rounded-xl p-2">
                   {/* Feishu checkbox card */}
                   <label className="group flex items-start gap-3 p-3.5 rounded-lg border border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] cursor-pointer select-none bg-[hsl(var(--canvas))] transition-all">
                     <input
@@ -586,8 +590,8 @@ export function ProviderSetupPanel({
               {testResult && (
                 <div
                   className={`rounded-lg border px-4 py-3 text-xs leading-relaxed animate-fade-in flex items-start gap-2.5 ${testResult.success
-                      ? 'border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] text-[hsl(var(--body-strong))]'
-                      : 'border-[hsl(var(--warning)/0.2)] bg-[hsl(var(--warning)/0.06)] text-[hsl(var(--body-strong))]'
+                    ? 'border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] text-[hsl(var(--body-strong))]'
+                    : 'border-[hsl(var(--warning)/0.2)] bg-[hsl(var(--warning)/0.06)] text-[hsl(var(--body-strong))]'
                     }`}
                 >
                   {testResult.success ? (
@@ -694,7 +698,7 @@ export function ProviderSetupPanel({
 
               <Button
                 variant="default"
-                disabled={postInstallActionLoading || !status || (!apiKey.trim() && !providerReady)}
+                disabled={postInstallActionLoading || !resolvedStatus || (!apiKey.trim() && !providerReady)}
                 onClick={() =>
                   void onProviderSetup({
                     configPath: result.configPath,

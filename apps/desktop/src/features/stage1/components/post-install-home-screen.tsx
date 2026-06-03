@@ -6,6 +6,7 @@ import { Stage1Shell } from './stage1-shell';
 import { createInstallResultFromRecord, type Stage1InstallerController } from '../hooks/use-stage1-installer';
 import type { AppBootstrapState } from '../model/types';
 import { getRecoveredInstallationMode } from '../model/app-flow';
+import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 type PostInstallHomeScreenProps = {
   bootstrapState?: AppBootstrapState | null;
@@ -23,7 +24,8 @@ export function PostInstallHomeScreen({
     : null;
   const bootstrapStatus = bootstrapState?.status ?? null;
   const result = controller.result ?? bootstrapResult;
-  const resolvedStatus = controller.postInstallStatus ?? bootstrapStatus;
+  const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result?.configPath);
+  const resolvedStatus = subscribedStatus ?? controller.postInstallStatus ?? bootstrapStatus;
   const providerReady = resolvedStatus?.providerInitialized ?? false;
 
   const [activeTab, setActiveTab] = useState<'operations' | 'provider'>('operations');
@@ -93,7 +95,7 @@ export function PostInstallHomeScreen({
         <PostInstallHomeView
           result={result}
           status={resolvedStatus}
-          statusLoading={controller.postInstallLoading}
+          statusLoading={controller.postInstallLoading || subscribedStatusLoading}
           providerSetupLoading={controller.providerSetupLoading}
           providerSetupResult={controller.providerSetupResult}
           runtimeLaunchLoading={controller.runtimeLaunchLoading}

@@ -7,11 +7,11 @@ import {
   FolderIcon,
   MonitorIcon,
   PlayIcon,
-  SpinnerIcon,
-  CheckIcon
+  SpinnerIcon
 } from '../../../components/icons';
 import type { OpenClawLaunchResult, OpenClawPostInstallStatus, Stage1InstallResult, Stage1InstallLogTail } from '../model/types';
 import { readOpenClawRuntimeLogTail } from '../api/stage1-api';
+import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 type RuntimeOperationsPanelProps = {
   result: Stage1InstallResult;
@@ -44,17 +44,21 @@ export function RuntimeOperationsPanel({
   onOpenLogsDirectory,
   onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
-  const providerReady = status?.providerInitialized ?? false;
-  const isRunning = status?.runtimeRunning ?? false;
-  const panelReachable = status?.panelReachable ?? false;
-  const postInstallActionLoading = runtimeLaunchLoading || statusLoading;
   const [copied, setCopied] = useState(false);
   const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const activeLogPath = runtimeLaunchResult?.logPath ?? status?.runtimeLogPath ?? null;
+  const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result.configPath);
+  const resolvedStatus = subscribedStatus ?? status;
+  const providerReady = resolvedStatus?.providerInitialized ?? false;
+  const isRunning = resolvedStatus?.runtimeRunning ?? false;
+  const panelReachable = resolvedStatus?.panelReachable ?? false;
+  const postInstallActionLoading = runtimeLaunchLoading || subscribedStatusLoading || statusLoading;
+  const activeLogPath = runtimeLaunchResult?.logPath ?? resolvedStatus?.runtimeLogPath ?? null;
+  const hasRuntimeSession = isRunning && Boolean(activeLogPath);
+  const runtimePid = runtimeLaunchResult?.pid ?? null;
 
   useEffect(() => {
-    if (!isRunning || !activeLogPath) {
+    if (!hasRuntimeSession || !activeLogPath) {
       setLogTail(null);
       return;
     }
@@ -74,7 +78,7 @@ export function RuntimeOperationsPanel({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [activeLogPath, isRunning]);
+  }, [activeLogPath, hasRuntimeSession]);
 
   useEffect(() => {
     if (terminalEndRef.current) {
@@ -83,7 +87,7 @@ export function RuntimeOperationsPanel({
   }, [logTail?.lines]);
 
   const handleCopyConsoleUrl = async () => {
-    const url = status?.controlUiUrl ?? 'http://127.0.0.1:18789/';
+    const url = resolvedStatus?.controlUiUrl ?? 'http://127.0.0.1:18789/';
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -173,10 +177,10 @@ export function RuntimeOperationsPanel({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
-          <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">控制台地址</span>
+              <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">控制台地址</span>
           <div className="flex items-center justify-between gap-2 mt-1">
             <code className="text-xs font-mono text-[hsl(var(--on-dark))] truncate break-all select-all">
-              {statusLoading ? '加载中...' : status?.controlUiUrl ?? 'http://127.0.0.1:18789/'}
+              {subscribedStatusLoading || statusLoading ? '加载中...' : resolvedStatus?.controlUiUrl ?? 'http://127.0.0.1:18789/'}
             </code>
             <button
               onClick={handleCopyConsoleUrl}
@@ -190,8 +194,8 @@ export function RuntimeOperationsPanel({
         <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">插件启用状态</span>
           <span className="text-xs font-medium text-[hsl(var(--on-dark))] mt-1 truncate">
-            飞书插件: {status?.feishuPluginEnabled ? '已启用' : '未开启'}
-            {status?.pluginsEnabled.length ? ` (${status.pluginsEnabled.join(', ')})` : ''}
+            飞书插件: {resolvedStatus?.feishuPluginEnabled ? '已启用' : '未开启'}
+            {resolvedStatus?.pluginsEnabled.length ? ` (${resolvedStatus.pluginsEnabled.join(', ')})` : ''}
           </span>
         </div>
 
@@ -199,22 +203,24 @@ export function RuntimeOperationsPanel({
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">SKILLS & 工作区目录</span>
           <div className="flex flex-col gap-1 mt-1">
             <span className="text-xs font-medium text-[hsl(var(--on-dark))] truncate">
-              已识别 Skills: {status?.skillsInstalled.length ? status.skillsInstalled.join(', ') : '未识别'}
+              已识别 Skills: {resolvedStatus?.skillsInstalled.length ? resolvedStatus.skillsInstalled.join(', ') : '未识别'}
             </span>
             <code className="text-[11px] font-mono text-[hsl(var(--on-dark-soft))] truncate break-all mt-0.5">
-              {status?.workspaceDir ?? result.openclawDir}
+              {resolvedStatus?.workspaceDir ?? result.openclawDir}
             </code>
           </div>
         </div>
       </div>
 
-      {/* Mock Terminal Output */}
+        {/* Mock Terminal Output */}
       <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text h-48 overflow-y-auto">
         <div className="text-white/40">$ openclaw daemon --config=openclaw.json</div>
-        {isRunning && runtimeLaunchResult ? (
+        {hasRuntimeSession ? (
           <>
             <div>[daemon] Spawning OpenClaw core instance...</div>
-            <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimeLaunchResult.pid}</div>
+            <div className="text-[hsl(var(--success))]">
+              [success] Process {runtimePid ? `started with PID: ${runtimePid}` : 'is running and responding to health checks'}
+            </div>
             {logTail && logTail.lines.length > 0 ? (
               logTail.lines.map((line, index) => (
                 <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} className="text-white/80" />
@@ -224,7 +230,7 @@ export function RuntimeOperationsPanel({
                 <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
                 <div>[gateway] Control Panel ready, proxy route enabled.</div>
                 <div>[openclaw] Starting pipeline runtime loops...</div>
-                <div>[openclaw] API Client initialized for provider: {status?.providerId ?? 'default-provider'}</div>
+                <div>[openclaw] API Client initialized for provider: {resolvedStatus?.providerId ?? 'default-provider'}</div>
                 <div>[openclaw] Listening for incoming browser agent session requests...</div>
               </>
             )}
@@ -239,7 +245,7 @@ export function RuntimeOperationsPanel({
         <div ref={terminalEndRef} />
         <div className="flex items-center gap-1">
           <span>_</span>
-          {(runtimeLaunchLoading || (isRunning && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
+          {(runtimeLaunchLoading || (hasRuntimeSession && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
         </div>
       </div>
 

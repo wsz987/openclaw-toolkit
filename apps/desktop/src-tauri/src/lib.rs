@@ -1,9 +1,19 @@
 pub mod commands;
 pub mod core;
 
+use crate::core::status_watcher::OpenClawStatusWatcher;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let status_watcher = OpenClawStatusWatcher::default();
+    status_watcher.bootstrap_active_installation();
+
     tauri::Builder::default()
+        .manage(status_watcher.clone())
+        .setup(move |app| {
+            status_watcher.start(app.handle().clone());
+            Ok(())
+        })
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::app_state::bootstrap_app_state_command,
