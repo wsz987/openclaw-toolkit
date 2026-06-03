@@ -1,9 +1,11 @@
 use std::{
     fs,
     io::{BufRead, BufReader},
+    net::{TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::{Command, Stdio},
     thread,
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -29,6 +31,9 @@ pub struct OpenClawStatusSummary {
     pub workspace_dir: String,
     pub gateway_url: String,
     pub control_ui_url: String,
+    pub runtime_log_path: String,
+    pub runtime_running: bool,
+    pub panel_reachable: bool,
     pub provider_initialized: bool,
     pub provider_id: Option<String>,
     pub provider_model: Option<String>,
@@ -259,6 +264,14 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
     let gateway_port =
         number_at_path(&config, &["gateway", "port"]).unwrap_or(DEFAULT_GATEWAY_PORT as u64);
     let control_ui_url = format!("http://127.0.0.1:{gateway_port}/");
+    let gateway_url = format!("http://127.0.0.1:{gateway_port}");
+    let runtime_log_path = openclaw_dir
+        .join("logs")
+        .join("gateway-runtime.log")
+        .to_string_lossy()
+        .to_string();
+    let runtime_running = probe_gateway_runtime(&gateway_url);
+    let panel_reachable = runtime_running && probe_control_panel(&control_ui_url);
     let provider_id = infer_primary_provider_id(&config);
     let provider_api_url = provider_id.as_deref().and_then(|provider| {
         string_at_path(&config, &["models", "providers", provider, "baseUrl"])
@@ -275,8 +288,11 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         node_dir,
         config_path: config_path.to_string_lossy().to_string(),
         workspace_dir,
-        gateway_url: format!("http://127.0.0.1:{gateway_port}"),
+        gateway_url,
         control_ui_url,
+        runtime_log_path,
+        runtime_running,
+        panel_reachable,
         provider_initialized,
         provider_id,
         provider_model: string_at_path(&config, &["agents", "defaults", "model", "primary"]),
@@ -290,6 +306,43 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
         plugins_enabled: enabled_plugin_ids(&config),
     })
+}
+
+fn probe_gateway_runtime(gateway_url: &str) -> bool {
+    let Ok(url) = reqwest::Url::parse(gateway_url) else {
+        return false;
+    };
+
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+
+    let Some(port) = url.port_or_known_default() else {
+        return false;
+    };
+
+    let Ok(addresses) = format!("{host}:{port}").to_socket_addrs() else {
+        return false;
+    };
+
+    for address in addresses {
+        if TcpStream::connect_timeout(&address, Duration::from_millis(350)).is_ok() {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn probe_control_panel(control_ui_url: &str) -> bool {
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(500))
+        .build()
+    else {
+        return false;
+    };
+
+    client.get(control_ui_url).send().is_ok()
 }
 
 pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<ProviderSetupResult> {

@@ -51,10 +51,12 @@ import {
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
+  initialConfigPath?: string | null,
   initialShowPostInstallHome = false,
   initialWizardStep: InstallerWizardStep = 0
 ) {
   const DASHBOARD_DEBOUNCE_MS = 350;
+  const POST_INSTALL_STATUS_POLL_MS = 2500;
 
   const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : 'D:\\OpenClaw');
   const [licenseKey, setLicenseKey] = useState('stage1-dev');
@@ -450,6 +452,14 @@ export function useStage1Installer(
   }, [initialShowPostInstallHome]);
 
   useEffect(() => {
+    if (!initialConfigPath) {
+      return;
+    }
+
+    void loadPostInstallStatus(initialConfigPath);
+  }, [initialConfigPath]);
+
+  useEffect(() => {
     if (loading) {
       return;
     }
@@ -516,6 +526,46 @@ export function useStage1Installer(
 
     void loadInstallLog(baseDir);
   }, [baseDir, wizardStep, loading]);
+
+  useEffect(() => {
+    const configPath =
+      result?.configPath ??
+      initialConfigPath ??
+      (showPostInstallHome ? postInstallStatus?.configPath ?? null : null);
+
+    if (!configPath) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) {
+        return;
+      }
+
+      const status = await loadPostInstallStatus(configPath);
+      if (cancelled) {
+        return;
+      }
+
+      if (status?.runtimeRunning) {
+        setRuntimeLaunchResult((current) => current ?? { pid: 0, logPath: status.runtimeLogPath });
+      } else {
+        setRuntimeLaunchResult(null);
+      }
+    };
+
+    void tick();
+    const timer = window.setInterval(() => {
+      void tick();
+    }, POST_INSTALL_STATUS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [initialConfigPath, result?.configPath, showPostInstallHome, postInstallStatus?.configPath]);
 
   const stepProgress = dashboard?.steps ?? createPendingStepProgress();
   const completedCount = stepProgress.filter((step) => step.state === 'done').length;
@@ -634,6 +684,8 @@ export function useStage1Installer(
     loadPostInstallStatus
   };
 }
+
+export type Stage1InstallerController = ReturnType<typeof useStage1Installer>;
 
 export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): Stage1InstallResult {
   return {

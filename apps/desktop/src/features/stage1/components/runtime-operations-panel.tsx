@@ -45,21 +45,23 @@ export function RuntimeOperationsPanel({
   onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
-  const isRunning = Boolean(runtimeLaunchResult);
+  const isRunning = status?.runtimeRunning ?? false;
+  const panelReachable = status?.panelReachable ?? false;
   const postInstallActionLoading = runtimeLaunchLoading || statusLoading;
   const [copied, setCopied] = useState(false);
   const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const activeLogPath = runtimeLaunchResult?.logPath ?? status?.runtimeLogPath ?? null;
 
   useEffect(() => {
-    if (!isRunning || !runtimeLaunchResult?.logPath) {
+    if (!isRunning || !activeLogPath) {
       setLogTail(null);
       return;
     }
 
     const loadLogs = async () => {
       try {
-        const response = await readOpenClawRuntimeLogTail(runtimeLaunchResult.logPath, 100);
+        const response = await readOpenClawRuntimeLogTail(activeLogPath, 100);
         setLogTail(response);
       } catch (err) {
         console.error('Failed to load openclaw runtime logs:', err);
@@ -72,7 +74,7 @@ export function RuntimeOperationsPanel({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isRunning, runtimeLaunchResult?.logPath]);
+  }, [activeLogPath, isRunning]);
 
   useEffect(() => {
     if (terminalEndRef.current) {
@@ -94,7 +96,7 @@ export function RuntimeOperationsPanel({
   if (!providerReady) {
     // Locked/Pending Initialization state
     return (
-      <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between">
+      <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between h-full flex-1 min-h-0 overflow-y-auto">
         <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
           <div>
             <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
@@ -140,7 +142,7 @@ export function RuntimeOperationsPanel({
 
   // Active Dashboard
   return (
-    <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg animate-fade-in">
+    <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg animate-fade-in h-full flex-1 min-h-0 overflow-y-auto">
       <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
         <div>
           <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
@@ -270,7 +272,7 @@ export function RuntimeOperationsPanel({
 
           <Button
             variant="secondary"
-            disabled={postInstallActionLoading || !status || !onOpenControlPanel || !isRunning}
+            disabled={postInstallActionLoading || !status || !onOpenControlPanel || !panelReachable}
             onClick={() => void onOpenControlPanel?.(result.configPath)}
             className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           >

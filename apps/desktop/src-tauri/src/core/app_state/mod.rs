@@ -616,7 +616,11 @@ fn pick_latest_manifest(manifests: Vec<PathBuf>) -> Option<PathBuf> {
 }
 
 fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStatusSummary) {
-    record.status = "installed".to_string();
+    record.status = if status.runtime_running {
+        "installed".to_string()
+    } else {
+        "degraded".to_string()
+    };
     record.config_state = "ready".to_string();
     record.provider_state = if status.provider_initialized {
         "ready".to_string()
@@ -625,10 +629,16 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
     } else {
         "uninitialized".to_string()
     };
-    if record.runtime_state != "running" {
-        record.runtime_state = "stopped".to_string();
-    }
-    record.panel_state = "unknown".to_string();
+    record.runtime_state = if status.runtime_running {
+        "running".to_string()
+    } else {
+        "stopped".to_string()
+    };
+    record.panel_state = if status.panel_reachable {
+        "available".to_string()
+    } else {
+        "unavailable".to_string()
+    };
     record.last_validated_at = Some(Utc::now().to_rfc3339());
     record.last_error = None;
 }

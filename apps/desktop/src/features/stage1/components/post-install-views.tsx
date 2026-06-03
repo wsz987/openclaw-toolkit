@@ -60,7 +60,7 @@ export function PostInstallHomeView({
   onNavigateToProvider
 }: PostInstallHomeViewProps) {
   return (
-    <div className="w-full flex flex-col gap-6 animate-fade-in py-4">
+    <div className="w-full h-full flex flex-col gap-6 animate-fade-in py-4 flex-1 min-h-0">
       {/* Recovery/Warning Message if present */}
       {mode === 'recovery' && recoveryMessage ? (
         <div className="rounded-xl border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.06)] px-5 py-4 text-xs leading-relaxed text-[hsl(var(--body-strong))] flex items-start gap-3 animate-slide-in shadow-sm">
@@ -73,7 +73,7 @@ export function PostInstallHomeView({
       ) : null}
 
       {/* Main Content Pane */}
-      <div className="flex-1 w-full min-w-0">
+      <div className="flex-1 w-full min-w-0 flex flex-col h-full relative">
         {activeTab === 'operations' ? (
           <RuntimeOperationsPanel
             result={result}

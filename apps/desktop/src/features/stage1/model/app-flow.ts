@@ -11,6 +11,11 @@ export type Stage1Screen =
   | 'progress-verify';
 
 export type InstallerWizardStep = 0 | 1 | 2 | 3;
+export type InstallerWorkflowScreen = Extract<
+  Stage1Screen,
+  'precheck' | 'config' | 'progress-deps' | 'progress-verify'
+>;
+export type PostInstallScreen = Extract<Stage1Screen, 'installed-home' | 'post-install-home'>;
 
 type ResolveStage1ScreenInput = {
   bootstrapState?: AppBootstrapState | null;
@@ -75,10 +80,20 @@ export function resolveStage1Screen({
 }
 
 export function shouldShowInstallerChrome(screen: Stage1Screen): boolean {
+  return isInstallerWorkflowScreen(screen);
+}
+
+export function isInstallerWorkflowScreen(
+  screen: Stage1Screen
+): screen is InstallerWorkflowScreen {
   return (
     screen === 'precheck' ||
     screen === 'config' ||
     screen === 'progress-deps' ||
     screen === 'progress-verify'
   );
+}
+
+export function isPostInstallScreen(screen: Stage1Screen): screen is PostInstallScreen {
+  return screen === 'installed-home' || screen === 'post-install-home';
 }

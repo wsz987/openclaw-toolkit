@@ -88,6 +88,9 @@ export type OpenClawPostInstallStatus = {
   workspaceDir: string;
   gatewayUrl: string;
   controlUiUrl: string;
+  runtimeLogPath: string;
+  runtimeRunning: boolean;
+  panelReachable: boolean;
   providerInitialized: boolean;
   providerId: string | null;
   providerModel: string | null;
