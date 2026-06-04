@@ -226,68 +226,25 @@ export function ServiceControlPanel({
       {/* Main Interactive Controls */}
       <div className="w-full flex flex-col items-center gap-4">
         {isRunning ? (
-          <>
-            {onOpenControlPanel && (
-              <Button
-                onClick={() => void onOpenControlPanel(result.configPath)}
-                disabled={controlPanelOpening || busy}
-                className="w-full h-12 text-xs font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] transition-all duration-300 flex items-center justify-center gap-2 rounded-xl shadow-[0_4px_12px_rgba(204,120,92,0.25)] hover:shadow-[0_6px_20px_rgba(204,120,92,0.4)] hover:-translate-y-0.5 active:translate-y-0"
-              >
-                {controlPanelOpening ? (
-                  <>
-                    <SpinnerIcon size={14} className="spinning mr-1" />
-                    正在打开网页控制台...
-                  </>
-                ) : (
-                  <>
-                    <WebConsoleIcon className="mr-1" />
-                    打开 OpenClaw 网页端
-                  </>
-                )}
-              </Button>
-            )}
-
-            {/* Restart & Stop Buttons */}
-            <div className="flex w-full gap-3 mt-1">
-              <Button
-                variant="outline"
-                disabled={busy || !isRunning}
-                onClick={() => void onRestartRuntime(result.configPath, pid)}
-                className="flex-1 h-10 text-xs font-medium border-[hsl(var(--hairline))] bg-transparent hover:bg-[hsl(var(--surface-soft))] text-[hsl(var(--body-strong))] rounded-xl transition-all duration-200"
-              >
-                {runtimeRestartLoading ? (
-                  <>
-                    <SpinnerIcon size={14} className="spinning mr-1" />
-                    正在重启...
-                  </>
-                ) : (
-                  <>
-                    <RefreshIcon className="mr-1 hover:animate-[spin_4s_linear_infinite]" />
-                    重启服务
-                  </>
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
-                disabled={busy || !pid}
-                onClick={() => pid ? void onStopRuntime(result.configPath, pid) : undefined}
-                className="flex-1 h-10 text-xs font-medium border-[hsl(var(--error)/0.18)] bg-transparent hover:bg-[hsl(var(--error)/0.04)] text-[hsl(var(--error))] hover:text-[hsl(var(--error))] rounded-xl transition-all duration-200"
-              >
-                {runtimeStopLoading ? (
-                  <>
-                    <SpinnerIcon size={14} className="spinning mr-1" />
-                    正在停止...
-                  </>
-                ) : (
-                  <>
-                    <StopIcon className="mr-1" />
-                    停止服务
-                  </>
-                )}
-              </Button>
-            </div>
-          </>
+          onOpenControlPanel && (
+            <Button
+              onClick={() => void onOpenControlPanel(result.configPath)}
+              disabled={controlPanelOpening || busy}
+              className="w-full h-12 text-xs font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] transition-all duration-300 flex items-center justify-center gap-2 rounded-xl shadow-[0_4px_12px_rgba(204,120,92,0.25)] hover:shadow-[0_6px_20px_rgba(204,120,92,0.4)] hover:-translate-y-0.5 active:translate-y-0"
+            >
+              {controlPanelOpening ? (
+                <>
+                  <SpinnerIcon size={14} className="spinning mr-1" />
+                  正在打开网页控制台...
+                </>
+              ) : (
+                <>
+                  <WebConsoleIcon className="mr-1" />
+                  打开 OpenClaw 网页端
+                </>
+              )}
+            </Button>
+          )
         ) : (
           <Button
             disabled={busy}
@@ -307,6 +264,53 @@ export function ServiceControlPanel({
             )}
           </Button>
         )}
+
+        {/* Restart & Stop Buttons (Always in DOM to preserve height, preventing layout jumps) */}
+        <div 
+          className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${
+            isRunning 
+              ? 'opacity-100 translate-y-0 pointer-events-auto' 
+              : 'opacity-0 -translate-y-2 pointer-events-none'
+          }`}
+        >
+          <Button
+            variant="outline"
+            disabled={busy || !isRunning}
+            onClick={() => void onRestartRuntime(result.configPath, pid)}
+            className="flex-1 h-10 text-xs font-medium border-[hsl(var(--hairline))] bg-transparent hover:bg-[hsl(var(--surface-soft))] text-[hsl(var(--body-strong))] rounded-xl transition-all duration-200"
+          >
+            {runtimeRestartLoading ? (
+              <>
+                <SpinnerIcon size={14} className="spinning mr-1" />
+                正在重启...
+              </>
+            ) : (
+              <>
+                <RefreshIcon className="mr-1 hover:animate-[spin_4s_linear_infinite]" />
+                重启服务
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            disabled={busy || !pid}
+            onClick={() => pid ? void onStopRuntime(result.configPath, pid) : undefined}
+            className="flex-1 h-10 text-xs font-medium border-[hsl(var(--error)/0.18)] bg-transparent hover:bg-[hsl(var(--error)/0.04)] text-[hsl(var(--error))] hover:text-[hsl(var(--error))] rounded-xl transition-all duration-200"
+          >
+            {runtimeStopLoading ? (
+              <>
+                <SpinnerIcon size={14} className="spinning mr-1" />
+                正在停止...
+              </>
+            ) : (
+              <>
+                <StopIcon className="mr-1" />
+                停止服务
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Pending Config Changes Warning Banner */}
