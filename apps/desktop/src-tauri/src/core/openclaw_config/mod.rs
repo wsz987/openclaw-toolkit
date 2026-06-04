@@ -35,6 +35,7 @@ pub struct OpenClawStatusSummary {
     pub provider_api_url: Option<String>,
     pub available_providers: Vec<ProviderDescriptor>,
     pub feishu_plugin_enabled: bool,
+    pub feishu_channel: FeishuChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
 }
@@ -70,7 +71,6 @@ pub struct ProviderSetupInput {
     pub api_key: String,
     pub api_url: Option<String>,
     pub primary_model: Option<String>,
-    pub enable_feishu_plugin: bool,
     pub grant_agent_permissions: bool,
 }
 
@@ -81,8 +81,72 @@ pub struct ProviderSetupResult {
     pub provider_id: String,
     pub primary_model: String,
     pub api_url: String,
-    pub feishu_plugin_enabled: bool,
     pub agent_permissions_granted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuChannelSummary {
+    pub enabled: bool,
+    pub configured: bool,
+    pub domain: String,
+    pub connection_mode: String,
+    pub default_account: String,
+    pub account_id: String,
+    pub account_name: Option<String>,
+    pub app_id: Option<String>,
+    pub dm_policy: String,
+    pub allow_from: Vec<String>,
+    pub group_policy: String,
+    pub group_allow_from: Vec<String>,
+    pub require_mention: bool,
+    pub streaming: bool,
+    pub block_streaming: bool,
+    pub typing_indicator: bool,
+    pub resolve_sender_names: bool,
+    pub verification_token_configured: bool,
+    pub encrypt_key_configured: bool,
+    pub webhook_path: Option<String>,
+    pub webhook_host: Option<String>,
+    pub webhook_port: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuChannelSetupInput {
+    pub config_path: String,
+    pub enabled: bool,
+    pub domain: Option<String>,
+    pub connection_mode: Option<String>,
+    pub default_account: Option<String>,
+    pub account_name: Option<String>,
+    pub app_id: Option<String>,
+    pub app_secret: Option<String>,
+    pub dm_policy: Option<String>,
+    pub allow_from: Vec<String>,
+    pub group_policy: Option<String>,
+    pub group_allow_from: Vec<String>,
+    pub require_mention: bool,
+    pub streaming: bool,
+    pub block_streaming: bool,
+    pub typing_indicator: bool,
+    pub resolve_sender_names: bool,
+    pub verification_token: Option<String>,
+    pub encrypt_key: Option<String>,
+    pub webhook_path: Option<String>,
+    pub webhook_host: Option<String>,
+    pub webhook_port: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuChannelSetupResult {
+    pub config_path: String,
+    pub enabled: bool,
+    pub configured: bool,
+    pub connection_mode: String,
+    pub default_account: String,
+    pub app_id: Option<String>,
 }
 
 const DEFAULT_GATEWAY_PORT: u16 = 18789;
@@ -269,6 +333,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .map(|value| !value.trim().is_empty() && !value.contains("${"))
         .unwrap_or(false);
     let available_providers = merge_provider_catalog(&manifest_catalog, &config);
+    let feishu_channel = read_feishu_channel_summary(&config);
 
     Ok(OpenClawStatusSummary {
         openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
@@ -287,6 +352,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
             &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
         )
         .unwrap_or(false),
+        feishu_channel,
         skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
         plugins_enabled: enabled_plugin_ids(&config),
     })
@@ -344,14 +410,6 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         merge_agent_permissions(&mut config);
     }
 
-    if input.enable_feishu_plugin {
-        set_value_at_path(
-            &mut config,
-            &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
-            Value::Bool(true),
-        );
-    }
-
     write_config_value(&config_path, &config)?;
 
     Ok(ProviderSetupResult {
@@ -359,8 +417,228 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         provider_id: provider.id,
         primary_model,
         api_url,
-        feishu_plugin_enabled: input.enable_feishu_plugin,
         agent_permissions_granted: input.grant_agent_permissions,
+    })
+}
+
+pub fn apply_feishu_channel_setup(
+    input: &FeishuChannelSetupInput,
+) -> anyhow::Result<FeishuChannelSetupResult> {
+    let config_path = PathBuf::from(&input.config_path);
+    let mut config = read_openclaw_config_value(&config_path)?;
+
+    let default_account = normalize_non_empty(
+        input.default_account.as_deref(),
+        Some("default".to_string()),
+    );
+    let domain = normalize_non_empty(input.domain.as_deref(), Some("feishu".to_string()));
+    let connection_mode = normalize_non_empty(
+        input.connection_mode.as_deref(),
+        Some("websocket".to_string()),
+    );
+    let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("allowlist".to_string()));
+    let group_policy =
+        normalize_non_empty(input.group_policy.as_deref(), Some("allowlist".to_string()));
+    let existing_account = value_at_path(
+        &config,
+        &["channels", "feishu", "accounts", default_account.as_str()],
+    );
+
+    let app_id = normalize_optional_non_empty(
+        input.app_id.as_deref(),
+        existing_account.and_then(|entry| {
+            entry
+                .get("appId")
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+        }),
+    );
+    let app_secret = normalize_optional_non_empty(
+        input.app_secret.as_deref(),
+        existing_account.and_then(|entry| {
+            entry
+                .get("appSecret")
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+        }),
+    );
+    let verification_token = normalize_optional_non_empty(
+        input.verification_token.as_deref(),
+        string_at_path(&config, &["channels", "feishu", "verificationToken"]),
+    );
+    let encrypt_key = normalize_optional_non_empty(
+        input.encrypt_key.as_deref(),
+        string_at_path(&config, &["channels", "feishu", "encryptKey"]),
+    );
+    let webhook_path = normalize_optional_non_empty(
+        input.webhook_path.as_deref(),
+        string_at_path(&config, &["channels", "feishu", "webhookPath"]),
+    );
+    let webhook_host = normalize_optional_non_empty(
+        input.webhook_host.as_deref(),
+        string_at_path(&config, &["channels", "feishu", "webhookHost"]),
+    );
+    let webhook_port = input.webhook_port.or_else(|| {
+        number_at_path(&config, &["channels", "feishu", "webhookPort"])
+            .and_then(|value| u16::try_from(value).ok())
+    });
+    let account_name = normalize_optional_non_empty(
+        input.account_name.as_deref(),
+        existing_account.and_then(|entry| {
+            entry.get("name")
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+        }),
+    );
+
+    set_value_at_path(
+        &mut config,
+        &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
+        Value::Bool(input.enabled),
+    );
+    set_value_at_path(&mut config, &["channels", "feishu", "enabled"], Value::Bool(input.enabled));
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "domain"],
+        Value::String(domain.clone()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "connectionMode"],
+        Value::String(connection_mode.clone()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "defaultAccount"],
+        Value::String(default_account.clone()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "dmPolicy"],
+        Value::String(dm_policy),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "allowFrom"],
+        string_vec_to_value(&input.allow_from),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "groupPolicy"],
+        Value::String(group_policy),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "groupAllowFrom"],
+        string_vec_to_value(&input.group_allow_from),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "requireMention"],
+        Value::Bool(input.require_mention),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "streaming"],
+        Value::Bool(input.streaming),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "blockStreaming"],
+        Value::Bool(input.block_streaming),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "typingIndicator"],
+        Value::Bool(input.typing_indicator),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "resolveSenderNames"],
+        Value::Bool(input.resolve_sender_names),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "accounts", default_account.as_str(), "domain"],
+        Value::String(domain),
+    );
+
+    if let Some(account_name) = account_name {
+        set_value_at_path(
+            &mut config,
+            &["channels", "feishu", "accounts", default_account.as_str(), "name"],
+            Value::String(account_name),
+        );
+    }
+
+    if let Some(app_id) = app_id.clone() {
+        set_value_at_path(
+            &mut config,
+            &["channels", "feishu", "accounts", default_account.as_str(), "appId"],
+            Value::String(app_id),
+        );
+    }
+
+    if let Some(app_secret) = app_secret.clone() {
+        set_value_at_path(
+            &mut config,
+            &["channels", "feishu", "accounts", default_account.as_str(), "appSecret"],
+            Value::String(app_secret),
+        );
+    }
+
+    if connection_mode == "webhook" {
+        if let Some(verification_token) = verification_token {
+            set_value_at_path(
+                &mut config,
+                &["channels", "feishu", "verificationToken"],
+                Value::String(verification_token),
+            );
+        }
+
+        if let Some(encrypt_key) = encrypt_key {
+            set_value_at_path(
+                &mut config,
+                &["channels", "feishu", "encryptKey"],
+                Value::String(encrypt_key),
+            );
+        }
+
+        if let Some(webhook_path) = webhook_path {
+            set_value_at_path(
+                &mut config,
+                &["channels", "feishu", "webhookPath"],
+                Value::String(webhook_path),
+            );
+        }
+
+        if let Some(webhook_host) = webhook_host {
+            set_value_at_path(
+                &mut config,
+                &["channels", "feishu", "webhookHost"],
+                Value::String(webhook_host),
+            );
+        }
+
+        if let Some(webhook_port) = webhook_port {
+            set_value_at_path(
+                &mut config,
+                &["channels", "feishu", "webhookPort"],
+                json!(webhook_port),
+            );
+        }
+    }
+
+    write_config_value(&config_path, &config)?;
+    let summary = read_feishu_channel_summary(&config);
+
+    Ok(FeishuChannelSetupResult {
+        config_path: config_path.to_string_lossy().to_string(),
+        enabled: summary.enabled,
+        configured: summary.configured,
+        connection_mode: summary.connection_mode,
+        default_account: summary.default_account,
+        app_id: summary.app_id,
     })
 }
 
@@ -422,6 +700,16 @@ fn string_array_at_path(value: &Value, path: &[&str]) -> Vec<String> {
             })
         })
         .collect()
+}
+
+fn string_vec_to_value(values: &[String]) -> Value {
+    Value::Array(
+        values
+            .iter()
+            .map(|value| Value::String(value.trim().to_string()))
+            .filter(|value| value.as_str().is_some_and(|entry| !entry.is_empty()))
+            .collect(),
+    )
 }
 
 fn enabled_plugin_ids(value: &Value) -> Vec<String> {
@@ -603,6 +891,92 @@ fn default_provider_catalog(provider_catalog: &[ProviderCatalogEntry]) -> Vec<Pr
     }
 
     provider_catalog.to_vec()
+}
+
+fn normalize_non_empty(value: Option<&str>, fallback: Option<String>) -> String {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .or(fallback)
+        .unwrap_or_default()
+}
+
+fn normalize_optional_non_empty(value: Option<&str>, fallback: Option<String>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .or(fallback)
+}
+
+fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
+    let default_account = string_at_path(config, &["channels", "feishu", "defaultAccount"])
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "default".to_string());
+    let account = value_at_path(
+        config,
+        &["channels", "feishu", "accounts", default_account.as_str()],
+    );
+    let app_id = account
+        .and_then(|entry| entry.get("appId"))
+        .and_then(Value::as_str)
+        .map(ToString::to_string);
+    let app_secret = account
+        .and_then(|entry| entry.get("appSecret"))
+        .and_then(Value::as_str)
+        .map(ToString::to_string);
+
+    FeishuChannelSummary {
+        enabled: bool_at_path(config, &["channels", "feishu", "enabled"]).unwrap_or(false),
+        configured: app_id
+            .as_deref()
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false)
+            && app_secret
+                .as_deref()
+                .map(|value| !value.trim().is_empty())
+                .unwrap_or(false),
+        domain: string_at_path(config, &["channels", "feishu", "domain"])
+            .unwrap_or_else(|| "feishu".to_string()),
+        connection_mode: string_at_path(config, &["channels", "feishu", "connectionMode"])
+            .unwrap_or_else(|| "websocket".to_string()),
+        default_account: default_account.clone(),
+        account_id: default_account,
+        account_name: account
+            .and_then(|entry| entry.get("name"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string),
+        app_id,
+        dm_policy: string_at_path(config, &["channels", "feishu", "dmPolicy"])
+            .unwrap_or_else(|| "allowlist".to_string()),
+        allow_from: string_array_at_path(config, &["channels", "feishu", "allowFrom"]),
+        group_policy: string_at_path(config, &["channels", "feishu", "groupPolicy"])
+            .unwrap_or_else(|| "allowlist".to_string()),
+        group_allow_from: string_array_at_path(config, &["channels", "feishu", "groupAllowFrom"]),
+        require_mention: bool_at_path(config, &["channels", "feishu", "requireMention"])
+            .unwrap_or(true),
+        streaming: bool_at_path(config, &["channels", "feishu", "streaming"]).unwrap_or(true),
+        block_streaming: bool_at_path(config, &["channels", "feishu", "blockStreaming"])
+            .unwrap_or(false),
+        typing_indicator: bool_at_path(config, &["channels", "feishu", "typingIndicator"])
+            .unwrap_or(true),
+        resolve_sender_names: bool_at_path(config, &["channels", "feishu", "resolveSenderNames"])
+            .unwrap_or(true),
+        verification_token_configured: string_at_path(
+            config,
+            &["channels", "feishu", "verificationToken"],
+        )
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false),
+        encrypt_key_configured: string_at_path(config, &["channels", "feishu", "encryptKey"])
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false),
+        webhook_path: string_at_path(config, &["channels", "feishu", "webhookPath"]),
+        webhook_host: string_at_path(config, &["channels", "feishu", "webhookHost"]),
+        webhook_port: number_at_path(config, &["channels", "feishu", "webhookPort"])
+            .and_then(|value| u16::try_from(value).ok()),
+    }
 }
 
 fn provider_catalog_entry_from_choice(choice: &ProviderChoice) -> ProviderCatalogEntry {

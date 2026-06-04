@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Button } from '../../../components/ui/button';
-import { AlertIcon, MonitorIcon, KeyIcon, ArrowLeftIcon } from '../../../components/icons';
+import { AlertIcon } from '../../../components/icons';
 import type {
+  OpenClawFeishuChannelSetupPayload,
+  OpenClawFeishuChannelSetupResult,
   OpenClawLaunchResult,
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
@@ -10,7 +10,7 @@ import type {
 } from '../model/types';
 import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
-import { BrandSpike } from './brand-spike';
+import { ChannelsPanel } from './channels-panel';
 
 type PostInstallHomeViewProps = {
   result: Stage1InstallResult;
@@ -18,12 +18,15 @@ type PostInstallHomeViewProps = {
   statusLoading: boolean;
   providerSetupLoading: boolean;
   providerSetupResult: OpenClawProviderSetupResult | null;
+  feishuSetupLoading: boolean;
+  feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
   runtimeLaunchLoading: boolean;
   runtimeLaunchResult: OpenClawLaunchResult | null;
   controlPanelOpening?: boolean;
   installationDirOpening?: boolean;
   logsDirOpening?: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
+  onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
   onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
@@ -32,7 +35,7 @@ type PostInstallHomeViewProps = {
   recoveryMessage?: string | null;
   importLoading?: boolean;
   onImportInstallation?: () => void;
-  activeTab: 'operations' | 'provider';
+  activeTab: 'operations' | 'provider' | 'channels';
   onNavigateToProvider?: () => void;
 };
 
@@ -42,12 +45,15 @@ export function PostInstallHomeView({
   statusLoading,
   providerSetupLoading,
   providerSetupResult,
+  feishuSetupLoading,
+  feishuSetupResult,
   runtimeLaunchLoading,
   runtimeLaunchResult,
   controlPanelOpening = false,
   installationDirOpening = false,
   logsDirOpening = false,
   onProviderSetup,
+  onFeishuChannelSetup,
   onLaunchRuntime,
   onOpenControlPanel,
   onOpenInstallationDirectory,
@@ -90,7 +96,7 @@ export function PostInstallHomeView({
             onOpenLogsDirectory={onOpenLogsDirectory}
             onNavigateToProvider={onNavigateToProvider}
           />
-        ) : (
+        ) : activeTab === 'provider' ? (
           <ProviderSetupPanel
             result={result}
             status={status}
@@ -102,6 +108,15 @@ export function PostInstallHomeView({
             mode={mode}
             importLoading={importLoading}
             onImportInstallation={onImportInstallation}
+          />
+        ) : (
+          <ChannelsPanel
+            result={result}
+            status={status}
+            statusLoading={statusLoading}
+            feishuSetupLoading={feishuSetupLoading}
+            feishuSetupResult={feishuSetupResult}
+            onFeishuChannelSetup={onFeishuChannelSetup}
           />
         )}
       </div>

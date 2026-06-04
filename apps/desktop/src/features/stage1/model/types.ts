@@ -94,8 +94,34 @@ export type OpenClawPostInstallStatus = {
   providerApiUrl: string | null;
   availableProviders: ProviderCatalogEntry[];
   feishuPluginEnabled: boolean;
+  feishuChannel: FeishuChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
+};
+
+export type FeishuChannelStatus = {
+  enabled: boolean;
+  configured: boolean;
+  domain: string;
+  connectionMode: 'websocket' | 'webhook' | string;
+  defaultAccount: string;
+  accountId: string;
+  accountName: string | null;
+  appId: string | null;
+  dmPolicy: 'pairing' | 'allowlist' | 'open' | 'disabled' | string;
+  allowFrom: string[];
+  groupPolicy: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  requireMention: boolean;
+  streaming: boolean;
+  blockStreaming: boolean;
+  typingIndicator: boolean;
+  resolveSenderNames: boolean;
+  verificationTokenConfigured: boolean;
+  encryptKeyConfigured: boolean;
+  webhookPath: string | null;
+  webhookHost: string | null;
+  webhookPort: number | null;
 };
 
 export type ProviderCatalogModelEntry = {
@@ -123,7 +149,6 @@ export type OpenClawProviderSetupPayload = {
   apiKey: string;
   apiUrl?: string;
   primaryModel?: string;
-  enableFeishuPlugin: boolean;
   grantAgentPermissions: boolean;
 };
 
@@ -132,8 +157,41 @@ export type OpenClawProviderSetupResult = {
   providerId: string;
   primaryModel: string;
   apiUrl: string;
-  feishuPluginEnabled: boolean;
   agentPermissionsGranted: boolean;
+};
+
+export type OpenClawFeishuChannelSetupPayload = {
+  configPath: string;
+  enabled: boolean;
+  domain?: string;
+  connectionMode?: 'websocket' | 'webhook' | string;
+  defaultAccount?: string;
+  accountName?: string;
+  appId?: string;
+  appSecret?: string;
+  dmPolicy?: 'pairing' | 'allowlist' | 'open' | 'disabled' | string;
+  allowFrom: string[];
+  groupPolicy?: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  requireMention: boolean;
+  streaming: boolean;
+  blockStreaming: boolean;
+  typingIndicator: boolean;
+  resolveSenderNames: boolean;
+  verificationToken?: string;
+  encryptKey?: string;
+  webhookPath?: string;
+  webhookHost?: string;
+  webhookPort?: number;
+};
+
+export type OpenClawFeishuChannelSetupResult = {
+  configPath: string;
+  enabled: boolean;
+  configured: boolean;
+  connectionMode: string;
+  defaultAccount: string;
+  appId: string | null;
 };
 
 export type OpenClawLaunchResult = {

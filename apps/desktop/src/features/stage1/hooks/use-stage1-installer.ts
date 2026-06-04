@@ -24,6 +24,8 @@ import {
 } from '../model/selectors';
 import type {
   InstallMode,
+  OpenClawFeishuChannelSetupPayload,
+  OpenClawFeishuChannelSetupResult,
   OpenClawLaunchResult,
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
@@ -45,6 +47,7 @@ import {
   openLogsDirectory,
   pickDirectory,
   readStage1InstallLogTail,
+  setupOpenClawFeishuChannel,
   setupOpenClawProvider,
   startStage1Install
 } from '../api/stage1-api';
@@ -71,6 +74,8 @@ export function useStage1Installer(
   const [postInstallLoading, setPostInstallLoading] = useState(false);
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
   const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
+  const [feishuSetupLoading, setFeishuSetupLoading] = useState(false);
+  const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
   const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
   const [controlPanelOpening, setControlPanelOpening] = useState(false);
@@ -87,6 +92,7 @@ export function useStage1Installer(
   const versionCatalogRequestGuard = useLatestRequestGuard();
   const postInstallStatusRequestGuard = useLatestRequestGuard();
   const providerSetupRequestGuard = useLatestRequestGuard();
+  const feishuSetupRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
   const installLogRequestGuard = useLatestRequestGuard();
 
@@ -353,6 +359,36 @@ export function useStage1Installer(
     }
   }
 
+  async function handleFeishuChannelSetup(input: OpenClawFeishuChannelSetupPayload) {
+    const requestId = feishuSetupRequestGuard.begin();
+    setFeishuSetupLoading(true);
+    setError(null);
+
+    try {
+      const response = await setupOpenClawFeishuChannel(input);
+
+      if (!feishuSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setFeishuSetupResult(response);
+      await loadPostInstallStatus(response.configPath);
+      handleEnterPostInstallHome();
+      return response;
+    } catch (err) {
+      if (!feishuSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (feishuSetupRequestGuard.isCurrent(requestId)) {
+        setFeishuSetupLoading(false);
+      }
+    }
+  }
+
   async function handleLaunchRuntime(configPath: string) {
     const requestId = runtimeLaunchRequestGuard.begin();
     setRuntimeLaunchLoading(true);
@@ -429,6 +465,7 @@ export function useStage1Installer(
     setResult(null);
     setPostInstallStatus(null);
     setProviderSetupResult(null);
+    setFeishuSetupResult(null);
     setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
     setLoading(false);
@@ -618,6 +655,8 @@ export function useStage1Installer(
     timelineContainerRef,
     providerSetupLoading,
     providerSetupResult,
+    feishuSetupLoading,
+    feishuSetupResult,
     versionCatalog,
     versionCatalogLoading,
     versionListReady,
@@ -630,6 +669,7 @@ export function useStage1Installer(
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
     handleOpenLogsDirectory,
+    handleFeishuChannelSetup,
     handleProviderSetup,
     loadPostInstallStatus
   };

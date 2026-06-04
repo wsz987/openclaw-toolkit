@@ -5,6 +5,8 @@ import type {
   DirectoryPickerResponse,
   InstallMode,
   OpenClawLaunchResult,
+  OpenClawFeishuChannelSetupPayload,
+  OpenClawFeishuChannelSetupResult,
   OpenPathResult,
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
@@ -95,6 +97,12 @@ export async function setupOpenClawProvider(
   input: OpenClawProviderSetupPayload
 ): Promise<OpenClawProviderSetupResult> {
   return invoke<OpenClawProviderSetupResult>('setup_openclaw_provider', { input });
+}
+
+export async function setupOpenClawFeishuChannel(
+  input: OpenClawFeishuChannelSetupPayload
+): Promise<OpenClawFeishuChannelSetupResult> {
+  return invoke<OpenClawFeishuChannelSetupResult>('setup_openclaw_feishu_channel', { input });
 }
 
 export async function launchOpenClawRuntime(configPath: string): Promise<OpenClawLaunchResult> {

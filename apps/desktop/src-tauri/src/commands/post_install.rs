@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use crate::core::{
     app_state::{mark_installation_launched, sync_installation_status_by_config_path},
     openclaw_config::{
-        apply_provider_setup, read_openclaw_status, OpenClawStatusSummary, ProviderSetupInput,
-        ProviderSetupResult,
+        apply_feishu_channel_setup, apply_provider_setup, read_openclaw_status,
+        FeishuChannelSetupInput, FeishuChannelSetupResult, OpenClawStatusSummary,
+        ProviderSetupInput, ProviderSetupResult,
     },
     process::{launch_managed_openclaw, ManagedOpenClawLaunchResult},
 };
@@ -46,6 +47,24 @@ pub async fn setup_openclaw_provider(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("setup_openclaw_provider join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn setup_openclaw_feishu_channel(
+    input: FeishuChannelSetupInput,
+) -> Result<FeishuChannelSetupResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_feishu_channel_setup(&input)?;
+        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
+        Ok::<FeishuChannelSetupResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("setup_openclaw_feishu_channel join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

@@ -9,8 +9,7 @@ import { PostInstallHomeView } from './components/post-install-views';
 import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './components/stage1-views';
 import type { AppBootstrapState } from './model/types';
 import { BrandSpike } from './components/brand-spike';
-import { Button } from '../../components/ui/button';
-import { MonitorIcon, KeyIcon, ArrowLeftIcon } from '../../components/icons';
+import { MonitorIcon, KeyIcon, MessageSquareIcon } from '../../components/icons';
 import {
   getRecoveredInstallationMode,
   isRecoveredInstallationState,
@@ -19,12 +18,13 @@ import {
 } from './model/app-flow';
 
 type PostInstallMenuProps = {
-  activeTab: 'operations' | 'provider';
-  onTabSelect: (tab: 'operations' | 'provider') => void;
+  activeTab: 'operations' | 'provider' | 'channels';
+  onTabSelect: (tab: 'operations' | 'provider' | 'channels') => void;
   providerReady: boolean;
+  feishuEnabled: boolean;
 };
 
-export function PostInstallMenu({ activeTab, onTabSelect, providerReady }: PostInstallMenuProps) {
+export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuEnabled }: PostInstallMenuProps) {
   return (
     <div className="flex flex-col gap-4 w-full py-4 select-none">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted))] mb-1 pl-1">
@@ -68,6 +68,29 @@ export function PostInstallMenu({ activeTab, onTabSelect, providerReady }: PostI
             </span>
             <span className="text-[9px] text-[hsl(var(--muted-soft))]">
               服务商与工具策略配置
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onTabSelect('channels')}
+          className={`w-full text-left px-4 py-3.5 rounded-lg flex items-center gap-3 transition-all duration-200 cursor-pointer border ${activeTab === 'channels'
+            ? 'bg-[hsl(var(--canvas))] text-[hsl(var(--primary))] border-[hsl(var(--hairline))] shadow-[0_2px_6px_rgba(20,20,19,0.04)] ring-3 ring-[hsl(var(--primary)/0.12)] font-semibold'
+            : 'bg-transparent hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--muted))] border-transparent'
+            }`}
+        >
+          <div className="relative">
+            <MessageSquareIcon size={14} className={activeTab === 'channels' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-soft))]'} />
+            {feishuEnabled && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] absolute -top-1 -right-1" />
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className={`text-xs font-semibold leading-tight ${activeTab === 'channels' ? 'text-[hsl(var(--ink))]' : 'text-[hsl(var(--body-strong))]'}`}>
+              Channels
+            </span>
+            <span className="text-[9px] text-[hsl(var(--muted-soft))]">
+              Feishu 内置通道与扩展入口
             </span>
           </div>
         </button>
@@ -122,6 +145,8 @@ export function Stage1InstallerApp({
     postInstallLoading,
     postInstallStatus,
     progressValue,
+    feishuSetupLoading,
+    feishuSetupResult,
     providerSetupLoading,
     providerSetupResult,
     result,
@@ -147,6 +172,7 @@ export function Stage1InstallerApp({
     versionCatalog,
     versionCatalogLoading,
     wizardStep,
+    handleFeishuChannelSetup,
     handleImportInstallation,
     confirmInstall
   } = useStage1Installer(
@@ -159,7 +185,8 @@ export function Stage1InstallerApp({
   const bootstrapStatus = bootstrapState?.status ?? null;
 
   const providerReady = (postInstallStatus ?? bootstrapStatus)?.providerInitialized ?? false;
-  const [activeTab, setActiveTab] = useState<'operations' | 'provider'>('operations');
+  const feishuEnabled = (postInstallStatus ?? bootstrapStatus)?.feishuChannel.enabled ?? false;
+  const [activeTab, setActiveTab] = useState<'operations' | 'provider' | 'channels'>('operations');
   const [hasInitializedTab, setHasInitializedTab] = useState(false);
 
   useEffect(() => {
@@ -194,7 +221,10 @@ export function Stage1InstallerApp({
         controlPanelOpening={controlPanelOpening}
         installationDirOpening={installationDirOpening}
         logsDirOpening={logsDirOpening}
+        feishuSetupLoading={feishuSetupLoading}
+        feishuSetupResult={feishuSetupResult}
         onProviderSetup={handleProviderSetup}
+        onFeishuChannelSetup={handleFeishuChannelSetup}
         onLaunchRuntime={handleLaunchRuntime}
         onOpenControlPanel={handleOpenControlPanel}
         onOpenInstallationDirectory={handleOpenInstallationDirectory}
@@ -233,7 +263,10 @@ export function Stage1InstallerApp({
         controlPanelOpening={controlPanelOpening}
         installationDirOpening={installationDirOpening}
         logsDirOpening={logsDirOpening}
+        feishuSetupLoading={feishuSetupLoading}
+        feishuSetupResult={feishuSetupResult}
         onProviderSetup={handleProviderSetup}
+        onFeishuChannelSetup={handleFeishuChannelSetup}
         onLaunchRuntime={handleLaunchRuntime}
         onOpenControlPanel={handleOpenControlPanel}
         onOpenInstallationDirectory={handleOpenInstallationDirectory}
@@ -376,6 +409,7 @@ export function Stage1InstallerApp({
                 activeTab={activeTab}
                 onTabSelect={setActiveTab}
                 providerReady={providerReady}
+                feishuEnabled={feishuEnabled}
               />
             ) : (
               <Stage1Stepper

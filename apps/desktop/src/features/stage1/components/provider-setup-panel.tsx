@@ -47,7 +47,6 @@ export function ProviderSetupPanel({
   const [apiUrl, setApiUrl] = useState(fallbackProvider?.baseUrl ?? 'https://ark.cn-beijing.volces.com/api/plan/v3');
   const [apiKey, setApiKey] = useState('');
   const [primaryModel, setPrimaryModel] = useState(fallbackProvider?.defaultModel ?? 'volcengine-agent-plan/ark-code-latest');
-  const [enableFeishuPlugin, setEnableFeishuPlugin] = useState(true);
   const [grantAgentPermissions, setGrantAgentPermissions] = useState(true);
 
   const providerReady = status?.providerInitialized ?? false;
@@ -87,8 +86,6 @@ export function ProviderSetupPanel({
       setApiUrl(status.providerApiUrl ?? resolvedProvider.baseUrl);
       setPrimaryModel(status.providerModel ?? resolvedProvider.defaultModel);
     }
-
-    setEnableFeishuPlugin(!status.feishuPluginEnabled ? true : status.feishuPluginEnabled);
   }, [status, availableProviders, fallbackProvider]);
 
   useEffect(() => {
@@ -309,18 +306,6 @@ export function ProviderSetupPanel({
                   <Check className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] block">飞书机器人插件入口</strong>
-                  <p className="text-[11px] text-[hsl(var(--muted))] mt-0.5">
-                    通过 {status?.feishuPluginEnabled ? '已启用' : '已禁用'} 状态挂载。允许团队通过飞书单聊/群聊唤醒受管 Agent 进行协作开发。
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-1 rounded-full bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] mt-0.5">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-                <div>
                   <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] block">OpenClaw Agent 工具权限安全策略</strong>
                   <p className="text-[11px] text-[hsl(var(--muted))] mt-0.5">
                     沙箱运行状态：只读隔离已启用，拒绝修改系统根目录。执行权限受用户会话实时守护。
@@ -506,25 +491,6 @@ export function ProviderSetupPanel({
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] rounded-xl p-5">
-              {/* Feishu checkbox card */}
-              <label className="group flex items-start gap-3 p-3.5 rounded-lg border border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] cursor-pointer select-none bg-[hsl(var(--canvas))] transition-all">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 mt-0.5 rounded border-[hsl(var(--hairline))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))/0.15] bg-[hsl(var(--canvas))] cursor-pointer"
-                  checked={enableFeishuPlugin}
-                  onChange={(event) => setEnableFeishuPlugin(event.target.checked)}
-                  disabled={providerSetupLoading}
-                />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-semibold text-[hsl(var(--body-strong))] group-hover:text-[hsl(var(--primary))] transition-colors">
-                    启用飞书消息插件
-                  </span>
-                  <span className="text-[10px] text-[hsl(var(--muted))] leading-normal">
-                    允许在飞书群组或私聊中，以机器人接入形式提供自动化开发与代码提取能力。
-                  </span>
-                </div>
-              </label>
-
               {/* Agent policy checkbox card */}
               <label className="group flex items-start gap-3 p-3.5 rounded-lg border border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] cursor-pointer select-none bg-[hsl(var(--canvas))] transition-all">
                 <input
@@ -634,14 +600,13 @@ export function ProviderSetupPanel({
                 onClick={() =>
                   void onProviderSetup({
                     configPath: result.configPath,
-                    providerId,
-                    apiKey,
-                    apiUrl,
-                    primaryModel,
-                    enableFeishuPlugin,
-                    grantAgentPermissions
-                  })
-                }
+                  providerId,
+                  apiKey,
+                  apiUrl,
+                  primaryModel,
+                  grantAgentPermissions
+                })
+              }
                 className="flex-1 sm:flex-none min-w-[140px] h-10 bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] cursor-pointer font-medium shadow-sm"
               >
                 {providerSetupLoading ? (
