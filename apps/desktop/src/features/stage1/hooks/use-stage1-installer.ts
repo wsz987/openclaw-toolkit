@@ -57,6 +57,7 @@ import {
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
+  initialConfigPath?: string | null,
   initialShowPostInstallHome = false,
   initialWizardStep: InstallerWizardStep = 0
 ) {
@@ -201,6 +202,37 @@ export function useStage1Installer(
     }
   }
 
+  async function loadPostInstallStatus(configPath: string) {
+    if (!configPath.trim()) {
+      setPostInstallStatus(null);
+      return null;
+    }
+
+    const requestId = postInstallStatusRequestGuard.begin();
+    setPostInstallLoading(true);
+
+    try {
+      const response = await inspectOpenClawStatus(configPath);
+      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setPostInstallStatus(response);
+      return response;
+    } catch (err) {
+      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (postInstallStatusRequestGuard.isCurrent(requestId)) {
+        setPostInstallLoading(false);
+      }
+    }
+  }
+
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
@@ -231,7 +263,6 @@ export function useStage1Installer(
     setError(null);
     setResult(null);
     setInstallLogTail(null);
-    setPostInstallStatus(null);
     setProviderSetupResult(null);
     setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
@@ -282,7 +313,6 @@ export function useStage1Installer(
     try {
       const response = await startStage1Install(payload);
       setResult(response);
-      await loadPostInstallStatus(response.configPath);
       await loadDashboard(payload);
       await loadInstallLog(payload.baseDir);
     } catch (err) {
@@ -309,32 +339,6 @@ export function useStage1Installer(
   async function confirmInstall() {
     setConfirmDialogOpen(false);
     await startInstall();
-  }
-
-  async function loadPostInstallStatus(configPath: string) {
-    const requestId = postInstallStatusRequestGuard.begin();
-    setPostInstallLoading(true);
-    try {
-      const response = await inspectOpenClawStatus(configPath);
-
-      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
-        return null;
-      }
-
-      setPostInstallStatus(response);
-      return response;
-    } catch (err) {
-      if (!postInstallStatusRequestGuard.isCurrent(requestId)) {
-        return null;
-      }
-
-      setError(err instanceof Error ? err.message : String(err));
-      return null;
-    } finally {
-      if (postInstallStatusRequestGuard.isCurrent(requestId)) {
-        setPostInstallLoading(false);
-      }
-    }
   }
 
   async function handleProviderSetup(input: OpenClawProviderSetupPayload) {
@@ -408,7 +412,6 @@ export function useStage1Installer(
       }
 
       setRuntimeLaunchResult(response);
-      await loadPostInstallStatus(configPath);
       return response;
     } catch (err) {
       if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
@@ -551,6 +554,15 @@ export function useStage1Installer(
       setShowPostInstallHome(true);
     }
   }, [initialShowPostInstallHome]);
+
+  useEffect(() => {
+    const activeConfigPath = result?.configPath ?? initialConfigPath ?? null;
+    if (!activeConfigPath || (!showPostInstallHome && !result && !initialShowPostInstallHome)) {
+      return;
+    }
+
+    void loadPostInstallStatus(activeConfigPath);
+  }, [initialConfigPath, initialShowPostInstallHome, result, showPostInstallHome]);
 
   useEffect(() => {
     if (loading) {
@@ -744,6 +756,8 @@ export function useStage1Installer(
     loadPostInstallStatus
   };
 }
+
+export type Stage1InstallerController = ReturnType<typeof useStage1Installer>;
 
 export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): Stage1InstallResult {
   return {

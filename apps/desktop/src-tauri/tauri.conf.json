@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "OpenClaw Toolkit",
         "width": 1200,
         "height": 760,

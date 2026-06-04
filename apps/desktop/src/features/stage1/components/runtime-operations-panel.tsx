@@ -7,11 +7,16 @@ import {
   FolderIcon,
   MonitorIcon,
   PlayIcon,
-  SpinnerIcon,
-  CheckIcon
+  SpinnerIcon
 } from '../../../components/icons';
-import type { OpenClawLaunchResult, OpenClawPostInstallStatus, Stage1InstallResult, Stage1InstallLogTail } from '../model/types';
+import type {
+  OpenClawLaunchResult,
+  OpenClawPostInstallStatus,
+  Stage1InstallLogTail,
+  Stage1InstallResult
+} from '../model/types';
 import { readOpenClawRuntimeLogTail } from '../api/stage1-api';
+import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 type RuntimeOperationsPanelProps = {
   result: Stage1InstallResult;
@@ -52,27 +57,29 @@ export function RuntimeOperationsPanel({
   onOpenLogsDirectory,
   onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
-  const providerReady = status?.providerInitialized ?? false;
-  const isRunning = status?.runtimeState === 'running' || Boolean(runtimeLaunchResult);
-  const runtimePid = status?.runtimePid ?? runtimeLaunchResult?.pid ?? null;
-  const runtimeLogPath = status?.runtimeLogPath ?? runtimeLaunchResult?.logPath ?? null;
-  const runtimeActionRequired = status?.runtimeActionRequired ?? 'none';
-  const pendingConfigChanges = status?.pendingConfigChanges ?? [];
-  const postInstallActionLoading =
-    runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || statusLoading;
   const [copied, setCopied] = useState(false);
   const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result.configPath);
+  const resolvedStatus = subscribedStatus ?? status;
+  const providerReady = resolvedStatus?.providerInitialized ?? false;
+  const isRunning = resolvedStatus?.runtimeRunning ?? (resolvedStatus?.runtimeState === 'running');
+  const panelReachable = resolvedStatus?.panelReachable ?? false;
+  const postInstallActionLoading =
+    runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || subscribedStatusLoading || statusLoading;
+  const activeLogPath = runtimeLaunchResult?.logPath ?? resolvedStatus?.runtimeLogPath ?? null;
+  const hasRuntimeSession = isRunning && Boolean(activeLogPath);
+  const runtimePid = runtimeLaunchResult?.pid ?? resolvedStatus?.runtimePid ?? null;
 
   useEffect(() => {
-    if (!isRunning || !runtimeLogPath) {
+    if (!hasRuntimeSession || !activeLogPath) {
       setLogTail(null);
       return;
     }
 
     const loadLogs = async () => {
       try {
-        const response = await readOpenClawRuntimeLogTail(runtimeLogPath, 100);
+        const response = await readOpenClawRuntimeLogTail(activeLogPath, 100);
         setLogTail(response);
       } catch (err) {
         console.error('Failed to load openclaw runtime logs:', err);
@@ -85,7 +92,7 @@ export function RuntimeOperationsPanel({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isRunning, runtimeLogPath]);
+  }, [activeLogPath, hasRuntimeSession]);
 
   useEffect(() => {
     if (terminalEndRef.current) {
@@ -94,7 +101,7 @@ export function RuntimeOperationsPanel({
   }, [logTail?.lines]);
 
   const handleCopyConsoleUrl = async () => {
-    const url = status?.controlUiUrl ?? 'http://127.0.0.1:18789/';
+    const url = resolvedStatus?.controlUiUrl ?? 'http://127.0.0.1:18789/';
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -105,9 +112,8 @@ export function RuntimeOperationsPanel({
   };
 
   if (!providerReady) {
-    // Locked/Pending Initialization state
     return (
-      <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between">
+      <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg min-h-[460px] justify-between h-full flex-1 min-h-0 overflow-y-auto">
         <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
           <div>
             <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
@@ -151,9 +157,8 @@ export function RuntimeOperationsPanel({
     );
   }
 
-  // Active Dashboard
   return (
-    <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg animate-fade-in">
+    <div className="rounded-xl border border-white/5 bg-[hsl(var(--surface-dark))] text-[hsl(var(--on-dark))] p-6 flex flex-col gap-6 shadow-lg animate-fade-in h-full flex-1 min-h-0 overflow-y-auto">
       <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
         <div>
           <h3 className="font-serif text-xl font-normal tracking-tight text-[hsl(var(--on-dark))]">运行控制中心</h3>
@@ -173,8 +178,9 @@ export function RuntimeOperationsPanel({
             </span>
           )}
           <span
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${isRunning ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-              }`}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
+              isRunning ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+            }`}
           >
             {isRunning ? '服务运行中' : '服务未启动'}
           </span>
@@ -186,9 +192,10 @@ export function RuntimeOperationsPanel({
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">控制台地址</span>
           <div className="flex items-center justify-between gap-2 mt-1">
             <code className="text-xs font-mono text-[hsl(var(--on-dark))] truncate break-all select-all">
-              {statusLoading ? '加载中...' : status?.controlUiUrl ?? 'http://127.0.0.1:18789/'}
+              {subscribedStatusLoading || statusLoading ? '加载中...' : resolvedStatus?.controlUiUrl ?? 'http://127.0.0.1:18789/'}
             </code>
             <button
+              type="button"
               onClick={handleCopyConsoleUrl}
               className="text-[10px] bg-white/5 hover:bg-white/10 active:bg-white/15 px-2 py-0.5 rounded border border-white/5 transition-colors font-medium cursor-pointer"
             >
@@ -200,8 +207,8 @@ export function RuntimeOperationsPanel({
         <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">插件启用状态</span>
           <span className="text-xs font-medium text-[hsl(var(--on-dark))] mt-1 truncate">
-            飞书插件: {status?.feishuPluginEnabled ? '已启用' : '未开启'}
-            {status?.pluginsEnabled.length ? ` (${status.pluginsEnabled.join(', ')})` : ''}
+            飞书插件: {resolvedStatus?.feishuPluginEnabled ? '已启用' : '未开启'}
+            {resolvedStatus?.pluginsEnabled.length ? ` (${resolvedStatus.pluginsEnabled.join(', ')})` : ''}
           </span>
         </div>
 
@@ -209,22 +216,23 @@ export function RuntimeOperationsPanel({
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">SKILLS & 工作区目录</span>
           <div className="flex flex-col gap-1 mt-1">
             <span className="text-xs font-medium text-[hsl(var(--on-dark))] truncate">
-              已识别 Skills: {status?.skillsInstalled.length ? status.skillsInstalled.join(', ') : '未识别'}
+              已识别 Skills: {resolvedStatus?.skillsInstalled.length ? resolvedStatus.skillsInstalled.join(', ') : '未识别'}
             </span>
             <code className="text-[11px] font-mono text-[hsl(var(--on-dark-soft))] truncate break-all mt-0.5">
-              {status?.workspaceDir ?? result.openclawDir}
+              {resolvedStatus?.workspaceDir ?? result.openclawDir}
             </code>
           </div>
         </div>
       </div>
 
-      {/* Mock Terminal Output */}
       <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text h-48 overflow-y-auto">
         <div className="text-white/40">$ openclaw daemon --config=openclaw.json</div>
-        {isRunning ? (
+        {hasRuntimeSession ? (
           <>
             <div>[daemon] Spawning OpenClaw core instance...</div>
-            <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimePid ?? 'unknown'}</div>
+            <div className="text-[hsl(var(--success))]">
+              [success] Process {runtimePid ? `started with PID: ${runtimePid}` : 'is running and responding to health checks'}
+            </div>
             {logTail && logTail.lines.length > 0 ? (
               logTail.lines.map((line, index) => (
                 <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} className="text-white/80" />
@@ -234,7 +242,7 @@ export function RuntimeOperationsPanel({
                 <div>[gateway] Server listening at: http://127.0.0.1:18789</div>
                 <div>[gateway] Control Panel ready, proxy route enabled.</div>
                 <div>[openclaw] Starting pipeline runtime loops...</div>
-                <div>[openclaw] API Client initialized for provider: {status?.providerId ?? 'default-provider'}</div>
+                <div>[openclaw] API Client initialized for provider: {resolvedStatus?.providerId ?? 'default-provider'}</div>
                 <div>[openclaw] Listening for incoming browser agent session requests...</div>
               </>
             )}
@@ -249,11 +257,10 @@ export function RuntimeOperationsPanel({
         <div ref={terminalEndRef} />
         <div className="flex items-center gap-1">
           <span>_</span>
-          {(runtimeLaunchLoading || (isRunning && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
+          {(runtimeLaunchLoading || (hasRuntimeSession && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
         </div>
       </div>
 
-      {/* Action Area */}
       <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
         <div className="flex flex-wrap gap-3">
           <Button
@@ -305,7 +312,7 @@ export function RuntimeOperationsPanel({
 
           <Button
             variant="secondary"
-            disabled={postInstallActionLoading || !status || !onOpenControlPanel || !isRunning}
+            disabled={postInstallActionLoading || !status || !onOpenControlPanel || !panelReachable}
             onClick={() => void onOpenControlPanel?.(result.configPath)}
             className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           >

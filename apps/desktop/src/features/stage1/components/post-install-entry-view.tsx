@@ -1,7 +1,8 @@
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { CheckIcon, ChevronRightIcon } from '../../../components/icons';
-import type { OpenClawPostInstallStatus, Stage1InstallResult } from '../model/types';
+import type { Stage1InstallResult } from '../model/types';
+import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 function InstallationSummaryGrid({ result }: { result: Stage1InstallResult }) {
   return (
@@ -36,8 +37,6 @@ function InstallationSummaryGrid({ result }: { result: Stage1InstallResult }) {
 
 type PostInstallEntryViewProps = {
   result: Stage1InstallResult;
-  status: OpenClawPostInstallStatus | null;
-  statusLoading: boolean;
   onContinue: () => void;
   onBack: () => void;
   title?: string;
@@ -47,14 +46,13 @@ type PostInstallEntryViewProps = {
 
 export function PostInstallEntryView({
   result,
-  status,
-  statusLoading,
   onContinue,
   onBack,
   title = '运行环境部署成功',
   description = 'OpenClaw 核心程序及依赖资源已安装完成。接下来建议继续完成初始化与授权，再进入后续运行操作。',
   backLabel = '返回配置首页'
 }: PostInstallEntryViewProps) {
+  const { status, loading: statusLoading } = useOpenClawStatusSubscription(result.configPath);
   const providerReady = status?.providerInitialized ?? false;
 
   return (

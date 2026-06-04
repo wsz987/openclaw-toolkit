@@ -94,6 +94,8 @@ export type OpenClawPostInstallStatus = {
   runtimeLogPath: string | null;
   runtimeActionRequired: 'none' | 'reload' | 'restart' | string;
   pendingConfigChanges: string[];
+  runtimeRunning: boolean;
+  panelReachable: boolean;
   providerInitialized: boolean;
   providerId: string | null;
   providerModel: string | null;

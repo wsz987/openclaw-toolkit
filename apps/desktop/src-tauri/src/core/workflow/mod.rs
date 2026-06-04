@@ -495,28 +495,28 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         },
     )?;
 
-    let target_openclaw_dir = resolve_openclaw_dir(&base_dir, &release);
-    if let Some(backup_dir) = backup_existing_dir(
-        &target_openclaw_dir,
-        &base_dir,
-        &format!("openclaw-{}", release.version),
-    )? {
-        append_install_log(
-            &base_dir,
-            &format!(
-                "{} backup existing openclaw to {}",
-                workflow_id,
-                backup_dir.display()
-            ),
-        )?;
-    }
-
     let openclaw_dir = run_step(
         &base_dir,
         &mut progress,
         InstallStep::InstallOpenClaw,
         Some(InstallStep::WriteInstalledManifest),
         || {
+            let target_openclaw_dir = resolve_openclaw_dir(&base_dir, &release);
+            if let Some(backup_dir) = backup_existing_dir(
+                &target_openclaw_dir,
+                &base_dir,
+                &format!("openclaw-{}", release.version),
+            )? {
+                append_install_log(
+                    &base_dir,
+                    &format!(
+                        "{} backup existing openclaw to {}",
+                        workflow_id,
+                        backup_dir.display()
+                    ),
+                )?;
+            }
+
             install_openclaw(
                 &project_root,
                 &base_dir,

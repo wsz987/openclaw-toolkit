@@ -76,6 +76,7 @@ export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuE
           return (
             <button
               key={tab}
+              type="button"
               onClick={() => onTabSelect(tab)}
               className={`${menuButtonBaseClassName} ${isActive ? menuButtonActiveClassName : menuButtonIdleClassName}`}
             >
