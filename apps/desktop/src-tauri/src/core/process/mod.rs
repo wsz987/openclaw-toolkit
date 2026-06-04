@@ -20,6 +20,10 @@ pub struct ManagedOpenClawLaunchResult {
     pub log_path: PathBuf,
 }
 
+pub struct ManagedOpenClawStopResult {
+    pub stopped: bool,
+}
+
 pub fn detect_system_openclaw() -> SystemOpenClawDetection {
     let Some(executable) = find_system_openclaw() else {
         return SystemOpenClawDetection {
@@ -97,6 +101,36 @@ pub fn launch_managed_openclaw(
         pid: child.id(),
         log_path,
     })
+}
+
+pub fn stop_managed_openclaw(pid: u32) -> anyhow::Result<ManagedOpenClawStopResult> {
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status()
+            .with_context(|| format!("stop managed openclaw pid {}", pid))?;
+
+        if !status.success() {
+            anyhow::bail!("taskkill exited with {}", status);
+        }
+
+        return Ok(ManagedOpenClawStopResult { stopped: true });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let status = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status()
+            .with_context(|| format!("stop managed openclaw pid {}", pid))?;
+
+        if !status.success() {
+            anyhow::bail!("kill exited with {}", status);
+        }
+
+        Ok(ManagedOpenClawStopResult { stopped: true })
+    }
 }
 
 fn read_openclaw_version(executable: &Path) -> anyhow::Result<String> {

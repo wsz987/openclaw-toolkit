@@ -77,6 +77,14 @@ pub struct InstallationRecord {
     pub runtime_state: String,
     pub provider_state: String,
     pub panel_state: String,
+    #[serde(default)]
+    pub runtime_action_required: String,
+    #[serde(default)]
+    pub pending_config_changes: Vec<String>,
+    #[serde(default)]
+    pub runtime_pid: Option<u32>,
+    #[serde(default)]
+    pub runtime_log_path: Option<String>,
     pub installed_at: String,
     pub last_validated_at: Option<String>,
     pub last_launched_at: Option<String>,
@@ -357,7 +365,6 @@ pub fn prepare_installation_target(base_dir: &Path, openclaw_version: &str) -> a
 }
 
 pub fn sync_installation_status_by_config_path(config_path: &Path) -> anyhow::Result<()> {
-    let status = read_openclaw_status(config_path)?;
     let mut registry = load_install_registry()?;
     let Some(record) = registry
         .installations
@@ -367,11 +374,35 @@ pub fn sync_installation_status_by_config_path(config_path: &Path) -> anyhow::Re
         return Ok(());
     };
 
+    let mut status = read_openclaw_status(config_path)?;
+    hydrate_status_with_runtime_state(&mut status, record);
     apply_status_to_record(record, &status);
     save_install_registry(&registry)
 }
 
-pub fn mark_installation_launched(config_path: &Path) -> anyhow::Result<()> {
+pub fn resolve_installation_status_by_config_path(
+    config_path: &Path,
+) -> anyhow::Result<OpenClawStatusSummary> {
+    let mut status = read_openclaw_status(config_path)?;
+    let registry = load_install_registry()?;
+
+    if let Some(record) = registry
+        .installations
+        .iter()
+        .find(|item| same_path(&item.config_path, config_path))
+    {
+        hydrate_status_with_runtime_state(&mut status, record);
+    }
+
+    Ok(status)
+}
+
+pub fn mark_installation_runtime_state(
+    config_path: &Path,
+    runtime_state: &str,
+    runtime_pid: Option<u32>,
+    runtime_log_path: Option<&Path>,
+) -> anyhow::Result<()> {
     let mut registry = load_install_registry()?;
     let Some(record) = registry
         .installations
@@ -381,9 +412,41 @@ pub fn mark_installation_launched(config_path: &Path) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    record.runtime_state = "running".to_string();
+    record.runtime_state = runtime_state.to_string();
     record.status = "installed".to_string();
-    record.last_launched_at = Some(Utc::now().to_rfc3339());
+    record.runtime_pid = runtime_pid;
+    record.runtime_log_path = runtime_log_path.map(|path| path.to_string_lossy().to_string());
+    if runtime_state.eq_ignore_ascii_case("running") {
+        record.runtime_action_required = "none".to_string();
+        record.pending_config_changes.clear();
+        record.last_launched_at = Some(Utc::now().to_rfc3339());
+    }
+    record.last_error = None;
+    save_install_registry(&registry)
+}
+
+pub fn mark_runtime_action_required(
+    config_path: &Path,
+    action: &str,
+    change_key: &str,
+) -> anyhow::Result<()> {
+    let mut registry = load_install_registry()?;
+    let Some(record) = registry
+        .installations
+        .iter_mut()
+        .find(|item| same_path(&item.config_path, config_path))
+    else {
+        return Ok(());
+    };
+
+    record.runtime_action_required = action.to_string();
+    if !record
+        .pending_config_changes
+        .iter()
+        .any(|item| item.eq_ignore_ascii_case(change_key))
+    {
+        record.pending_config_changes.push(change_key.to_string());
+    }
     record.last_error = None;
     save_install_registry(&registry)
 }
@@ -403,7 +466,8 @@ fn validate_installation(record: &mut InstallationRecord) -> anyhow::Result<Open
         anyhow::bail!("配置文件不存在：{}", config_path.display());
     }
 
-    let status = read_openclaw_status(&config_path)?;
+    let mut status = read_openclaw_status(&config_path)?;
+    hydrate_status_with_runtime_state(&mut status, record);
     apply_status_to_record(record, &status);
     Ok(status)
 }
@@ -551,6 +615,10 @@ fn installation_record_from_manifest(
         runtime_state: "stopped".to_string(),
         provider_state: "uninitialized".to_string(),
         panel_state: "unknown".to_string(),
+        runtime_action_required: "none".to_string(),
+        pending_config_changes: Vec::new(),
+        runtime_pid: None,
+        runtime_log_path: None,
         installed_at: manifest.installed_at.clone(),
         last_validated_at: None,
         last_launched_at: None,
@@ -625,12 +693,41 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
     } else {
         "uninitialized".to_string()
     };
-    if record.runtime_state != "running" {
-        record.runtime_state = "stopped".to_string();
-    }
+    record.runtime_state = if status.runtime_state.trim().is_empty() {
+        "stopped".to_string()
+    } else {
+        status.runtime_state.clone()
+    };
+    record.runtime_pid = status.runtime_pid;
+    record.runtime_log_path = status.runtime_log_path.clone();
+    record.runtime_action_required = if status.runtime_action_required.trim().is_empty() {
+        "none".to_string()
+    } else {
+        status.runtime_action_required.clone()
+    };
+    record.pending_config_changes = status.pending_config_changes.clone();
     record.panel_state = "unknown".to_string();
     record.last_validated_at = Some(Utc::now().to_rfc3339());
     record.last_error = None;
+}
+
+fn hydrate_status_with_runtime_state(
+    status: &mut OpenClawStatusSummary,
+    record: &InstallationRecord,
+) {
+    status.runtime_state = if record.runtime_state.trim().is_empty() {
+        "stopped".to_string()
+    } else {
+        record.runtime_state.clone()
+    };
+    status.runtime_pid = record.runtime_pid;
+    status.runtime_log_path = record.runtime_log_path.clone();
+    status.runtime_action_required = if record.runtime_action_required.trim().is_empty() {
+        "none".to_string()
+    } else {
+        record.runtime_action_required.clone()
+    };
+    status.pending_config_changes = record.pending_config_changes.clone();
 }
 
 fn upsert_installation(registry: &mut InstallationRegistry, record: InstallationRecord) {

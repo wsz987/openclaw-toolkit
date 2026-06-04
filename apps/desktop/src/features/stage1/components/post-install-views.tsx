@@ -4,6 +4,7 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawLaunchResult,
   OpenClawPostInstallStatus,
+  PostInstallTab,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1InstallResult
@@ -11,6 +12,7 @@ import type {
 import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
 import { ChannelsPanel } from './channels-panel';
+import { ServiceControlPanel } from './service-control-panel';
 
 type PostInstallHomeViewProps = {
   result: Stage1InstallResult;
@@ -21,6 +23,8 @@ type PostInstallHomeViewProps = {
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
   runtimeLaunchLoading: boolean;
+  runtimeStopLoading: boolean;
+  runtimeRestartLoading: boolean;
   runtimeLaunchResult: OpenClawLaunchResult | null;
   controlPanelOpening?: boolean;
   installationDirOpening?: boolean;
@@ -28,6 +32,8 @@ type PostInstallHomeViewProps = {
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
   onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
+  onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
+  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawLaunchResult | null>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
   onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
@@ -35,8 +41,9 @@ type PostInstallHomeViewProps = {
   recoveryMessage?: string | null;
   importLoading?: boolean;
   onImportInstallation?: () => void;
-  activeTab: 'operations' | 'provider' | 'channels';
+  activeTab: PostInstallTab;
   onNavigateToProvider?: () => void;
+  onNavigateToAdvancedConsole?: () => void;
 };
 
 export function PostInstallHomeView({
@@ -48,6 +55,8 @@ export function PostInstallHomeView({
   feishuSetupLoading,
   feishuSetupResult,
   runtimeLaunchLoading,
+  runtimeStopLoading,
+  runtimeRestartLoading,
   runtimeLaunchResult,
   controlPanelOpening = false,
   installationDirOpening = false,
@@ -55,6 +64,8 @@ export function PostInstallHomeView({
   onProviderSetup,
   onFeishuChannelSetup,
   onLaunchRuntime,
+  onStopRuntime,
+  onRestartRuntime,
   onOpenControlPanel,
   onOpenInstallationDirectory,
   onOpenLogsDirectory,
@@ -63,10 +74,11 @@ export function PostInstallHomeView({
   importLoading = false,
   onImportInstallation,
   activeTab,
-  onNavigateToProvider
+  onNavigateToProvider,
+  onNavigateToAdvancedConsole
 }: PostInstallHomeViewProps) {
   return (
-    <div className="w-full flex flex-col gap-6 animate-fade-in py-4">
+    <div className="w-full flex-1 flex flex-col gap-6 animate-fade-in py-4">
       {/* Recovery/Warning Message if present */}
       {mode === 'recovery' && recoveryMessage ? (
         <div className="rounded-xl border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.06)] px-5 py-4 text-xs leading-relaxed text-[hsl(var(--body-strong))] flex items-start gap-3 animate-slide-in shadow-sm">
@@ -79,18 +91,39 @@ export function PostInstallHomeView({
       ) : null}
 
       {/* Main Content Pane */}
-      <div className="flex-1 w-full min-w-0">
-        {activeTab === 'operations' ? (
+      <div className="flex-1 w-full min-w-0 flex flex-col">
+        {activeTab === 'controls' ? (
+          <ServiceControlPanel
+            result={result}
+            status={status}
+            statusLoading={statusLoading}
+            runtimeLaunchLoading={runtimeLaunchLoading}
+            runtimeStopLoading={runtimeStopLoading}
+            runtimeRestartLoading={runtimeRestartLoading}
+            runtimeLaunchResult={runtimeLaunchResult}
+            onLaunchRuntime={onLaunchRuntime}
+            onStopRuntime={onStopRuntime}
+            onRestartRuntime={onRestartRuntime}
+            onNavigateToAdvancedConsole={onNavigateToAdvancedConsole}
+            onNavigateToProvider={onNavigateToProvider}
+            onOpenControlPanel={onOpenControlPanel}
+            controlPanelOpening={controlPanelOpening}
+          />
+        ) : activeTab === 'advanced-console' ? (
           <RuntimeOperationsPanel
             result={result}
             status={status}
             statusLoading={statusLoading}
             runtimeLaunchLoading={runtimeLaunchLoading}
+            runtimeStopLoading={runtimeStopLoading}
+            runtimeRestartLoading={runtimeRestartLoading}
             runtimeLaunchResult={runtimeLaunchResult}
             controlPanelOpening={controlPanelOpening}
             installationDirOpening={installationDirOpening}
             logsDirOpening={logsDirOpening}
             onLaunchRuntime={onLaunchRuntime}
+            onStopRuntime={onStopRuntime}
+            onRestartRuntime={onRestartRuntime}
             onOpenControlPanel={onOpenControlPanel}
             onOpenInstallationDirectory={onOpenInstallationDirectory}
             onOpenLogsDirectory={onOpenLogsDirectory}

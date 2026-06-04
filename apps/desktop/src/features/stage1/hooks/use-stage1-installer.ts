@@ -30,6 +30,7 @@ import type {
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
+  OpenClawStopResult,
   Stage1Dashboard,
   Stage1InstallLogTail,
   Stage1InstallPayload,
@@ -47,8 +48,10 @@ import {
   openLogsDirectory,
   pickDirectory,
   readStage1InstallLogTail,
+  restartOpenClawRuntime,
   setupOpenClawFeishuChannel,
   setupOpenClawProvider,
+  stopOpenClawRuntime,
   startStage1Install
 } from '../api/stage1-api';
 
@@ -78,6 +81,8 @@ export function useStage1Installer(
   const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
   const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
+  const [runtimeStopLoading, setRuntimeStopLoading] = useState(false);
+  const [runtimeRestartLoading, setRuntimeRestartLoading] = useState(false);
   const [controlPanelOpening, setControlPanelOpening] = useState(false);
   const [installationDirOpening, setInstallationDirOpening] = useState(false);
   const [logsDirOpening, setLogsDirOpening] = useState(false);
@@ -94,6 +99,8 @@ export function useStage1Installer(
   const providerSetupRequestGuard = useLatestRequestGuard();
   const feishuSetupRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
+  const runtimeStopRequestGuard = useLatestRequestGuard();
+  const runtimeRestartRequestGuard = useLatestRequestGuard();
   const installLogRequestGuard = useLatestRequestGuard();
 
   const payload = useMemo<Stage1InstallPayload>(
@@ -417,6 +424,65 @@ export function useStage1Installer(
     }
   }
 
+  async function handleStopRuntime(configPath: string, pid: number) {
+    const requestId = runtimeStopRequestGuard.begin();
+    setRuntimeStopLoading(true);
+    setError(null);
+    try {
+      const response = await stopOpenClawRuntime(configPath, pid);
+
+      if (!runtimeStopRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      if (response.stopped) {
+        setRuntimeLaunchResult(null);
+        await loadPostInstallStatus(configPath);
+      }
+
+      return response;
+    } catch (err) {
+      if (!runtimeStopRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (runtimeStopRequestGuard.isCurrent(requestId)) {
+        setRuntimeStopLoading(false);
+      }
+    }
+  }
+
+  async function handleRestartRuntime(configPath: string, pid?: number | null) {
+    const requestId = runtimeRestartRequestGuard.begin();
+    setRuntimeRestartLoading(true);
+    setError(null);
+    try {
+      const response = await restartOpenClawRuntime(configPath, pid);
+
+      if (!runtimeRestartRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setRuntimeLaunchResult(response);
+      await loadPostInstallStatus(configPath);
+      return response;
+    } catch (err) {
+      if (!runtimeRestartRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (runtimeRestartRequestGuard.isCurrent(requestId)) {
+        setRuntimeRestartLoading(false);
+      }
+    }
+  }
+
   async function handleOpenControlPanel(configPath: string) {
     setControlPanelOpening(true);
     setError(null);
@@ -635,6 +701,8 @@ export function useStage1Installer(
     result,
     runtimeLaunchLoading,
     runtimeLaunchResult,
+    runtimeStopLoading,
+    runtimeRestartLoading,
     showPostInstallHome,
     selectedVersion,
     selectedVersionOption,
@@ -666,6 +734,8 @@ export function useStage1Installer(
     confirmInstall,
     handleImportInstallation,
     handleLaunchRuntime,
+    handleStopRuntime,
+    handleRestartRuntime,
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
     handleOpenLogsDirectory,
@@ -684,5 +754,22 @@ export function createInstallResultFromRecord(record: import('../model/types').I
     openclawDir: record.openclawDir,
     nodeDir: record.nodeDir,
     configPath: record.configPath
+  };
+}
+
+export function createLaunchResultFromStatus(
+  status: OpenClawPostInstallStatus | null | undefined
+): OpenClawLaunchResult | null {
+  if (!status) {
+    return null;
+  }
+
+  if (status.runtimeState !== 'running' || !status.runtimePid || !status.runtimeLogPath) {
+    return null;
+  }
+
+  return {
+    pid: status.runtimePid,
+    logPath: status.runtimeLogPath
   };
 }

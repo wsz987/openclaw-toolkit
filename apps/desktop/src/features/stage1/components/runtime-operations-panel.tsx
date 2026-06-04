@@ -18,11 +18,15 @@ type RuntimeOperationsPanelProps = {
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   runtimeLaunchLoading: boolean;
+  runtimeStopLoading: boolean;
+  runtimeRestartLoading: boolean;
   runtimeLaunchResult: OpenClawLaunchResult | null;
   controlPanelOpening: boolean;
   installationDirOpening: boolean;
   logsDirOpening: boolean;
   onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
+  onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
+  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawLaunchResult | null>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
   onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
@@ -34,32 +38,41 @@ export function RuntimeOperationsPanel({
   status,
   statusLoading,
   runtimeLaunchLoading,
+  runtimeStopLoading,
+  runtimeRestartLoading,
   runtimeLaunchResult,
   controlPanelOpening,
   installationDirOpening,
   logsDirOpening,
   onLaunchRuntime,
+  onStopRuntime,
+  onRestartRuntime,
   onOpenControlPanel,
   onOpenInstallationDirectory,
   onOpenLogsDirectory,
   onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
-  const isRunning = Boolean(runtimeLaunchResult);
-  const postInstallActionLoading = runtimeLaunchLoading || statusLoading;
+  const isRunning = status?.runtimeState === 'running' || Boolean(runtimeLaunchResult);
+  const runtimePid = status?.runtimePid ?? runtimeLaunchResult?.pid ?? null;
+  const runtimeLogPath = status?.runtimeLogPath ?? runtimeLaunchResult?.logPath ?? null;
+  const runtimeActionRequired = status?.runtimeActionRequired ?? 'none';
+  const pendingConfigChanges = status?.pendingConfigChanges ?? [];
+  const postInstallActionLoading =
+    runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || statusLoading;
   const [copied, setCopied] = useState(false);
   const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isRunning || !runtimeLaunchResult?.logPath) {
+    if (!isRunning || !runtimeLogPath) {
       setLogTail(null);
       return;
     }
 
     const loadLogs = async () => {
       try {
-        const response = await readOpenClawRuntimeLogTail(runtimeLaunchResult.logPath, 100);
+        const response = await readOpenClawRuntimeLogTail(runtimeLogPath, 100);
         setLogTail(response);
       } catch (err) {
         console.error('Failed to load openclaw runtime logs:', err);
@@ -72,7 +85,7 @@ export function RuntimeOperationsPanel({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isRunning, runtimeLaunchResult?.logPath]);
+  }, [isRunning, runtimeLogPath]);
 
   useEffect(() => {
     if (terminalEndRef.current) {
@@ -160,9 +173,8 @@ export function RuntimeOperationsPanel({
             </span>
           )}
           <span
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
-              isRunning ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-            }`}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${isRunning ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
+              }`}
           >
             {isRunning ? '服务运行中' : '服务未启动'}
           </span>
@@ -209,10 +221,10 @@ export function RuntimeOperationsPanel({
       {/* Mock Terminal Output */}
       <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 rounded-lg p-4 font-mono text-[11px] leading-relaxed text-[hsl(var(--on-dark-soft))] flex flex-col gap-1 select-text h-48 overflow-y-auto">
         <div className="text-white/40">$ openclaw daemon --config=openclaw.json</div>
-        {isRunning && runtimeLaunchResult ? (
+        {isRunning ? (
           <>
             <div>[daemon] Spawning OpenClaw core instance...</div>
-            <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimeLaunchResult.pid}</div>
+            <div className="text-[hsl(var(--success))]">[success] Process started with PID: {runtimePid ?? 'unknown'}</div>
             {logTail && logTail.lines.length > 0 ? (
               logTail.lines.map((line, index) => (
                 <AnsiLogLine key={`${index}-${line.slice(0, 16)}`} line={line} className="text-white/80" />
@@ -247,13 +259,20 @@ export function RuntimeOperationsPanel({
           <Button
             variant="secondary"
             disabled={postInstallActionLoading || !status}
-            onClick={() => void onLaunchRuntime(result.configPath)}
+            onClick={() => {
+              if (isRunning) {
+                void onRestartRuntime(result.configPath, runtimePid);
+                return;
+              }
+
+              void onLaunchRuntime(result.configPath);
+            }}
             className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 transition-colors"
           >
-            {runtimeLaunchLoading ? (
+            {runtimeLaunchLoading || runtimeRestartLoading ? (
               <>
                 <SpinnerIcon size={14} className="spinning mr-2" />
-                正在启动
+                {isRunning ? '正在重启' : '正在启动'}
               </>
             ) : isRunning ? (
               <>
@@ -265,6 +284,22 @@ export function RuntimeOperationsPanel({
                 <PlayIcon size={12} className="mr-2" />
                 启动 OpenClaw
               </>
+            )}
+          </Button>
+
+          <Button
+            variant="secondary"
+            disabled={postInstallActionLoading || !status || !isRunning || !runtimePid}
+            onClick={() => runtimePid ? void onStopRuntime(result.configPath, runtimePid) : undefined}
+            className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          >
+            {runtimeStopLoading ? (
+              <>
+                <SpinnerIcon size={14} className="spinning mr-2" />
+                正在停止
+              </>
+            ) : (
+              '停止 OpenClaw'
             )}
           </Button>
 

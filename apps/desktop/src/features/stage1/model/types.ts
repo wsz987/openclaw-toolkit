@@ -2,6 +2,7 @@ export type InstallMode = 'local' | 'remote' | 'npm';
 export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
 export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
 export type Stage1CheckState = 'ok' | 'warn' | 'error';
+export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels';
 
 export type InstallStep =
   | 'loadManifest'
@@ -88,6 +89,11 @@ export type OpenClawPostInstallStatus = {
   workspaceDir: string;
   gatewayUrl: string;
   controlUiUrl: string;
+  runtimeState: string;
+  runtimePid: number | null;
+  runtimeLogPath: string | null;
+  runtimeActionRequired: 'none' | 'reload' | 'restart' | string;
+  pendingConfigChanges: string[];
   providerInitialized: boolean;
   providerId: string | null;
   providerModel: string | null;
@@ -199,6 +205,10 @@ export type OpenClawLaunchResult = {
   logPath: string;
 };
 
+export type OpenClawStopResult = {
+  stopped: boolean;
+};
+
 export type OpenPathResult = string;
 
 export type VersionCatalogOption = {
@@ -243,6 +253,10 @@ export type InstallationRecord = {
   runtimeState: string;
   providerState: string;
   panelState: string;
+  runtimeActionRequired: 'none' | 'reload' | 'restart' | string;
+  pendingConfigChanges: string[];
+  runtimePid?: number | null;
+  runtimeLogPath?: string | null;
   installedAt: string;
   lastValidatedAt: string | null;
   lastLaunchedAt: string | null;

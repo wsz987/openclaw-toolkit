@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.openclaw.toolkit",
   "build": {
-    "beforeDevCommand": "pnpm vite --host 127.0.0.1",
-    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "pnpm vite --host 127.0.0.1 --port 31420",
+    "devUrl": "http://127.0.0.1:31420",
     "beforeBuildCommand": "pnpm vite build",
     "frontendDist": "../dist"
   },

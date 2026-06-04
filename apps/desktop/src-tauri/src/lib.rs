@@ -21,6 +21,8 @@ pub fn run() {
             commands::post_install::setup_openclaw_provider,
             commands::post_install::setup_openclaw_feishu_channel,
             commands::post_install::launch_openclaw_runtime,
+            commands::post_install::stop_openclaw_runtime,
+            commands::post_install::restart_openclaw_runtime,
             commands::post_install::read_openclaw_runtime_log_tail
         ])
         .run(tauri::generate_context!())
