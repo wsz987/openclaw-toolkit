@@ -64,6 +64,12 @@ export function AppBootstrap() {
     writeStage1DebugFlowState(debugFlowState);
   }, [debugFlowState]);
 
+  function handleEnterInstaller() {
+    setError(null);
+    setState(null);
+    setLoading(false);
+  }
+
   const isDev = import.meta.env.DEV;
   const effectiveState = getEffectiveBootstrapState(state, debugFlowState.mode);
 
@@ -113,7 +119,7 @@ export function AppBootstrap() {
               </div>
               <div className="flex gap-3">
                 <Button onClick={() => setRefreshKey((value) => value + 1)}>重新恢复</Button>
-                <Button variant="secondary" onClick={() => setState(null)}>
+                <Button variant="secondary" onClick={handleEnterInstaller}>
                   进入安装向导
                 </Button>
               </div>
