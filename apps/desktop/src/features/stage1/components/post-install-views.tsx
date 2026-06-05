@@ -2,7 +2,10 @@ import { AlertIcon } from '../../../components/icons';
 import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawPluginInstallPayload,
+  OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
+  PluginInstallLogEntry,
   PostInstallTab,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
@@ -21,6 +24,9 @@ type PostInstallHomeViewProps = {
   providerSetupResult: OpenClawProviderSetupResult | null;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
+  pluginInstallLoading: boolean;
+  pluginInstallResult: OpenClawPluginInstallResult | null;
+  pluginInstallLogs: PluginInstallLogEntry[];
   runtimeLaunchLoading: boolean;
   runtimeStopLoading: boolean;
   runtimeRestartLoading: boolean;
@@ -29,6 +35,7 @@ type PostInstallHomeViewProps = {
   logsDirOpening?: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
+  onInstallPlugin: (input: OpenClawPluginInstallPayload) => Promise<OpenClawPluginInstallResult | null>;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
   onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
@@ -52,6 +59,9 @@ export function PostInstallHomeView({
   providerSetupResult,
   feishuSetupLoading,
   feishuSetupResult,
+  pluginInstallLoading,
+  pluginInstallResult,
+  pluginInstallLogs,
   runtimeLaunchLoading,
   runtimeStopLoading,
   runtimeRestartLoading,
@@ -60,6 +70,7 @@ export function PostInstallHomeView({
   logsDirOpening = false,
   onProviderSetup,
   onFeishuChannelSetup,
+  onInstallPlugin,
   onLaunchRuntime,
   onStopRuntime,
   onRestartRuntime,
@@ -144,7 +155,11 @@ export function PostInstallHomeView({
             statusLoading={statusLoading}
             feishuSetupLoading={feishuSetupLoading}
             feishuSetupResult={feishuSetupResult}
+            pluginInstallLoading={pluginInstallLoading}
+            pluginInstallResult={pluginInstallResult}
+            pluginInstallLogs={pluginInstallLogs}
             onFeishuChannelSetup={onFeishuChannelSetup}
+            onInstallPlugin={onInstallPlugin}
           />
         )}
       </div>

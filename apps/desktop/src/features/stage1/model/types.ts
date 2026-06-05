@@ -105,6 +105,13 @@ export type OpenClawPostInstallStatus = {
   feishuChannel: FeishuChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
+  installedPlugins: InstalledPluginStatus[];
+};
+
+export type InstalledPluginStatus = {
+  id: string;
+  version: string;
+  package?: string;
 };
 
 export type FeishuChannelStatus = {
@@ -214,6 +221,13 @@ export type OpenClawPluginInstallResult = {
   package: string;
   version: string;
   artifactPath: string;
+};
+
+export type PluginInstallLogEntry = {
+  id: string;
+  level: 'info' | 'success' | 'error';
+  message: string;
+  createdAt: string;
 };
 
 export type OpenClawLaunchResult = {

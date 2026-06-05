@@ -121,7 +121,7 @@ pub struct ReleaseManifest {
     pub releases: Vec<ReleaseArtifact>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstalledPlugin {
     pub id: String,
     pub version: String,

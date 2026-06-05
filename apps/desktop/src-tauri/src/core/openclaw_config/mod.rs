@@ -16,7 +16,10 @@ use crate::core::{
     artifact::{install_archive, verify_sha256},
     manifest::{
         load_provider_catalog_from_config_path,
-        models::{ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, ReleaseSkill},
+        models::{
+            InstalledPlugin, ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact,
+            ReleaseSkill,
+        },
     },
     node_runtime::{node_runtime_executable, node_runtime_npm_command},
     remote::download_remote_file,
@@ -47,6 +50,7 @@ pub struct OpenClawStatusSummary {
     pub feishu_channel: FeishuChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
+    pub installed_plugins: Vec<InstalledPlugin>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -397,6 +401,9 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         feishu_channel,
         skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
         plugins_enabled: enabled_plugin_ids(&config),
+        installed_plugins: installed_manifest
+            .map(|manifest| manifest.plugins)
+            .unwrap_or_default(),
     })
 }
 
