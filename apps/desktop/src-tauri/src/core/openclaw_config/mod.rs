@@ -162,6 +162,7 @@ const DEFAULT_GATEWAY_PORT: u16 = 18789;
 const DEFAULT_GATEWAY_BIND: &str = "loopback";
 const DEFAULT_GATEWAY_MODE: &str = "local";
 const DEFAULT_FEISHU_PLUGIN_ID: &str = "feishu";
+const DEFAULT_FEISHU_PLUGIN_ENTRY_ID: &str = "openclaw-lark";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
 const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
@@ -379,6 +380,12 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
             &config,
             &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
         )
+        .or_else(|| {
+            bool_at_path(
+                &config,
+                &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
+            )
+        })
         .unwrap_or(false),
         feishu_channel,
         skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
@@ -559,6 +566,11 @@ pub fn apply_feishu_channel_setup(
     set_value_at_path(
         &mut config,
         &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
+        Value::Bool(input.enabled),
+    );
+    set_value_at_path(
+        &mut config,
+        &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
         Value::Bool(input.enabled),
     );
     set_value_at_path(&mut config, &["channels", "feishu", "enabled"], Value::Bool(input.enabled));

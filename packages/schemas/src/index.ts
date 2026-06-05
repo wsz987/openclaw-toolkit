@@ -41,6 +41,12 @@ export const releaseSkillSchema = z.object({
   version: z.string().min(1)
 });
 
+export const installedPluginSchema = z.object({
+  id: z.string().min(1),
+  version: z.string().min(1),
+  package: z.string().min(1).optional()
+});
+
 export const requiredNodeRuntimeSchema = z.object({
   version: z.string().min(1),
   range: z.string().min(1),
@@ -64,6 +70,23 @@ export const releaseManifestSchema = z.object({
   releases: z.array(releaseArtifactSchema).min(1)
 });
 
+export const pluginArtifactSchema = z.object({
+  id: z.string().min(1),
+  package: z.string().min(1),
+  version: z.string().min(1),
+  artifact: z.string().min(1),
+  sha256: z.string(),
+  signature: z.string().nullable().optional(),
+  pluginEntryId: z.string().min(1),
+  aliases: z.array(z.string().min(1)).default([]),
+  openClawVersionRange: z.string().min(1).optional(),
+  nodeVersionRange: z.string().min(1).optional()
+});
+
+export const pluginManifestSchema = z.object({
+  plugins: z.array(pluginArtifactSchema).default([])
+});
+
 export const installedManifestSchema = z.object({
   toolkitVersion: z.string().min(1),
   openclawVersion: z.string().min(1),
@@ -71,7 +94,8 @@ export const installedManifestSchema = z.object({
   installedAt: z.string().min(1),
   runtimeDir: z.string().min(1),
   configPath: z.string().min(1),
-  skills: z.array(releaseSkillSchema).default([])
+  skills: z.array(releaseSkillSchema).default([]),
+  plugins: z.array(installedPluginSchema).default([])
 });
 
 export const licensePayloadSchema = z.object({
@@ -87,7 +111,10 @@ export type ToolkitManifest = z.infer<typeof toolkitManifestSchema>;
 export type ProviderCatalogManifest = z.infer<typeof providerCatalogManifestSchema>;
 export type ProviderCatalogEntry = z.infer<typeof providerCatalogEntrySchema>;
 export type ReleaseManifest = z.infer<typeof releaseManifestSchema>;
+export type PluginManifest = z.infer<typeof pluginManifestSchema>;
 export type RequiredNodeRuntime = z.infer<typeof requiredNodeRuntimeSchema>;
 export type ReleaseArtifact = z.infer<typeof releaseArtifactSchema>;
+export type PluginArtifact = z.infer<typeof pluginArtifactSchema>;
 export type InstalledManifest = z.infer<typeof installedManifestSchema>;
+export type InstalledPlugin = z.infer<typeof installedPluginSchema>;
 export type LicensePayload = z.infer<typeof licensePayloadSchema>;

@@ -7,6 +7,8 @@ import type {
   OpenClawLaunchResult,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawPluginInstallPayload,
+  OpenClawPluginInstallResult,
   OpenClawStopResult,
   OpenPathResult,
   OpenClawPostInstallStatus,
@@ -104,6 +106,16 @@ export async function setupOpenClawFeishuChannel(
   input: OpenClawFeishuChannelSetupPayload
 ): Promise<OpenClawFeishuChannelSetupResult> {
   return invoke<OpenClawFeishuChannelSetupResult>('setup_openclaw_feishu_channel', { input });
+}
+
+export async function installOpenClawPlugin(
+  input: OpenClawPluginInstallPayload,
+  licenseKey?: string
+): Promise<OpenClawPluginInstallResult> {
+  return invoke<OpenClawPluginInstallResult>('install_openclaw_plugin', {
+    input,
+    licenseKey
+  });
 }
 
 export async function launchOpenClawRuntime(configPath: string): Promise<OpenClawLaunchResult> {

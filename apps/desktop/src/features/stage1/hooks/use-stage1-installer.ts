@@ -353,7 +353,6 @@ export function useStage1Installer(
       }
 
       setProviderSetupResult(response);
-      await loadPostInstallStatus(response.configPath);
       handleEnterPostInstallHome();
       return response;
     } catch (err) {
@@ -383,7 +382,6 @@ export function useStage1Installer(
       }
 
       setFeishuSetupResult(response);
-      await loadPostInstallStatus(response.configPath);
       handleEnterPostInstallHome();
       return response;
     } catch (err) {
@@ -440,7 +438,6 @@ export function useStage1Installer(
 
       if (response.stopped) {
         setRuntimeLaunchResult(null);
-        await loadPostInstallStatus(configPath);
       }
 
       return response;
@@ -470,7 +467,6 @@ export function useStage1Installer(
       }
 
       setRuntimeLaunchResult(response);
-      await loadPostInstallStatus(configPath);
       return response;
     } catch (err) {
       if (!runtimeRestartRequestGuard.isCurrent(requestId)) {

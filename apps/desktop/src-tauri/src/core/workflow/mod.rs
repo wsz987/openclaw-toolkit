@@ -558,6 +558,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
                     node_dir: node_dir.to_string_lossy().to_string(),
                     config_path: config_path.to_string_lossy().to_string(),
                     skills: release.skills.clone(),
+                    plugins: Vec::new(),
                 },
             )
         },

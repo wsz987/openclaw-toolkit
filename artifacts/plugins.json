@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "id": "feishu",
+      "package": "@larksuite/openclaw-lark",
+      "version": "2026.5.20",
+      "artifact": "larksuite-openclaw-lark-2026.5.20.tgz",
+      "sha256": "c9f96032b66b2e2af94bb7e3747b6bda78977a73968f93d8066813a7a7359554",
+      "signature": null,
+      "pluginEntryId": "openclaw-lark",
+      "aliases": [
+        "openclaw-lark"
+      ],
+      "openclawVersionRange": ">=2026.5.4",
+      "nodeVersionRange": ">=22"
+    }
+  ]
+}

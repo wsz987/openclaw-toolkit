@@ -202,6 +202,20 @@ export type OpenClawFeishuChannelSetupResult = {
   appId: string | null;
 };
 
+export type OpenClawPluginInstallPayload = {
+  configPath: string;
+  pluginId: string;
+};
+
+export type OpenClawPluginInstallResult = {
+  configPath: string;
+  pluginId: string;
+  pluginEntryId: string;
+  package: string;
+  version: string;
+  artifactPath: string;
+};
+
 export type OpenClawLaunchResult = {
   pid: number;
   logPath: string;

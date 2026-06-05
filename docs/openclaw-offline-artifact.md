@@ -29,6 +29,12 @@ artifacts/openclaw/openclaw-<version>.tgz
   -> 启动 package/openclaw.mjs
 ```
 
+Stage 2 插件扩展（例如飞书插件）应复用同一原则：
+
+- 优先消费官方 npm tgz 制品
+- 由受管 Node Runtime 在 `openclaw/package` 内执行本地 tgz 安装
+- 依赖补齐继续使用国内 npm 镜像源
+
 关键约束：
 
 - `artifacts/manifest.json` 应指向 `.tgz` 制品

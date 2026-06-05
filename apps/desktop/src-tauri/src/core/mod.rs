@@ -9,6 +9,7 @@ pub mod manifest;
 pub mod node_runtime;
 pub mod openclaw_config;
 pub mod permissions;
+pub mod plugins;
 pub mod process;
 pub mod remote;
 pub mod runtime;
