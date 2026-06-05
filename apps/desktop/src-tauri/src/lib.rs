@@ -2,16 +2,52 @@ pub mod commands;
 pub mod core;
 
 use crate::core::status_watcher::OpenClawStatusWatcher;
+use std::path::PathBuf;
+use tauri::{
+    image::Image,
+    menu::{CheckMenuItem, MenuBuilder},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager, WindowEvent,
+};
+#[cfg(target_os = "windows")]
+use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
+const MAIN_WINDOW_LABEL: &str = "main";
+const TRAY_MENU_SHOW_ID: &str = "show-main-window";
+const TRAY_MENU_AUTOSTART_ID: &str = "toggle-auto-start";
+const TRAY_MENU_EXIT_ID: &str = "exit-application";
+const START_HIDDEN_ARG: &str = "--start-hidden";
+#[cfg(target_os = "windows")]
+const WINDOWS_RUN_KEY_PATH: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+#[cfg(target_os = "windows")]
+const WINDOWS_RUN_VALUE_NAME: &str = "OpenClawToolkit";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let status_watcher = OpenClawStatusWatcher::default();
     status_watcher.bootstrap_active_installation();
+    let should_start_hidden = should_start_hidden();
 
     tauri::Builder::default()
         .manage(status_watcher.clone())
+        .on_window_event(|window, event| {
+            if window.label() != MAIN_WINDOW_LABEL {
+                return;
+            }
+
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(move |app| {
             status_watcher.start(app.handle().clone());
+            setup_system_tray(app.handle())?;
+
+            if should_start_hidden {
+                hide_main_window(app.handle())?;
+            }
+
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
@@ -38,4 +74,146 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let auto_start_enabled = is_startup_launch_enabled()?;
+    let auto_start_item = CheckMenuItem::with_id(
+        app,
+        TRAY_MENU_AUTOSTART_ID,
+        "开机自启",
+        true,
+        auto_start_enabled,
+        None::<&str>,
+    )?;
+    let tray_menu = MenuBuilder::new(app)
+        .text(TRAY_MENU_SHOW_ID, "显示主界面")
+        .item(&auto_start_item)
+        .text(TRAY_MENU_EXIT_ID, "退出应用")
+        .build()?;
+
+    let mut tray_builder = TrayIconBuilder::with_id("openclaw-toolkit-tray")
+        .menu(&tray_menu)
+        .show_menu_on_left_click(false)
+        .tooltip("OpenClaw Toolkit")
+        .on_menu_event(move |app, event| match event.id().as_ref() {
+            TRAY_MENU_SHOW_ID => {
+                let _ = show_main_window(app);
+            }
+            TRAY_MENU_AUTOSTART_ID => {
+                let _ = toggle_startup_launch(&auto_start_item);
+            }
+            TRAY_MENU_EXIT_ID => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if matches!(
+                event,
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                }
+            ) {
+                let _ = show_main_window(tray.app_handle());
+            }
+        });
+
+    if let Some(icon) = load_tray_icon() {
+        tray_builder = tray_builder.icon(icon);
+    }
+
+    tray_builder.build(app)?;
+    Ok(())
+}
+
+fn show_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        let _ = window.unminimize();
+        window.show()?;
+        window.set_focus()?;
+    }
+
+    Ok(())
+}
+
+fn load_tray_icon() -> Option<Image<'static>> {
+    Image::from_path("icons/icon.ico").ok()
+}
+
+fn should_start_hidden() -> bool {
+    std::env::args_os().any(|arg| arg == START_HIDDEN_ARG)
+}
+
+fn hide_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        window.hide()?;
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn is_startup_launch_enabled() -> tauri::Result<bool> {
+    let executable_path = std::env::current_exe()
+        .map_err(to_setup_error)?;
+    let command = build_startup_command(&executable_path);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (run_key, _) = hkcu
+        .create_subkey(WINDOWS_RUN_KEY_PATH)
+        .map_err(to_setup_error)?;
+
+    let existing_value = run_key.get_value::<String, _>(WINDOWS_RUN_VALUE_NAME).ok();
+    Ok(existing_value.as_deref() == Some(command.as_str()))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_startup_launch_enabled() -> tauri::Result<bool> {
+    Ok(false)
+}
+
+#[cfg(target_os = "windows")]
+fn build_startup_command(executable_path: &PathBuf) -> String {
+    format!("\"{}\" {}", executable_path.display(), START_HIDDEN_ARG)
+}
+
+#[cfg(target_os = "windows")]
+fn set_startup_launch_enabled(enabled: bool) -> tauri::Result<()> {
+    let executable_path = std::env::current_exe()
+        .map_err(to_setup_error)?;
+    let command = build_startup_command(&executable_path);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (run_key, _) = hkcu
+        .create_subkey(WINDOWS_RUN_KEY_PATH)
+        .map_err(to_setup_error)?;
+
+    if enabled {
+        run_key
+            .set_value(WINDOWS_RUN_VALUE_NAME, &command)
+            .map_err(to_setup_error)?;
+    } else {
+        let _ = run_key.delete_value(WINDOWS_RUN_VALUE_NAME);
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn set_startup_launch_enabled(_enabled: bool) -> tauri::Result<()> {
+    Ok(())
+}
+
+fn toggle_startup_launch(menu_item: &CheckMenuItem<tauri::Wry>) -> tauri::Result<()> {
+    let next_enabled = !menu_item.is_checked()?;
+    set_startup_launch_enabled(next_enabled)?;
+    menu_item.set_checked(next_enabled)?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn to_setup_error(error: impl std::error::Error + 'static) -> tauri::Error {
+    let boxed: Box<dyn std::error::Error> = Box::new(error);
+    tauri::Error::Setup(boxed.into())
 }
