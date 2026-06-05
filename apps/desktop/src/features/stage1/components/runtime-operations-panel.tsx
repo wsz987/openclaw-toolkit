@@ -62,9 +62,10 @@ export function RuntimeOperationsPanel({
   const providerReady = resolvedStatus?.providerInitialized ?? false;
   const isStarting = resolvedStatus?.runtimeState === 'starting';
   const isRunning = resolvedStatus?.runtimeRunning ?? (resolvedStatus?.runtimeState === 'running');
+  const launchPending = runtimeLaunchLoading || isStarting;
   const panelReachable = resolvedStatus?.panelReachable ?? false;
   const postInstallActionLoading =
-    runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || subscribedStatusLoading || statusLoading;
+    launchPending || runtimeStopLoading || runtimeRestartLoading || subscribedStatusLoading || statusLoading;
   const activeLogPath = resolvedStatus?.runtimeLogPath ?? null;
   const hasRuntimeSession = (isRunning || isStarting) && Boolean(activeLogPath);
   const runtimePid = resolvedStatus?.runtimePid ?? null;
@@ -259,7 +260,7 @@ export function RuntimeOperationsPanel({
         <div ref={terminalEndRef} />
         <div className="flex items-center gap-1">
           <span>_</span>
-          {(runtimeLaunchLoading || (hasRuntimeSession && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
+          {(launchPending || (hasRuntimeSession && !logTail)) && <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />}
         </div>
       </div>
 
@@ -267,7 +268,7 @@ export function RuntimeOperationsPanel({
         <div className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
-            disabled={postInstallActionLoading || !status}
+            disabled={postInstallActionLoading || !status || isStarting}
             onClick={() => {
               if (isRunning) {
                 void onRestartRuntime(result.configPath, runtimePid);
@@ -278,7 +279,7 @@ export function RuntimeOperationsPanel({
             }}
             className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 transition-colors"
           >
-            {runtimeLaunchLoading || runtimeRestartLoading ? (
+            {launchPending || runtimeRestartLoading ? (
               <>
                 <SpinnerIcon size={14} className="spinning mr-2" />
                 {isRunning ? '正在重启' : '正在启动'}

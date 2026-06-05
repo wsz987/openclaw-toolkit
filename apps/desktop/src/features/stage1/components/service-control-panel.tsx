@@ -167,10 +167,11 @@ export function ServiceControlPanel({
   const providerReady = status?.providerInitialized ?? false;
   const isStarting = status?.runtimeState === 'starting';
   const isRunning = status?.runtimeRunning ?? (status?.runtimeState === 'running');
+  const launchPending = runtimeLaunchLoading || isStarting;
   const pid = status?.runtimePid ?? null;
   const runtimeActionRequired = status?.runtimeActionRequired ?? 'none';
   const pendingConfigChanges = status?.pendingConfigChanges ?? [];
-  const busy = runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || statusLoading;
+  const busy = launchPending || runtimeStopLoading || runtimeRestartLoading || statusLoading;
 
   if (!providerReady) {
     return (
@@ -245,11 +246,11 @@ export function ServiceControlPanel({
           )
         ) : (
           <Button
-            disabled={busy}
+            disabled={busy || isStarting}
             onClick={() => void onLaunchRuntime(result.configPath)}
             className="w-full h-12 text-xs font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] transition-all duration-300 flex items-center justify-center gap-2 rounded-xl shadow-[0_4px_12px_rgba(204,120,92,0.25)] hover:shadow-[0_6px_20px_rgba(204,120,92,0.4)] hover:-translate-y-0.5 active:translate-y-0"
           >
-            {runtimeLaunchLoading ? (
+            {launchPending ? (
               <>
                 <SpinnerIcon size={14} className="spinning mr-1" />
                 正在启动服务...
