@@ -135,3 +135,7 @@ export function findInstalledFeishuPlugin(plugins: InstalledPluginStatus[] | und
     }) ?? null
   );
 }
+
+export function getFeishuPlatformLabel(domain: 'feishu' | 'lark' | string | null | undefined) {
+  return domain === 'lark' ? 'Lark（国际版）' : '飞书（中国大陆）';
+}

@@ -10,6 +10,7 @@ import {
   Webhook
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { getFeishuPlatformLabel } from '../model/feishu-channel';
 import type { FeishuChannelStatus } from '../model/types';
 
 type FeishuChannelReadonlyViewProps = {
@@ -35,10 +36,10 @@ export function FeishuChannelReadonlyView({ feishu }: FeishuChannelReadonlyViewP
             </div>
             <div className="min-w-0 flex-1">
               <span className="block text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted))]">
-                服务通道类型
+                平台与连接模式
               </span>
               <strong className="mt-0.5 block truncate text-base font-medium capitalize text-[hsl(var(--body-strong))]">
-                {feishu.domain || 'feishu'} ({feishu.connectionMode || 'websocket'})
+                {getFeishuPlatformLabel(feishu.domain)} ({feishu.connectionMode || 'websocket'})
               </strong>
             </div>
           </CardContent>

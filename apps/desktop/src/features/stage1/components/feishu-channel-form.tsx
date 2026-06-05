@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
+import { getFeishuPlatformLabel } from '../model/feishu-channel';
 import { ChannelToggleCard } from './channels-panel-shared';
 import type { FeishuChannelFormState } from '../model/feishu-channel';
 import type { FeishuChannelStatus } from '../model/types';
@@ -71,10 +72,10 @@ export function FeishuChannelForm({
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">应用服务商 Domain</label>
+              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">平台区域</label>
               <Select value={form.domain} onChange={(event) => onFieldChange('domain', event.target.value as 'feishu' | 'lark')}>
-                <option value="feishu">Feishu (飞书 - 国内版)</option>
-                <option value="lark">Lark (国外版)</option>
+                <option value="feishu">{getFeishuPlatformLabel('feishu')}</option>
+                <option value="lark">{getFeishuPlatformLabel('lark')}</option>
               </Select>
             </div>
 
