@@ -105,7 +105,6 @@ export function PostInstallHomeScreen({
           runtimeLaunchLoading={controller.runtimeLaunchLoading}
           runtimeStopLoading={controller.runtimeStopLoading}
           runtimeRestartLoading={controller.runtimeRestartLoading}
-          runtimeLaunchResult={controller.runtimeLaunchResult}
           controlPanelOpening={controller.controlPanelOpening}
           installationDirOpening={controller.installationDirOpening}
           logsDirOpening={controller.logsDirOpening}

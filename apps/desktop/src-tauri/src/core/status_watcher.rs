@@ -8,8 +8,11 @@ use std::{
 use tauri::AppHandle;
 
 use crate::core::{
-    app_state::{bootstrap_app_state, sync_installation_status_by_config_path},
-    openclaw_config::{read_openclaw_status, OpenClawStatusSummary},
+    app_state::{
+        bootstrap_app_state, resolve_installation_status_by_config_path,
+        sync_installation_status_by_config_path,
+    },
+    openclaw_config::OpenClawStatusSummary,
     status_events::emit_openclaw_status_changed,
 };
 
@@ -80,7 +83,7 @@ impl OpenClawStatusWatcher {
                 continue;
             };
 
-            match read_openclaw_status(&config_path) {
+            match resolve_installation_status_by_config_path(&config_path) {
                 Ok(status) => {
                     let changed = previous_status
                         .as_ref()

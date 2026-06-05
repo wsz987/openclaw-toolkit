@@ -340,6 +340,13 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .to_string_lossy()
         .to_string();
     let runtime_running = probe_gateway_runtime(&gateway_url);
+    let runtime_pid = if runtime_running {
+        u16::try_from(gateway_port)
+            .ok()
+            .and_then(find_runtime_pid_by_port)
+    } else {
+        None
+    };
     let panel_reachable = runtime_running && probe_control_panel(&control_ui_url);
     let provider_id = infer_primary_provider_id(&config);
     let provider_api_url = provider_id.as_deref().and_then(|provider| {
@@ -365,7 +372,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         } else {
             "stopped".to_string()
         },
-        runtime_pid: None,
+        runtime_pid,
         runtime_log_path: Some(runtime_log_path),
         runtime_action_required: "none".to_string(),
         pending_config_changes: Vec::new(),
@@ -417,6 +424,46 @@ fn probe_gateway_runtime(gateway_url: &str) -> bool {
     }
 
     false
+}
+
+#[cfg(target_os = "windows")]
+fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let target_suffix = format!(":{port}");
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .find_map(|line| {
+            let columns: Vec<&str> = line.split_whitespace().collect();
+            if columns.len() < 5 {
+                return None;
+            }
+
+            let proto = columns[0];
+            let local_address = columns[1];
+            let pid = columns.last().copied()?;
+            if !proto.eq_ignore_ascii_case("TCP") || !local_address.ends_with(&target_suffix) {
+                return None;
+            }
+
+            pid.parse::<u32>().ok()
+        })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn find_runtime_pid_by_port(_port: u16) -> Option<u32> {
+    None
 }
 
 fn probe_control_panel(control_ui_url: &str) -> bool {

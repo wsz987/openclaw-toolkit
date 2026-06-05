@@ -131,6 +131,22 @@ function getStore(configPath: string) {
   return store;
 }
 
+export function refreshOpenClawStatus(configPath: string) {
+  if (!configPath.trim()) {
+    return Promise.resolve();
+  }
+
+  return getStore(configPath).refresh();
+}
+
+export function isOpenClawStatusEventAvailable(configPath: string) {
+  if (!configPath.trim()) {
+    return false;
+  }
+
+  return getStore(configPath).listeningSupported;
+}
+
 export function useOpenClawStatusSubscription(configPath: string | null | undefined) {
   const store = configPath ? getStore(configPath) : null;
 

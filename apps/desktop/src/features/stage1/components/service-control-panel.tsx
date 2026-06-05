@@ -1,7 +1,6 @@
 import { Button } from '../../../components/ui/button';
 import { SpinnerIcon } from '../../../components/icons';
 import type {
-  OpenClawLaunchResult,
   OpenClawPostInstallStatus,
   OpenClawStopResult,
   Stage1InstallResult
@@ -100,10 +99,9 @@ type ServiceControlPanelProps = {
   runtimeLaunchLoading: boolean;
   runtimeStopLoading: boolean;
   runtimeRestartLoading: boolean;
-  runtimeLaunchResult: OpenClawLaunchResult | null;
-  onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
+  onLaunchRuntime: (configPath: string) => Promise<unknown>;
   onStopRuntime: (configPath: string, pid: number) => Promise<OpenClawStopResult | null>;
-  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawLaunchResult | null>;
+  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
   onNavigateToAdvancedConsole?: () => void;
   onNavigateToProvider?: () => void;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
@@ -158,7 +156,6 @@ export function ServiceControlPanel({
   runtimeLaunchLoading,
   runtimeStopLoading,
   runtimeRestartLoading,
-  runtimeLaunchResult,
   onLaunchRuntime,
   onStopRuntime,
   onRestartRuntime,
@@ -168,8 +165,9 @@ export function ServiceControlPanel({
   controlPanelOpening = false
 }: ServiceControlPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
-  const isRunning = status?.runtimeState === 'running' || Boolean(runtimeLaunchResult);
-  const pid = status?.runtimePid ?? runtimeLaunchResult?.pid ?? null;
+  const isStarting = status?.runtimeState === 'starting';
+  const isRunning = status?.runtimeRunning ?? (status?.runtimeState === 'running');
+  const pid = status?.runtimePid ?? null;
   const runtimeActionRequired = status?.runtimeActionRequired ?? 'none';
   const pendingConfigChanges = status?.pendingConfigChanges ?? [];
   const busy = runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || statusLoading;
@@ -210,12 +208,12 @@ export function ServiceControlPanel({
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-2xl font-medium text-[hsl(var(--ink))] tracking-tight">OpenClaw Gateway</h2>
 
-        <div className={`text-[10px] font-semibold tracking-wider flex items-center gap-1.5 uppercase ${isRunning ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--muted))]'
+        <div className={`text-[10px] font-semibold tracking-wider flex items-center gap-1.5 uppercase ${isRunning ? 'text-[hsl(var(--success))]' : isStarting ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'
           }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-[hsl(var(--success))] animate-pulse' : 'bg-[hsl(var(--muted-soft))]'
+          <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-[hsl(var(--success))] animate-pulse' : isStarting ? 'bg-[hsl(var(--primary))] animate-pulse' : 'bg-[hsl(var(--muted-soft))]'
             }`} />
-          {isRunning ? '服务运行中' : '服务已停止'}
-          {isRunning && pid && (
+          {isRunning ? '服务运行中' : isStarting ? '服务启动中' : '服务已停止'}
+          {(isRunning || isStarting) && pid && (
             <span className="text-[hsl(var(--muted-soft))] font-normal font-mono normal-case">
               (PID: {pid})
             </span>
@@ -268,7 +266,7 @@ export function ServiceControlPanel({
         {/* Restart & Stop Buttons (Always in DOM to preserve height, preventing layout jumps) */}
         <div 
           className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${
-            isRunning 
+            (isRunning || isStarting)
               ? 'opacity-100 translate-y-0 pointer-events-auto' 
               : 'opacity-0 -translate-y-2 pointer-events-none'
           }`}
@@ -294,7 +292,7 @@ export function ServiceControlPanel({
 
           <Button
             variant="outline"
-            disabled={busy || !pid}
+            disabled={busy || !pid || isStarting}
             onClick={() => pid ? void onStopRuntime(result.configPath, pid) : undefined}
             className="flex-1 h-10 text-xs font-medium border-[hsl(var(--error)/0.18)] bg-transparent hover:bg-[hsl(var(--error)/0.04)] text-[hsl(var(--error))] hover:text-[hsl(var(--error))] rounded-xl transition-all duration-200"
           >

@@ -26,7 +26,6 @@ import type {
   InstallMode,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
-  OpenClawLaunchResult,
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
@@ -54,6 +53,10 @@ import {
   stopOpenClawRuntime,
   startStage1Install
 } from '../api/stage1-api';
+import {
+  isOpenClawStatusEventAvailable,
+  refreshOpenClawStatus
+} from '../model/openclaw-status-store';
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
@@ -81,7 +84,6 @@ export function useStage1Installer(
   const [feishuSetupLoading, setFeishuSetupLoading] = useState(false);
   const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
-  const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
   const [runtimeStopLoading, setRuntimeStopLoading] = useState(false);
   const [runtimeRestartLoading, setRuntimeRestartLoading] = useState(false);
   const [controlPanelOpening, setControlPanelOpening] = useState(false);
@@ -233,6 +235,18 @@ export function useStage1Installer(
     }
   }
 
+  async function refreshStatusViaFallback(configPath: string) {
+    if (!configPath.trim()) {
+      return;
+    }
+
+    if (isOpenClawStatusEventAvailable(configPath)) {
+      return;
+    }
+
+    await refreshOpenClawStatus(configPath);
+  }
+
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
@@ -264,7 +278,6 @@ export function useStage1Installer(
     setResult(null);
     setInstallLogTail(null);
     setProviderSetupResult(null);
-    setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
     setWizardStep(2);
     setDashboard((current) => {
@@ -353,6 +366,7 @@ export function useStage1Installer(
       }
 
       setProviderSetupResult(response);
+      await refreshStatusViaFallback(response.configPath);
       handleEnterPostInstallHome();
       return response;
     } catch (err) {
@@ -382,6 +396,7 @@ export function useStage1Installer(
       }
 
       setFeishuSetupResult(response);
+      await refreshStatusViaFallback(response.configPath);
       handleEnterPostInstallHome();
       return response;
     } catch (err) {
@@ -409,7 +424,7 @@ export function useStage1Installer(
         return null;
       }
 
-      setRuntimeLaunchResult(response);
+      await refreshStatusViaFallback(configPath);
       return response;
     } catch (err) {
       if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
@@ -436,9 +451,7 @@ export function useStage1Installer(
         return null;
       }
 
-      if (response.stopped) {
-        setRuntimeLaunchResult(null);
-      }
+      await refreshStatusViaFallback(configPath);
 
       return response;
     } catch (err) {
@@ -466,7 +479,7 @@ export function useStage1Installer(
         return null;
       }
 
-      setRuntimeLaunchResult(response);
+      await refreshStatusViaFallback(configPath);
       return response;
     } catch (err) {
       if (!runtimeRestartRequestGuard.isCurrent(requestId)) {
@@ -531,7 +544,6 @@ export function useStage1Installer(
     setPostInstallStatus(null);
     setProviderSetupResult(null);
     setFeishuSetupResult(null);
-    setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
     setLoading(false);
     setWizardStep(0);
@@ -708,7 +720,6 @@ export function useStage1Installer(
     readyChecks,
     result,
     runtimeLaunchLoading,
-    runtimeLaunchResult,
     runtimeStopLoading,
     runtimeRestartLoading,
     showPostInstallHome,
@@ -764,22 +775,5 @@ export function createInstallResultFromRecord(record: import('../model/types').I
     openclawDir: record.openclawDir,
     nodeDir: record.nodeDir,
     configPath: record.configPath
-  };
-}
-
-export function createLaunchResultFromStatus(
-  status: OpenClawPostInstallStatus | null | undefined
-): OpenClawLaunchResult | null {
-  if (!status) {
-    return null;
-  }
-
-  if (status.runtimeState !== 'running' || !status.runtimePid || !status.runtimeLogPath) {
-    return null;
-  }
-
-  return {
-    pid: status.runtimePid,
-    logPath: status.runtimeLogPath
   };
 }

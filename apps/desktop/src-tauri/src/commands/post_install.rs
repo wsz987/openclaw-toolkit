@@ -4,7 +4,6 @@ use crate::core::{
     app_state::{
         mark_installation_runtime_state, mark_runtime_action_required,
         resolve_installation_status_by_config_path,
-        sync_installation_status_by_config_path,
     },
     license::verify_offline_license,
     openclaw_config::{
@@ -36,18 +35,13 @@ pub struct ManagedStopResponse {
 
 #[tauri::command]
 pub async fn inspect_openclaw_status(
-    app: tauri::AppHandle,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
 ) -> Result<OpenClawStatusSummary, String> {
     watcher.watch_config_path(&config_path);
     tauri::async_runtime::spawn_blocking(move || {
         let config_path = PathBuf::from(config_path);
-        let _ = sync_installation_status_by_config_path(&config_path);
-        let status = resolve_installation_status_by_config_path(&config_path)
-            .map_err(render_error)?;
-        let _ = refresh_and_emit_openclaw_status(&app, &config_path);
-        Ok::<OpenClawStatusSummary, String>(status)
+        resolve_installation_status_by_config_path(&config_path).map_err(render_error)
     })
     .await
     .map_err(|error| {
@@ -71,7 +65,6 @@ pub async fn setup_openclaw_provider(
             "restart",
             "provider-config",
         );
-        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
         let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
         Ok::<ProviderSetupResult, anyhow::Error>(result)
     })
@@ -98,7 +91,6 @@ pub async fn setup_openclaw_feishu_channel(
             "restart",
             "channels.feishu",
         );
-        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
         let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
         Ok::<FeishuChannelSetupResult, anyhow::Error>(result)
     })
@@ -131,7 +123,6 @@ pub async fn install_openclaw_plugin(
             "restart",
             &format!("plugins.{}", result.plugin_entry_id),
         );
-        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
         let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
         Ok::<PluginInstallResult, anyhow::Error>(result)
     })
@@ -156,7 +147,7 @@ pub async fn launch_openclaw_runtime(
         let launch = launch_managed_openclaw(&status)?;
         let _ = mark_installation_runtime_state(
             &PathBuf::from(&config_path),
-            "running",
+            "starting",
             Some(launch.pid),
             Some(&launch.log_path),
         );
@@ -255,7 +246,7 @@ pub async fn restart_openclaw_runtime(
         let launch = launch_managed_openclaw(&status)?;
         let _ = mark_installation_runtime_state(
             &PathBuf::from(&config_path),
-            "running",
+            "starting",
             Some(launch.pid),
             Some(&launch.log_path),
         );
