@@ -16,7 +16,10 @@ use crate::core::{
     artifact::{install_archive, verify_sha256},
     manifest::{
         load_provider_catalog_from_config_path,
-        models::{ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, ReleaseSkill},
+        models::{
+            InstalledPlugin, ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact,
+            ReleaseSkill,
+        },
     },
     node_runtime::{node_runtime_executable, node_runtime_npm_command},
     remote::download_remote_file,
@@ -47,6 +50,7 @@ pub struct OpenClawStatusSummary {
     pub feishu_channel: FeishuChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
+    pub installed_plugins: Vec<InstalledPlugin>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -158,42 +162,11 @@ pub struct FeishuChannelSetupResult {
     pub app_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeishuPluginInstallStatus {
-    pub config_path: String,
-    pub plugin_id: String,
-    pub package_spec: String,
-    pub installed: bool,
-    pub package_path: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeishuPluginInstallResult {
-    pub config_path: String,
-    pub plugin_id: String,
-    pub package_spec: String,
-    pub installed: bool,
-    pub already_installed: bool,
-    pub package_path: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeishuPluginInstallProgress {
-    pub stage: String,
-    pub progress: u8,
-    pub message: String,
-    pub done: bool,
-    pub failed: bool,
-}
-
 const DEFAULT_GATEWAY_PORT: u16 = 18789;
 const DEFAULT_GATEWAY_BIND: &str = "loopback";
 const DEFAULT_GATEWAY_MODE: &str = "local";
 const DEFAULT_FEISHU_PLUGIN_ID: &str = "feishu";
-const DEFAULT_FEISHU_PLUGIN_NPM_SPEC: &str = "@openclaw/feishu";
+const DEFAULT_FEISHU_PLUGIN_ENTRY_ID: &str = "openclaw-lark";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
 const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
@@ -371,6 +344,13 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .to_string_lossy()
         .to_string();
     let runtime_running = probe_gateway_runtime(&gateway_url);
+    let runtime_pid = if runtime_running {
+        u16::try_from(gateway_port)
+            .ok()
+            .and_then(find_runtime_pid_by_port)
+    } else {
+        None
+    };
     let panel_reachable = runtime_running && probe_control_panel(&control_ui_url);
     let provider_id = infer_primary_provider_id(&config);
     let provider_api_url = provider_id.as_deref().and_then(|provider| {
@@ -396,7 +376,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         } else {
             "stopped".to_string()
         },
-        runtime_pid: None,
+        runtime_pid,
         runtime_log_path: Some(runtime_log_path),
         runtime_action_required: "none".to_string(),
         pending_config_changes: Vec::new(),
@@ -411,10 +391,19 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
             &config,
             &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
         )
+        .or_else(|| {
+            bool_at_path(
+                &config,
+                &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
+            )
+        })
         .unwrap_or(false),
         feishu_channel,
         skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
         plugins_enabled: enabled_plugin_ids(&config),
+        installed_plugins: installed_manifest
+            .map(|manifest| manifest.plugins)
+            .unwrap_or_default(),
     })
 }
 
@@ -442,6 +431,46 @@ fn probe_gateway_runtime(gateway_url: &str) -> bool {
     }
 
     false
+}
+
+#[cfg(target_os = "windows")]
+fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let target_suffix = format!(":{port}");
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .find_map(|line| {
+            let columns: Vec<&str> = line.split_whitespace().collect();
+            if columns.len() < 5 {
+                return None;
+            }
+
+            let proto = columns[0];
+            let local_address = columns[1];
+            let pid = columns.last().copied()?;
+            if !proto.eq_ignore_ascii_case("TCP") || !local_address.ends_with(&target_suffix) {
+                return None;
+            }
+
+            pid.parse::<u32>().ok()
+        })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn find_runtime_pid_by_port(_port: u16) -> Option<u32> {
+    None
 }
 
 fn probe_control_panel(control_ui_url: &str) -> bool {
@@ -593,6 +622,11 @@ pub fn apply_feishu_channel_setup(
         &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
         Value::Bool(input.enabled),
     );
+    set_value_at_path(
+        &mut config,
+        &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
+        Value::Bool(input.enabled),
+    );
     set_value_at_path(&mut config, &["channels", "feishu", "enabled"], Value::Bool(input.enabled));
     set_value_at_path(
         &mut config,
@@ -739,188 +773,6 @@ pub fn apply_feishu_channel_setup(
     })
 }
 
-pub fn inspect_feishu_plugin_installation(
-    config_path: &Path,
-) -> anyhow::Result<FeishuPluginInstallStatus> {
-    let status = read_openclaw_status(config_path)?;
-    let openclaw_dir = PathBuf::from(&status.openclaw_dir);
-    let package_path = resolve_feishu_plugin_package_path(&openclaw_dir)
-        .map(|path| path.to_string_lossy().to_string());
-
-    Ok(FeishuPluginInstallStatus {
-        config_path: config_path.to_string_lossy().to_string(),
-        plugin_id: DEFAULT_FEISHU_PLUGIN_ID.to_string(),
-        package_spec: DEFAULT_FEISHU_PLUGIN_NPM_SPEC.to_string(),
-        installed: package_path.is_some(),
-        package_path,
-    })
-}
-
-pub fn ensure_feishu_plugin_installed(
-    config_path: &Path,
-    progress_callback: Option<&(dyn Fn(&FeishuPluginInstallProgress) + Sync)>,
-) -> anyhow::Result<FeishuPluginInstallResult> {
-    emit_feishu_plugin_install_progress(
-        progress_callback,
-        "checking",
-        8,
-        "正在检查飞书插件安装状态...",
-        false,
-        false,
-    );
-
-    let install_status = inspect_feishu_plugin_installation(config_path)?;
-    if install_status.installed {
-        emit_feishu_plugin_install_progress(
-            progress_callback,
-            "ready",
-            100,
-            "检测到飞书插件已安装，跳过补装。",
-            true,
-            false,
-        );
-
-        return Ok(FeishuPluginInstallResult {
-            config_path: install_status.config_path,
-            plugin_id: install_status.plugin_id,
-            package_spec: install_status.package_spec,
-            installed: true,
-            already_installed: true,
-            package_path: install_status.package_path,
-        });
-    }
-
-    let runtime_status = read_openclaw_status(config_path)?;
-    let openclaw_dir = PathBuf::from(&runtime_status.openclaw_dir);
-    let node_dir = PathBuf::from(&runtime_status.node_dir);
-    let package_dir = openclaw_dir.join("package");
-    let package_json_path = package_dir.join("package.json");
-
-    if !package_dir.exists() {
-        anyhow::bail!("openclaw package directory not found: {}", package_dir.display());
-    }
-
-    if !package_json_path.exists() {
-        anyhow::bail!(
-            "openclaw package.json not found: {}",
-            package_json_path.display()
-        );
-    }
-
-    let node_exe = node_runtime_executable(&node_dir);
-    if !node_exe.exists() {
-        anyhow::bail!("node.exe not found: {}", node_exe.display());
-    }
-
-    let npm_cmd = node_runtime_npm_command(&node_dir);
-    if !npm_cmd.exists() {
-        anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
-    }
-
-    emit_feishu_plugin_install_progress(
-        progress_callback,
-        "preparing",
-        22,
-        "正在校验 OpenClaw 运行时与插件安装目录...",
-        false,
-        false,
-    );
-
-    let install_progress = |message: &str| {
-        emit_feishu_plugin_install_progress(
-            progress_callback,
-            "installing",
-            68,
-            message,
-            false,
-            false,
-        );
-    };
-
-    emit_feishu_plugin_install_progress(
-        progress_callback,
-        "installing",
-        36,
-        &format!("正在安装飞书插件 {} ...", DEFAULT_FEISHU_PLUGIN_NPM_SPEC),
-        false,
-        false,
-    );
-
-    let status = run_command_with_progress(
-        &package_dir,
-        "run npm install for openclaw feishu plugin",
-        &node_exe,
-        Some(&install_progress),
-        "cmd",
-        &[
-            "/C",
-            npm_cmd.to_string_lossy().as_ref(),
-            "install",
-            DEFAULT_FEISHU_PLUGIN_NPM_SPEC,
-            "--no-audit",
-            "--no-fund",
-            "--registry",
-            DEFAULT_NPM_REGISTRY_URL,
-            "--verbose",
-        ],
-        false,
-    )?;
-
-    if !status.success() {
-        emit_feishu_plugin_install_progress(
-            progress_callback,
-            "failed",
-            68,
-            &format!("飞书插件安装失败，npm 退出状态: {status}"),
-            false,
-            true,
-        );
-        anyhow::bail!("npm install for feishu plugin failed with status {}", status);
-    }
-
-    emit_feishu_plugin_install_progress(
-        progress_callback,
-        "verifying",
-        92,
-        "正在验证飞书插件安装结果...",
-        false,
-        false,
-    );
-
-    let package_path = resolve_feishu_plugin_package_path(&openclaw_dir)
-        .map(|path| path.to_string_lossy().to_string());
-
-    if package_path.is_none() {
-        emit_feishu_plugin_install_progress(
-            progress_callback,
-            "failed",
-            92,
-            "安装命令已完成，但未检测到飞书插件目录。",
-            false,
-            true,
-        );
-        anyhow::bail!("feishu plugin install completed but package path is still missing");
-    }
-
-    emit_feishu_plugin_install_progress(
-        progress_callback,
-        "ready",
-        100,
-        "飞书插件安装完成，可以继续启用通道配置。",
-        true,
-        false,
-    );
-
-    Ok(FeishuPluginInstallResult {
-        config_path: config_path.to_string_lossy().to_string(),
-        plugin_id: DEFAULT_FEISHU_PLUGIN_ID.to_string(),
-        package_spec: DEFAULT_FEISHU_PLUGIN_NPM_SPEC.to_string(),
-        installed: true,
-        already_installed: false,
-        package_path,
-    })
-}
-
 fn read_openclaw_config_value(config_path: &Path) -> anyhow::Result<Value> {
     let raw = fs::read_to_string(config_path)
         .with_context(|| format!("read {}", config_path.display()))?;
@@ -936,50 +788,10 @@ fn read_installed_manifest_from_openclaw_dir(
     serde_json::from_str(&raw).with_context(|| format!("parse {}", manifest_path.display()))
 }
 
-fn resolve_feishu_plugin_package_path(openclaw_dir: &Path) -> Option<PathBuf> {
-    let direct_package_dir = openclaw_dir
-        .join("package")
-        .join("node_modules")
-        .join("@openclaw")
-        .join("feishu");
-    if direct_package_dir.join("package.json").exists() {
-        return Some(direct_package_dir);
-    }
-
-    let flattened_package_dir = openclaw_dir
-        .join("package")
-        .join("node_modules")
-        .join("@openclaw+feishu");
-    if flattened_package_dir.join("package.json").exists() {
-        return Some(flattened_package_dir);
-    }
-
-    None
-}
-
 fn write_config_value(config_path: &Path, config: &Value) -> anyhow::Result<()> {
     fs::write(config_path, serde_json::to_string_pretty(config)?)
         .with_context(|| format!("write {}", config_path.display()))?;
     Ok(())
-}
-
-fn emit_feishu_plugin_install_progress(
-    callback: Option<&(dyn Fn(&FeishuPluginInstallProgress) + Sync)>,
-    stage: &str,
-    progress: u8,
-    message: &str,
-    done: bool,
-    failed: bool,
-) {
-    if let Some(callback) = callback {
-        callback(&FeishuPluginInstallProgress {
-            stage: stage.to_string(),
-            progress,
-            message: message.to_string(),
-            done,
-            failed,
-        });
-    }
 }
 
 fn string_at_path(value: &Value, path: &[&str]) -> Option<String> {

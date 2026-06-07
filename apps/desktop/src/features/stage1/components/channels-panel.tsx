@@ -7,7 +7,6 @@ import {
   Radio,
   Webhook,
   AlertTriangle,
-  Lock,
   Eye,
   EyeOff,
   Copy,
@@ -61,7 +60,7 @@ function Switch({
 }) {
   return (
     <label
-      className={`group flex items-start justify-between gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none bg-[hsl(var(--canvas))] ${
+      className={`group flex items-start justify-between gap-4 rounded-xl border p-4 transition-all duration-200 cursor-pointer select-none bg-[hsl(var(--canvas))] ${
         checked
           ? 'border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--surface-soft))] shadow-2xs'
           : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))/0.2]'
@@ -130,8 +129,6 @@ export function ChannelsPanel({
   const [webhookPath, setWebhookPath] = useState('/feishu/events');
   const [webhookHost, setWebhookHost] = useState('127.0.0.1');
   const [webhookPort, setWebhookPort] = useState('3000');
-
-  // Input states visibility
   const [showAppSecret, setShowAppSecret] = useState(false);
   const [showVerificationToken, setShowVerificationToken] = useState(false);
   const [showEncryptKey, setShowEncryptKey] = useState(false);
@@ -225,13 +222,12 @@ export function ChannelsPanel({
     setEnabled(true);
   }
 
-  const postInstallActionLoading = statusLoading || feishuSetupLoading;
+  const postInstallActionLoading = statusLoading || feishuSetupLoading || feishuPluginInstall.installing;
 
   return (
     <div className="flex flex-col h-full flex-1 min-h-0 relative animate-fade-in">
       <ScrollArea className="flex-1 pr-4 -mr-4">
         <div className="flex flex-col gap-6 pb-6">
-          {/* Header Panel */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[hsl(var(--hairline))] pb-5">
             <div>
               <h2 className="font-serif text-2xl font-normal tracking-tight text-[hsl(var(--ink))] flex items-center gap-2">
@@ -263,10 +259,8 @@ export function ChannelsPanel({
             </div>
           </div>
 
-          {/* Read Only Dashboard Mode */}
           {!isEditing && feishu?.configured ? (
             <div className="flex flex-col gap-6">
-              {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
                   <CardContent className="p-5 flex items-center gap-4">
@@ -274,9 +268,7 @@ export function ChannelsPanel({
                       <Radio className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">
-                        服务通道类型
-                      </span>
+                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">服务通道类型</span>
                       <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5 capitalize">
                         {feishu?.domain || 'feishu'} ({feishu?.connectionMode || 'websocket'})
                       </strong>
@@ -290,9 +282,7 @@ export function ChannelsPanel({
                       <Hash className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">
-                        Bot App ID
-                      </span>
+                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">Bot App ID</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
                           {feishu?.appId || '未配置'}
@@ -322,9 +312,7 @@ export function ChannelsPanel({
                       <Settings2 className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">
-                        账号与昵称
-                      </span>
+                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">账号与昵称</span>
                       <strong className="text-sm font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
                         {feishu?.accountName || '未命名'} ({feishu?.defaultAccount || 'default'})
                       </strong>
@@ -333,7 +321,6 @@ export function ChannelsPanel({
                 </Card>
               </div>
 
-              {/* Policies Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="p-5 pb-3">
@@ -351,10 +338,10 @@ export function ChannelsPanel({
                           feishu?.dmPolicy === 'open'
                             ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
                             : feishu?.dmPolicy === 'allowlist'
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                            : feishu?.dmPolicy === 'pairing'
-                            ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-900'
-                            : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
+                              : feishu?.dmPolicy === 'pairing'
+                                ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-900'
+                                : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
                         }`}
                       >
                         {feishu?.dmPolicy || 'disabled'}
@@ -362,16 +349,11 @@ export function ChannelsPanel({
                     </div>
                     {feishu?.dmPolicy === 'allowlist' && (
                       <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--hairline))] pt-3">
-                        <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                          允许私聊的 User ID
-                        </span>
+                        <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">允许私聊的 User ID</span>
                         {feishu.allowFrom.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {feishu.allowFrom.map((id) => (
-                              <span
-                                key={id}
-                                className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]"
-                              >
+                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
                                 {id}
                               </span>
                             ))}
@@ -400,8 +382,8 @@ export function ChannelsPanel({
                           feishu?.groupPolicy === 'open'
                             ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
                             : feishu?.groupPolicy === 'allowlist'
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                            : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
+                              : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
                         }`}
                       >
                         {feishu?.groupPolicy || 'disabled'}
@@ -409,16 +391,11 @@ export function ChannelsPanel({
                     </div>
                     {feishu?.groupPolicy === 'allowlist' && (
                       <div className="flex flex-col gap-1.5 border-t border-[hsl(var(--hairline))] pt-3">
-                        <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                          允许的飞书群聊 Chat ID
-                        </span>
+                        <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">允许的飞书群聊 Chat ID</span>
                         {feishu.groupAllowFrom.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {feishu.groupAllowFrom.map((id) => (
-                              <span
-                                key={id}
-                                className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]"
-                              >
+                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
                                 {id}
                               </span>
                             ))}
@@ -432,7 +409,6 @@ export function ChannelsPanel({
                 </Card>
               </div>
 
-              {/* Advanced settings & webhook summaries */}
               <Card>
                 <CardHeader className="p-5 pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -443,9 +419,7 @@ export function ChannelsPanel({
                 <CardContent className="p-5 pt-0 flex flex-col gap-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="flex flex-col gap-0.5 border-r border-[hsl(var(--hairline))] pr-4">
-                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                        群聊被提及 (@)
-                      </span>
+                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">群聊被提及 (@)</span>
                       <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] mt-1 flex items-center gap-1">
                         {feishu?.requireMention ? (
                           <>
@@ -459,9 +433,7 @@ export function ChannelsPanel({
                     </div>
 
                     <div className="flex flex-col gap-0.5 border-r border-[hsl(var(--hairline))] pr-4">
-                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                        流式卡片回复
-                      </span>
+                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">流式卡片回复</span>
                       <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] mt-1 flex items-center gap-1">
                         {feishu?.streaming ? (
                           <>
@@ -475,9 +447,7 @@ export function ChannelsPanel({
                     </div>
 
                     <div className="flex flex-col gap-0.5 border-r border-[hsl(var(--hairline))] pr-4">
-                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                        输入状态指示器
-                      </span>
+                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">输入状态指示器</span>
                       <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] mt-1 flex items-center gap-1">
                         {feishu?.typingIndicator ? (
                           <>
@@ -491,9 +461,7 @@ export function ChannelsPanel({
                     </div>
 
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">
-                        解析发送者姓名
-                      </span>
+                      <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">解析发送者姓名</span>
                       <strong className="text-xs font-semibold text-[hsl(var(--body-strong))] mt-1 flex items-center gap-1">
                         {feishu?.resolveSenderNames ? (
                           <>
@@ -517,9 +485,7 @@ export function ChannelsPanel({
                         <div>事件路由: {feishu?.webhookPath || '/feishu/events'}</div>
                         <div>绑定Host: {feishu?.webhookHost || '127.0.0.1'}</div>
                         <div>绑定端口: {feishu?.webhookPort || '3000'}</div>
-                        <div>
-                          签名校验 Token: {feishu?.verificationTokenConfigured ? '•••••••• (已写入)' : '未配置'}
-                        </div>
+                        <div>签名校验 Token: {feishu?.verificationTokenConfigured ? '•••••••• (已写入)' : '未配置'}</div>
                         <div>加密 Key: {feishu?.encryptKeyConfigured ? '•••••••• (已写入)' : '未配置'}</div>
                       </div>
                     </div>
@@ -527,7 +493,6 @@ export function ChannelsPanel({
                 </CardContent>
               </Card>
 
-              {/* Webhook persistent checking note */}
               {feishu?.connectionMode === 'websocket' && (
                 <div className="rounded-xl border border-[hsl(var(--success)/0.18)] bg-[hsl(var(--success)/0.04)] p-4 text-[11px] leading-relaxed text-[hsl(var(--body))] flex items-start gap-3">
                   <Shield className="w-4 h-4 text-[hsl(var(--success))] mt-0.5 flex-shrink-0" />
@@ -541,9 +506,7 @@ export function ChannelsPanel({
               )}
             </div>
           ) : (
-            /* Interactive Edit Form Mode */
             <div className="flex flex-col gap-6">
-              {/* Section 1: Basic credentials */}
               <Card>
                 <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
@@ -553,7 +516,6 @@ export function ChannelsPanel({
                   <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 pt-0 flex flex-col gap-5">
-                  {/* Enable Switch */}
                   <div className="bg-[hsl(var(--surface-soft))] p-4 rounded-xl border border-[hsl(var(--hairline))] flex items-center justify-between gap-4">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
@@ -580,7 +542,6 @@ export function ChannelsPanel({
                     </div>
                   </div>
 
-                  {/* Options Grids */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">应用服务商 Domain</label>
@@ -592,12 +553,7 @@ export function ChannelsPanel({
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">App ID</label>
-                      <Input
-                        value={appId}
-                        onChange={(event) => setAppId(event.target.value)}
-                        placeholder="cli_xxx"
-                        className="font-mono text-xs"
-                      />
+                      <Input value={appId} onChange={(event) => setAppId(event.target.value)} placeholder="cli_xxx" className="font-mono text-xs" />
                     </div>
 
                     <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -621,7 +577,6 @@ export function ChannelsPanel({
                     </div>
                   </div>
 
-                  {/* Mode Card Selector */}
                   <div className="flex flex-col gap-2.5 mt-2">
                     <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">连接模式 (Connection Mode)</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -635,9 +590,7 @@ export function ChannelsPanel({
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold flex items-center gap-1.5 text-[hsl(var(--ink))]">
-                            <Radio
-                              className={`w-4 h-4 ${connectionMode === 'websocket' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'}`}
-                            />
+                            <Radio className={`w-4 h-4 ${connectionMode === 'websocket' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'}`} />
                             WebSocket 长连接模式
                           </span>
                           {connectionMode === 'websocket' && (
@@ -660,9 +613,7 @@ export function ChannelsPanel({
                         }`}
                       >
                         <div className="flex items-center gap-1.5">
-                          <Webhook
-                            className={`w-4 h-4 ${connectionMode === 'webhook' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'}`}
-                          />
+                          <Webhook className={`w-4 h-4 ${connectionMode === 'webhook' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'}`} />
                           <span className="text-xs font-semibold text-[hsl(var(--ink))]">Webhook 回调函数模式</span>
                         </div>
                         <p className="text-[10px] leading-relaxed text-[hsl(var(--muted))]">
@@ -672,30 +623,19 @@ export function ChannelsPanel({
                     </div>
                   </div>
 
-                  {/* Advanced settings row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[hsl(var(--hairline))] pt-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认通道账户标识 (Default Account)</label>
-                      <Input
-                        value={defaultAccount}
-                        onChange={(event) => setDefaultAccount(event.target.value)}
-                        className="text-xs font-mono"
-                      />
+                      <Input value={defaultAccount} onChange={(event) => setDefaultAccount(event.target.value)} className="text-xs font-mono" />
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">账户昵称 (Account Name)</label>
-                      <Input
-                        value={accountName}
-                        onChange={(event) => setAccountName(event.target.value)}
-                        placeholder="Primary bot"
-                        className="text-xs"
-                      />
+                      <Input value={accountName} onChange={(event) => setAccountName(event.target.value)} placeholder="Primary bot" className="text-xs" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Section 2: Policies and filtering */}
               <Card>
                 <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
@@ -708,10 +648,7 @@ export function ChannelsPanel({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">私聊触发策略 (DM Policy)</label>
-                      <Select
-                        value={dmPolicy}
-                        onChange={(e) => setDmPolicy(e.target.value as 'allowlist' | 'pairing' | 'open' | 'disabled')}
-                      >
+                      <Select value={dmPolicy} onChange={(e) => setDmPolicy(e.target.value as 'allowlist' | 'pairing' | 'open' | 'disabled')}>
                         <option value="allowlist">Allowlist (仅限白名单用户触发)</option>
                         <option value="pairing">Pairing (特定配对授权响应)</option>
                         <option value="open">Open (对所有私聊会话开放响应)</option>
@@ -721,10 +658,7 @@ export function ChannelsPanel({
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">群聊触发策略 (Group Policy)</label>
-                      <Select
-                        value={groupPolicy}
-                        onChange={(e) => setGroupPolicy(e.target.value as 'allowlist' | 'open' | 'disabled')}
-                      >
+                      <Select value={groupPolicy} onChange={(e) => setGroupPolicy(e.target.value as 'allowlist' | 'open' | 'disabled')}>
                         <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                         <option value="open">Open (支持在所有群中艾特响应)</option>
                         <option value="disabled">Disabled (群聊场景静默不响应)</option>
@@ -735,16 +669,9 @@ export function ChannelsPanel({
                       <div className="flex flex-col gap-1.5 md:col-span-2 animate-fade-in">
                         <label className="text-xs font-semibold text-[hsl(var(--body-strong))] flex items-center justify-between">
                           <span>私聊响应白名单 (DM Allowlist)</span>
-                          <span className="text-[10px] text-[hsl(var(--muted))]">
-                            配置允许的用户 Open ID。支持用英文逗号或换行符分隔。
-                          </span>
+                          <span className="text-[10px] text-[hsl(var(--muted))]">配置允许的用户 Open ID。支持用英文逗号或换行符分隔。</span>
                         </label>
-                        <Input
-                          value={allowFrom}
-                          onChange={(event) => setAllowFrom(event.target.value)}
-                          placeholder="ou_xxx, ou_yyy"
-                          className="font-mono text-xs"
-                        />
+                        <Input value={allowFrom} onChange={(event) => setAllowFrom(event.target.value)} placeholder="ou_xxx, ou_yyy" className="font-mono text-xs" />
                       </div>
                     )}
 
@@ -752,23 +679,15 @@ export function ChannelsPanel({
                       <div className="flex flex-col gap-1.5 md:col-span-2 animate-fade-in">
                         <label className="text-xs font-semibold text-[hsl(var(--body-strong))] flex items-center justify-between">
                           <span>群聊响应白名单 (Group Allowlist)</span>
-                          <span className="text-[10px] text-[hsl(var(--muted))]">
-                            配置允许生效的 Chat ID。支持用英文逗号或换行符分隔。
-                          </span>
+                          <span className="text-[10px] text-[hsl(var(--muted))]">配置允许生效的 Chat ID。支持用英文逗号或换行符分隔。</span>
                         </label>
-                        <Input
-                          value={groupAllowFrom}
-                          onChange={(event) => setGroupAllowFrom(event.target.value)}
-                          placeholder="oc_xxx, oc_yyy"
-                          className="font-mono text-xs"
-                        />
+                        <Input value={groupAllowFrom} onChange={(event) => setGroupAllowFrom(event.target.value)} placeholder="oc_xxx, oc_yyy" className="font-mono text-xs" />
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Section 3: Interactive Features Switches */}
               <Card>
                 <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
@@ -816,7 +735,6 @@ export function ChannelsPanel({
                 </CardContent>
               </Card>
 
-              {/* Section 4: Webhook Optional Details */}
               {connectionMode === 'webhook' && (
                 <Card className="border-[hsl(var(--warning)/0.25)] bg-[hsl(var(--warning)/0.02)]">
                   <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--warning)/0.15)] mb-4">
@@ -837,9 +755,7 @@ export function ChannelsPanel({
                             type={showVerificationToken ? 'text' : 'password'}
                             value={verificationToken}
                             onChange={(event) => setVerificationToken(event.target.value)}
-                            placeholder={
-                              feishu?.verificationTokenConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 verification token'
-                            }
+                            placeholder={feishu?.verificationTokenConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 verification token'}
                             className="pr-10 font-mono text-xs tracking-wider"
                           />
                           <button
@@ -874,36 +790,23 @@ export function ChannelsPanel({
 
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Path</label>
-                        <Input
-                          value={webhookPath}
-                          onChange={(event) => setWebhookPath(event.target.value)}
-                          className="font-mono text-xs"
-                        />
+                        <Input value={webhookPath} onChange={(event) => setWebhookPath(event.target.value)} className="font-mono text-xs" />
                       </div>
 
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Host</label>
-                        <Input
-                          value={webhookHost}
-                          onChange={(event) => setWebhookHost(event.target.value)}
-                          className="font-mono text-xs"
-                        />
+                        <Input value={webhookHost} onChange={(event) => setWebhookHost(event.target.value)} className="font-mono text-xs" />
                       </div>
 
                       <div className="flex flex-col gap-1.5 md:col-span-2">
                         <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Port</label>
-                        <Input
-                          value={webhookPort}
-                          onChange={(event) => setWebhookPort(event.target.value)}
-                          className="font-mono text-xs"
-                        />
+                        <Input value={webhookPort} onChange={(event) => setWebhookPort(event.target.value)} className="font-mono text-xs" />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Guide checklist cards */}
               <Card className="bg-[hsl(var(--surface-soft))] border-dashed border-[hsl(var(--hairline))]">
                 <CardHeader className="p-5 pb-0">
                   <CardTitle className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
@@ -915,8 +818,7 @@ export function ChannelsPanel({
                   <div className="flex items-start gap-2">
                     <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
                     <span>
-                      在「飞书开放平台」创建自建应用，在<strong>凭证与基础信息</strong>中拷贝 <code>App ID</code> 和{' '}
-                      <code>App Secret</code>。
+                      在「飞书开放平台」创建自建应用，在<strong>凭证与基础信息</strong>中拷贝 <code>App ID</code> 和 <code>App Secret</code>。
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
@@ -928,8 +830,7 @@ export function ChannelsPanel({
                   <div className="flex items-start gap-2">
                     <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
                     <span>
-                      在<strong>开发配置 &rarr; 事件订阅</strong>中开启事件订阅，订阅消息权限{' '}
-                      <code>im.message.receive_v1</code> (接收消息)。如果使用 WebSocket 模式，须在上方选择
+                      在<strong>开发配置 &rarr; 事件订阅</strong>中开启事件订阅，订阅消息权限 <code>im.message.receive_v1</code> (接收消息)。如果使用 WebSocket 模式，须在上方选择
                       <strong>「启用长连接」</strong>。
                     </span>
                   </div>
@@ -942,15 +843,13 @@ export function ChannelsPanel({
             </div>
           )}
 
-          {/* Operation Result Warnings */}
           {feishuSetupResult ? (
             <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] animate-fade-in flex items-start gap-2.5 shadow-2xs">
               <Check className="text-[hsl(var(--success))] w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
                 <strong>Feishu 通道配置写入成功！</strong>
                 <span>
-                  当前服务账号为 `{feishuSetupResult.defaultAccount}`，模式 `{feishuSetupResult.connectionMode}`
-                  。您可以在运行控制中心重启 OpenClaw 服务以更新底层通道进程。
+                  当前服务账号为 `{feishuSetupResult.defaultAccount}`，模式 `{feishuSetupResult.connectionMode}`。您可以在运行控制中心重启 OpenClaw 服务以更新底层通道进程。
                 </span>
               </div>
             </div>
@@ -958,7 +857,6 @@ export function ChannelsPanel({
         </div>
       </ScrollArea>
 
-      {/* Sticky Bottom Actions Footer */}
       <div className="flex-none pt-4 border-t border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] mt-2 z-10 relative shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
         {!isEditing && feishu?.configured ? (
           <Button

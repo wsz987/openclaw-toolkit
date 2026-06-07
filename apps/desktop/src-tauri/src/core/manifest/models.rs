@@ -80,6 +80,30 @@ pub struct ReleaseSkill {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PluginArtifact {
+    pub id: String,
+    pub package: String,
+    pub version: String,
+    pub artifact: String,
+    pub sha256: String,
+    pub signature: Option<String>,
+    pub plugin_entry_id: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub openclaw_version_range: Option<String>,
+    #[serde(default)]
+    pub node_version_range: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginManifest {
+    #[serde(default)]
+    pub plugins: Vec<PluginArtifact>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReleaseArtifact {
     pub name: String,
     pub version: String,
@@ -95,6 +119,14 @@ pub struct ReleaseArtifact {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReleaseManifest {
     pub releases: Vec<ReleaseArtifact>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstalledPlugin {
+    pub id: String,
+    pub version: String,
+    #[serde(default)]
+    pub package: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,6 +148,8 @@ pub struct InstalledManifest {
     pub config_path: String,
     #[serde(default)]
     pub skills: Vec<ReleaseSkill>,
+    #[serde(default)]
+    pub plugins: Vec<InstalledPlugin>,
 }
 
 fn default_manifest_schema_version() -> u32 {

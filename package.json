@@ -7,7 +7,8 @@
   "scripts": {
     "build": "pnpm --filter @openclaw-toolkit/desktop build",
     "dev:desktop": "pnpm --filter @openclaw-toolkit/desktop dev",
-    "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck"
+    "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck",
+    "plugin:uninstall": "node scripts/uninstall-openclaw-plugin.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

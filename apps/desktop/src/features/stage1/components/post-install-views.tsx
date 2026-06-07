@@ -2,7 +2,6 @@ import { AlertIcon } from '../../../components/icons';
 import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
-  OpenClawLaunchResult,
   OpenClawPostInstallStatus,
   PostInstallTab,
   OpenClawProviderSetupPayload,
@@ -25,15 +24,14 @@ type PostInstallHomeViewProps = {
   runtimeLaunchLoading: boolean;
   runtimeStopLoading: boolean;
   runtimeRestartLoading: boolean;
-  runtimeLaunchResult: OpenClawLaunchResult | null;
   controlPanelOpening?: boolean;
   installationDirOpening?: boolean;
   logsDirOpening?: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
-  onLaunchRuntime: (configPath: string) => Promise<OpenClawLaunchResult | null>;
+  onLaunchRuntime: (configPath: string) => Promise<unknown>;
   onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
-  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawLaunchResult | null>;
+  onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
   onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
@@ -57,7 +55,6 @@ export function PostInstallHomeView({
   runtimeLaunchLoading,
   runtimeStopLoading,
   runtimeRestartLoading,
-  runtimeLaunchResult,
   controlPanelOpening = false,
   installationDirOpening = false,
   logsDirOpening = false,
@@ -100,7 +97,6 @@ export function PostInstallHomeView({
             runtimeLaunchLoading={runtimeLaunchLoading}
             runtimeStopLoading={runtimeStopLoading}
             runtimeRestartLoading={runtimeRestartLoading}
-            runtimeLaunchResult={runtimeLaunchResult}
             onLaunchRuntime={onLaunchRuntime}
             onStopRuntime={onStopRuntime}
             onRestartRuntime={onRestartRuntime}
@@ -117,7 +113,6 @@ export function PostInstallHomeView({
             runtimeLaunchLoading={runtimeLaunchLoading}
             runtimeStopLoading={runtimeStopLoading}
             runtimeRestartLoading={runtimeRestartLoading}
-            runtimeLaunchResult={runtimeLaunchResult}
             controlPanelOpening={controlPanelOpening}
             installationDirOpening={installationDirOpening}
             logsDirOpening={logsDirOpening}

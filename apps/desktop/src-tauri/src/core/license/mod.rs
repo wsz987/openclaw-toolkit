@@ -26,6 +26,7 @@ pub fn verify_offline_license(license_key: Option<&str>) -> anyhow::Result<Licen
                 "managed-node-runtime".to_string(),
                 "local-skills".to_string(),
                 "browser-control".to_string(),
+                "feishu-plugin".to_string(),
             ],
             max_openclaw_version: Some("1.x".to_string()),
         });

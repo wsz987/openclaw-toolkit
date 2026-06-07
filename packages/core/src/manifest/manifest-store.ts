@@ -2,10 +2,12 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import {
   installedManifestSchema,
+  pluginManifestSchema,
   providerCatalogManifestSchema,
   releaseManifestSchema,
   toolkitManifestSchema,
   type InstalledManifest,
+  type PluginManifest,
   type ProviderCatalogManifest,
   type ReleaseManifest,
   type ToolkitManifest
@@ -24,6 +26,15 @@ export async function loadReleaseManifest(projectRoot: string): Promise<ReleaseM
 export async function loadProviderCatalog(projectRoot: string): Promise<ProviderCatalogManifest> {
   const filePath = path.join(projectRoot, 'artifacts', 'providers.json');
   return providerCatalogManifestSchema.parse(await fs.readJson(filePath));
+}
+
+export async function loadPluginManifest(projectRoot: string): Promise<PluginManifest> {
+  const filePath = path.join(projectRoot, 'artifacts', 'plugins.json');
+  if (!(await fs.pathExists(filePath))) {
+    return pluginManifestSchema.parse({ plugins: [] });
+  }
+
+  return pluginManifestSchema.parse(await fs.readJson(filePath));
 }
 
 export async function writeInstalledManifest(filePath: string, manifest: InstalledManifest): Promise<void> {

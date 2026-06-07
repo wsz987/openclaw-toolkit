@@ -374,8 +374,7 @@ pub fn sync_installation_status_by_config_path(config_path: &Path) -> anyhow::Re
         return Ok(());
     };
 
-    let mut status = read_openclaw_status(config_path)?;
-    hydrate_status_with_runtime_state(&mut status, record);
+    let status = resolve_status_for_record(config_path, record)?;
     apply_status_to_record(record, &status);
     save_install_registry(&registry)
 }
@@ -383,7 +382,6 @@ pub fn sync_installation_status_by_config_path(config_path: &Path) -> anyhow::Re
 pub fn resolve_installation_status_by_config_path(
     config_path: &Path,
 ) -> anyhow::Result<OpenClawStatusSummary> {
-    let mut status = read_openclaw_status(config_path)?;
     let registry = load_install_registry()?;
 
     if let Some(record) = registry
@@ -391,10 +389,10 @@ pub fn resolve_installation_status_by_config_path(
         .iter()
         .find(|item| same_path(&item.config_path, config_path))
     {
-        hydrate_status_with_runtime_state(&mut status, record);
+        return resolve_status_for_record(config_path, record);
     }
 
-    Ok(status)
+    read_openclaw_status(config_path)
 }
 
 pub fn mark_installation_runtime_state(
@@ -466,8 +464,7 @@ fn validate_installation(record: &mut InstallationRecord) -> anyhow::Result<Open
         anyhow::bail!("配置文件不存在：{}", config_path.display());
     }
 
-    let mut status = read_openclaw_status(&config_path)?;
-    hydrate_status_with_runtime_state(&mut status, record);
+    let status = resolve_status_for_record(&config_path, record)?;
     apply_status_to_record(record, &status);
     Ok(status)
 }
@@ -684,7 +681,7 @@ fn pick_latest_manifest(manifests: Vec<PathBuf>) -> Option<PathBuf> {
 }
 
 fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStatusSummary) {
-    record.status = if status.runtime_running {
+    record.status = if status.runtime_running || status.runtime_state.eq_ignore_ascii_case("starting") {
         "installed".to_string()
     } else {
         "degraded".to_string()
@@ -697,12 +694,18 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
     } else {
         "uninitialized".to_string()
     };
-    record.runtime_state = if status.runtime_state.trim().is_empty() {
-        "stopped".to_string()
+    record.runtime_state = if status.runtime_state.eq_ignore_ascii_case("starting") {
+        "starting".to_string()
+    } else if status.runtime_running {
+        "running".to_string()
     } else {
-        status.runtime_state.clone()
+        "stopped".to_string()
     };
-    record.runtime_pid = status.runtime_pid;
+    if status.runtime_running || status.runtime_state.eq_ignore_ascii_case("starting") {
+        record.runtime_pid = status.runtime_pid;
+    } else {
+        record.runtime_pid = None;
+    }
     record.runtime_log_path = status.runtime_log_path.clone();
     record.runtime_action_required = if status.runtime_action_required.trim().is_empty() {
         "none".to_string()
@@ -719,24 +722,40 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
     record.last_error = None;
 }
 
-fn hydrate_status_with_runtime_state(
-    status: &mut OpenClawStatusSummary,
+fn resolve_status_for_record(
+    config_path: &Path,
     record: &InstallationRecord,
-) {
-    status.runtime_state = if record.runtime_state.trim().is_empty() {
-        "stopped".to_string()
+) -> anyhow::Result<OpenClawStatusSummary> {
+    let mut status = read_openclaw_status(config_path)?;
+
+    if status.runtime_running {
+        status.runtime_state = "running".to_string();
+        status.runtime_pid = status.runtime_pid.or(record.runtime_pid);
+        status.runtime_log_path = record
+            .runtime_log_path
+            .clone()
+            .or(status.runtime_log_path.clone());
+    } else if record.runtime_state.eq_ignore_ascii_case("starting")
+        && record.runtime_pid.is_some_and(process_id_is_running)
+    {
+        status.runtime_state = "starting".to_string();
+        status.runtime_pid = record.runtime_pid;
+        status.runtime_log_path = record
+            .runtime_log_path
+            .clone()
+            .or(status.runtime_log_path.clone());
     } else {
-        record.runtime_state.clone()
-    };
-    status.runtime_pid = record.runtime_pid;
-    status.runtime_log_path = record.runtime_log_path.clone();
-    status.runtime_running = status.runtime_state.eq_ignore_ascii_case("running");
+        status.runtime_state = "stopped".to_string();
+        status.runtime_pid = None;
+    }
+
     status.runtime_action_required = if record.runtime_action_required.trim().is_empty() {
         "none".to_string()
     } else {
         record.runtime_action_required.clone()
     };
     status.pending_config_changes = record.pending_config_changes.clone();
+    Ok(status)
 }
 
 fn upsert_installation(registry: &mut InstallationRegistry, record: InstallationRecord) {
@@ -752,6 +771,33 @@ fn upsert_installation(registry: &mut InstallationRegistry, record: Installation
             .installations
             .sort_by(|left, right| compare_installed_at(right, left));
     }
+}
+
+#[cfg(target_os = "windows")]
+fn process_id_is_running(pid: u32) -> bool {
+    let filter = format!("PID eq {pid}");
+    let output = Command::new("tasklist")
+        .args(["/FI", &filter, "/FO", "CSV", "/NH"])
+        .output();
+
+    let Ok(output) = output else {
+        return false;
+    };
+
+    if !output.status.success() {
+        return false;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with("INFO:")
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn process_id_is_running(_pid: u32) -> bool {
+    false
 }
 
 fn compare_installed_at(

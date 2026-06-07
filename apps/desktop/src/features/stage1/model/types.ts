@@ -105,6 +105,13 @@ export type OpenClawPostInstallStatus = {
   feishuChannel: FeishuChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
+  installedPlugins: InstalledPluginStatus[];
+};
+
+export type InstalledPluginStatus = {
+  id: string;
+  version: string;
+  package?: string;
 };
 
 export type FeishuChannelStatus = {
@@ -202,23 +209,6 @@ export type OpenClawFeishuChannelSetupResult = {
   appId: string | null;
 };
 
-export type FeishuPluginInstallStatus = {
-  configPath: string;
-  pluginId: string;
-  packageSpec: string;
-  installed: boolean;
-  packagePath: string | null;
-};
-
-export type FeishuPluginInstallResult = {
-  configPath: string;
-  pluginId: string;
-  packageSpec: string;
-  installed: boolean;
-  alreadyInstalled: boolean;
-  packagePath: string | null;
-};
-
 export type PluginInstallProgress = {
   stage: string;
   progress: number;
@@ -227,8 +217,26 @@ export type PluginInstallProgress = {
   failed: boolean;
 };
 
-export type FeishuPluginInstallProgress = PluginInstallProgress;
+export type OpenClawPluginInstallPayload = {
+  configPath: string;
+  pluginId: string;
+};
 
+export type OpenClawPluginInstallResult = {
+  configPath: string;
+  pluginId: string;
+  pluginEntryId: string;
+  package: string;
+  version: string;
+  artifactPath: string;
+};
+
+export type PluginInstallLogEntry = {
+  id: string;
+  level: 'info' | 'success' | 'error';
+  message: string;
+  createdAt: string;
+};
 export type OpenClawLaunchResult = {
   pid: number;
   logPath: string;

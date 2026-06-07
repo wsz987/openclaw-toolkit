@@ -133,6 +133,7 @@ apps/desktop                 Tauri + React + Rust Core
 artifacts                    离线制品目录
 artifacts/openclaw           OpenClaw 离线包
 artifacts/node               Node Runtime 离线包
+artifacts/plugins            Plugin 离线包
 artifacts/skills             Skill 离线包
 templates                    openclaw 和权限模板
 scripts                      打包、签名、构建脚本

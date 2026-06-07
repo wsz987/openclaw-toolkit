@@ -26,8 +26,10 @@ import type {
   InstallMode,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
-  OpenClawLaunchResult,
+  OpenClawPluginInstallPayload,
+  OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
+  PluginInstallLogEntry,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   OpenClawStopResult,
@@ -39,6 +41,7 @@ import type {
 } from '../model/types';
 import {
   importInstallationFromPath,
+  installOpenClawPlugin,
   inspectOpenClawStatus,
   inspectStage1Dashboard,
   inspectVersionCatalog,
@@ -54,6 +57,10 @@ import {
   stopOpenClawRuntime,
   startStage1Install
 } from '../api/stage1-api';
+import {
+  isOpenClawStatusEventAvailable,
+  refreshOpenClawStatus
+} from '../model/openclaw-status-store';
 
 export function useStage1Installer(
   initialBaseDir?: string | null,
@@ -80,8 +87,10 @@ export function useStage1Installer(
   const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
   const [feishuSetupLoading, setFeishuSetupLoading] = useState(false);
   const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
+  const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
+  const [pluginInstallResult, setPluginInstallResult] = useState<OpenClawPluginInstallResult | null>(null);
+  const [pluginInstallLogs, setPluginInstallLogs] = useState<PluginInstallLogEntry[]>([]);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
-  const [runtimeLaunchResult, setRuntimeLaunchResult] = useState<OpenClawLaunchResult | null>(null);
   const [runtimeStopLoading, setRuntimeStopLoading] = useState(false);
   const [runtimeRestartLoading, setRuntimeRestartLoading] = useState(false);
   const [controlPanelOpening, setControlPanelOpening] = useState(false);
@@ -99,6 +108,7 @@ export function useStage1Installer(
   const postInstallStatusRequestGuard = useLatestRequestGuard();
   const providerSetupRequestGuard = useLatestRequestGuard();
   const feishuSetupRequestGuard = useLatestRequestGuard();
+  const pluginInstallRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
   const runtimeStopRequestGuard = useLatestRequestGuard();
   const runtimeRestartRequestGuard = useLatestRequestGuard();
@@ -233,6 +243,46 @@ export function useStage1Installer(
     }
   }
 
+  async function refreshStatusViaFallback(configPath: string) {
+    if (!configPath.trim()) {
+      return;
+    }
+
+    if (isOpenClawStatusEventAvailable(configPath)) {
+      return;
+    }
+
+    await refreshOpenClawStatus(configPath);
+  }
+
+  async function finalizePostInstallMutation(configPath: string) {
+    await refreshStatusViaFallback(configPath);
+    handleEnterPostInstallHome();
+  }
+
+  function appendPluginInstallLog(level: PluginInstallLogEntry['level'], message: string) {
+    const entry: PluginInstallLogEntry = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      level,
+      message,
+      createdAt: new Date().toISOString()
+    };
+
+    setPluginInstallLogs((current) => [...current.slice(-39), entry]);
+
+    if (level === 'error') {
+      console.error(`[channels][plugin-install] ${message}`);
+      return;
+    }
+
+    if (level === 'success') {
+      console.info(`[channels][plugin-install] ${message}`);
+      return;
+    }
+
+    console.log(`[channels][plugin-install] ${message}`);
+  }
+
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
@@ -264,7 +314,6 @@ export function useStage1Installer(
     setResult(null);
     setInstallLogTail(null);
     setProviderSetupResult(null);
-    setRuntimeLaunchResult(null);
     setShowPostInstallHome(false);
     setWizardStep(2);
     setDashboard((current) => {
@@ -353,8 +402,7 @@ export function useStage1Installer(
       }
 
       setProviderSetupResult(response);
-      await loadPostInstallStatus(response.configPath);
-      handleEnterPostInstallHome();
+      await finalizePostInstallMutation(response.configPath);
       return response;
     } catch (err) {
       if (!providerSetupRequestGuard.isCurrent(requestId)) {
@@ -383,8 +431,7 @@ export function useStage1Installer(
       }
 
       setFeishuSetupResult(response);
-      await loadPostInstallStatus(response.configPath);
-      handleEnterPostInstallHome();
+      await finalizePostInstallMutation(response.configPath);
       return response;
     } catch (err) {
       if (!feishuSetupRequestGuard.isCurrent(requestId)) {
@@ -400,6 +447,46 @@ export function useStage1Installer(
     }
   }
 
+  async function handleInstallPlugin(
+    input: OpenClawPluginInstallPayload,
+    licenseKeyOverride?: string
+  ) {
+    const requestId = pluginInstallRequestGuard.begin();
+    setPluginInstallLoading(true);
+    setPluginInstallResult(null);
+    setError(null);
+    appendPluginInstallLog('info', `开始安装插件 ${input.pluginId}，将使用离线压缩包和国内 npm 镜像补齐依赖。`);
+
+    try {
+      const response = await installOpenClawPlugin(input, licenseKeyOverride ?? licenseKey);
+
+      if (!pluginInstallRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setPluginInstallResult(response);
+      appendPluginInstallLog(
+        'success',
+        `插件 ${response.pluginId}@${response.version} 安装完成，已写入 ${response.pluginEntryId}。`
+      );
+      await finalizePostInstallMutation(response.configPath);
+      return response;
+    } catch (err) {
+      if (!pluginInstallRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      appendPluginInstallLog('error', `插件安装失败：${message}`);
+      return null;
+    } finally {
+      if (pluginInstallRequestGuard.isCurrent(requestId)) {
+        setPluginInstallLoading(false);
+      }
+    }
+  }
+
   async function handleLaunchRuntime(configPath: string) {
     const requestId = runtimeLaunchRequestGuard.begin();
     setRuntimeLaunchLoading(true);
@@ -411,7 +498,7 @@ export function useStage1Installer(
         return null;
       }
 
-      setRuntimeLaunchResult(response);
+      await refreshStatusViaFallback(configPath);
       return response;
     } catch (err) {
       if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
@@ -438,10 +525,7 @@ export function useStage1Installer(
         return null;
       }
 
-      if (response.stopped) {
-        setRuntimeLaunchResult(null);
-        await loadPostInstallStatus(configPath);
-      }
+      await refreshStatusViaFallback(configPath);
 
       return response;
     } catch (err) {
@@ -469,8 +553,7 @@ export function useStage1Installer(
         return null;
       }
 
-      setRuntimeLaunchResult(response);
-      await loadPostInstallStatus(configPath);
+      await refreshStatusViaFallback(configPath);
       return response;
     } catch (err) {
       if (!runtimeRestartRequestGuard.isCurrent(requestId)) {
@@ -535,7 +618,8 @@ export function useStage1Installer(
     setPostInstallStatus(null);
     setProviderSetupResult(null);
     setFeishuSetupResult(null);
-    setRuntimeLaunchResult(null);
+    setPluginInstallResult(null);
+    setPluginInstallLogs([]);
     setShowPostInstallHome(false);
     setLoading(false);
     setWizardStep(0);
@@ -712,7 +796,6 @@ export function useStage1Installer(
     readyChecks,
     result,
     runtimeLaunchLoading,
-    runtimeLaunchResult,
     runtimeStopLoading,
     runtimeRestartLoading,
     showPostInstallHome,
@@ -737,6 +820,9 @@ export function useStage1Installer(
     providerSetupResult,
     feishuSetupLoading,
     feishuSetupResult,
+    pluginInstallLoading,
+    pluginInstallResult,
+    pluginInstallLogs,
     versionCatalog,
     versionCatalogLoading,
     versionListReady,
@@ -751,6 +837,7 @@ export function useStage1Installer(
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
     handleOpenLogsDirectory,
+    handleInstallPlugin,
     handleFeishuChannelSetup,
     handleProviderSetup,
     loadPostInstallStatus
@@ -768,22 +855,5 @@ export function createInstallResultFromRecord(record: import('../model/types').I
     openclawDir: record.openclawDir,
     nodeDir: record.nodeDir,
     configPath: record.configPath
-  };
-}
-
-export function createLaunchResultFromStatus(
-  status: OpenClawPostInstallStatus | null | undefined
-): OpenClawLaunchResult | null {
-  if (!status) {
-    return null;
-  }
-
-  if (status.runtimeState !== 'running' || !status.runtimePid || !status.runtimeLogPath) {
-    return null;
-  }
-
-  return {
-    pid: status.runtimePid,
-    logPath: status.runtimeLogPath
   };
 }

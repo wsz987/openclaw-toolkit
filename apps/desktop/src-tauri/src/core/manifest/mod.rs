@@ -5,7 +5,9 @@ use std::{
 
 use anyhow::Context;
 
-use self::models::{InstalledManifest, ProviderCatalogManifest, ReleaseManifest, ToolkitManifest};
+use self::models::{
+    InstalledManifest, PluginManifest, ProviderCatalogManifest, ReleaseManifest, ToolkitManifest,
+};
 use self::settings::ToolkitSettings;
 
 pub mod models;
@@ -30,6 +32,17 @@ pub fn load_provider_catalog_from_config_path(
 
 pub fn load_release_manifest(project_root: &Path) -> anyhow::Result<ReleaseManifest> {
     let path = project_root.join("artifacts").join("manifest.json");
+    read_json(&path)
+}
+
+pub fn load_plugin_manifest(project_root: &Path) -> anyhow::Result<PluginManifest> {
+    let path = project_root.join("artifacts").join("plugins.json");
+    if !path.exists() {
+        return Ok(PluginManifest {
+            plugins: Vec::new(),
+        });
+    }
+
     read_json(&path)
 }
 

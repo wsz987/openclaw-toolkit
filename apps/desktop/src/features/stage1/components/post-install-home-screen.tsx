@@ -97,7 +97,7 @@ export function PostInstallHomeScreen({
         <PostInstallHomeView
           result={result}
           status={resolvedStatus}
-          statusLoading={subscribedStatusLoading || controller.postInstallLoading}
+          statusLoading={subscribedStatusLoading}
           providerSetupLoading={controller.providerSetupLoading}
           providerSetupResult={controller.providerSetupResult}
           feishuSetupLoading={controller.feishuSetupLoading}
@@ -105,7 +105,6 @@ export function PostInstallHomeScreen({
           runtimeLaunchLoading={controller.runtimeLaunchLoading}
           runtimeStopLoading={controller.runtimeStopLoading}
           runtimeRestartLoading={controller.runtimeRestartLoading}
-          runtimeLaunchResult={controller.runtimeLaunchResult}
           controlPanelOpening={controller.controlPanelOpening}
           installationDirOpening={controller.installationDirOpening}
           logsDirOpening={controller.logsDirOpening}

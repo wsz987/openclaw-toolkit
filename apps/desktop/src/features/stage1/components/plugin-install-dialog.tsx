@@ -62,12 +62,7 @@ export function PluginInstallDialog({
         </div>
 
         <AlertDialogFooter>
-          <Button
-            variant="secondary"
-            onClick={onCancel}
-            disabled={installing}
-            className="min-w-[120px]"
-          >
+          <Button variant="secondary" onClick={onCancel} disabled={installing} className="min-w-[120px]">
             {error ? closeLabel : cancelLabel}
           </Button>
         </AlertDialogFooter>

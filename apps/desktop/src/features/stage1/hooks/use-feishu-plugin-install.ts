@@ -1,14 +1,22 @@
-import { installFeishuPlugin, inspectFeishuPluginStatus } from '../api/stage1-api';
+import { inspectOpenClawStatus, installOpenClawPlugin } from '../api/stage1-api';
+import { findInstalledFeishuPlugin } from '../model/feishu-channel';
 import { usePluginInstall } from './use-plugin-install';
 
-export function useFeishuPluginInstall(configPath: string) {
+export function useFeishuPluginInstall(configPath: string, licenseKey?: string) {
   return usePluginInstall({
     eventName: 'openclaw://feishu-plugin-install-progress',
     inspectInstalled: async () => {
-      const status = await inspectFeishuPluginStatus(configPath);
-      return status.installed;
+      const status = await inspectOpenClawStatus(configPath);
+      return Boolean(findInstalledFeishuPlugin(status.installedPlugins));
     },
-    install: () => installFeishuPlugin(configPath),
+    install: () =>
+      installOpenClawPlugin(
+        {
+          configPath,
+          pluginId: 'feishu'
+        },
+        licenseKey
+      ),
     initialProgress: {
       stage: 'checking',
       progress: 8,

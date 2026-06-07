@@ -6,13 +6,16 @@ use crate::core::{
     app_state::{
         mark_installation_runtime_state, mark_runtime_action_required,
         resolve_installation_status_by_config_path,
-        sync_installation_status_by_config_path,
     },
+    license::verify_offline_license,
     openclaw_config::{
-        apply_feishu_channel_setup, apply_provider_setup, ensure_feishu_plugin_installed,
-        inspect_feishu_plugin_installation, read_openclaw_status, FeishuChannelSetupInput,
-        FeishuChannelSetupResult, FeishuPluginInstallProgress, FeishuPluginInstallResult,
-        FeishuPluginInstallStatus, OpenClawStatusSummary, ProviderSetupInput, ProviderSetupResult,
+        apply_feishu_channel_setup, apply_provider_setup, read_openclaw_status,
+        FeishuChannelSetupInput, FeishuChannelSetupResult, OpenClawStatusSummary,
+        ProviderSetupInput, ProviderSetupResult,
+    },
+    plugins::{
+        install_plugin_from_manifest, PluginInstallInput, PluginInstallProgress,
+        PluginInstallResult,
     },
     process::{
         launch_managed_openclaw, stop_managed_openclaw, ManagedOpenClawLaunchResult,
@@ -39,18 +42,13 @@ pub struct ManagedStopResponse {
 
 #[tauri::command]
 pub async fn inspect_openclaw_status(
-    app: tauri::AppHandle,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
 ) -> Result<OpenClawStatusSummary, String> {
     watcher.watch_config_path(&config_path);
     tauri::async_runtime::spawn_blocking(move || {
         let config_path = PathBuf::from(config_path);
-        let _ = sync_installation_status_by_config_path(&config_path);
-        let status = resolve_installation_status_by_config_path(&config_path)
-            .map_err(render_error)?;
-        let _ = refresh_and_emit_openclaw_status(&app, &config_path);
-        Ok::<OpenClawStatusSummary, String>(status)
+        resolve_installation_status_by_config_path(&config_path).map_err(render_error)
     })
     .await
     .map_err(|error| {
@@ -74,7 +72,6 @@ pub async fn setup_openclaw_provider(
             "restart",
             "provider-config",
         );
-        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
         let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
         Ok::<ProviderSetupResult, anyhow::Error>(result)
     })
@@ -101,7 +98,6 @@ pub async fn setup_openclaw_feishu_channel(
             "restart",
             "channels.feishu",
         );
-        let _ = sync_installation_status_by_config_path(&PathBuf::from(&result.config_path));
         let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
         Ok::<FeishuChannelSetupResult, anyhow::Error>(result)
     })
@@ -115,44 +111,38 @@ pub async fn setup_openclaw_feishu_channel(
 }
 
 #[tauri::command]
-pub async fn inspect_feishu_plugin_status(
-    config_path: String,
-) -> Result<FeishuPluginInstallStatus, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        inspect_feishu_plugin_installation(&PathBuf::from(config_path))
-    })
-    .await
-    .map_err(|error| {
-        let rendered = error.to_string();
-        eprintln!("inspect_feishu_plugin_status join failed:\n{}", rendered);
-        rendered
-    })?
-    .map_err(render_error)
-}
-
-#[tauri::command]
-pub async fn install_feishu_plugin(
+pub async fn install_openclaw_plugin(
     app: tauri::AppHandle,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
-    config_path: String,
-) -> Result<FeishuPluginInstallResult, String> {
-    watcher.watch_config_path(&config_path);
+    input: PluginInstallInput,
+    license_key: Option<String>,
+) -> Result<PluginInstallResult, String> {
+    watcher.watch_config_path(&input.config_path);
     tauri::async_runtime::spawn_blocking(move || {
-        let config_path_buf = PathBuf::from(&config_path);
-        let result = ensure_feishu_plugin_installed(
-            &config_path_buf,
-            Some(&|progress: &FeishuPluginInstallProgress| {
+        let license = verify_offline_license(license_key.as_deref())?;
+        if !license.features.iter().any(|feature| feature == "feishu-plugin") {
+            anyhow::bail!("当前授权不包含飞书插件能力");
+        }
+
+        let result = install_plugin_from_manifest(
+            &PathBuf::from(&input.config_path),
+            &input.plugin_id,
+            Some(&|progress: &PluginInstallProgress| {
                 let _ = app.emit(FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT, progress);
             }),
         )?;
-        let _ = sync_installation_status_by_config_path(&config_path_buf);
-        let _ = refresh_and_emit_openclaw_status(&app, &config_path_buf);
-        Ok::<FeishuPluginInstallResult, anyhow::Error>(result)
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            &format!("plugins.{}", result.plugin_entry_id),
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<PluginInstallResult, anyhow::Error>(result)
     })
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("install_feishu_plugin join failed:\n{}", rendered);
+        eprintln!("install_openclaw_plugin join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)
@@ -170,7 +160,7 @@ pub async fn launch_openclaw_runtime(
         let launch = launch_managed_openclaw(&status)?;
         let _ = mark_installation_runtime_state(
             &PathBuf::from(&config_path),
-            "running",
+            "starting",
             Some(launch.pid),
             Some(&launch.log_path),
         );
@@ -269,7 +259,7 @@ pub async fn restart_openclaw_runtime(
         let launch = launch_managed_openclaw(&status)?;
         let _ = mark_installation_runtime_state(
             &PathBuf::from(&config_path),
-            "running",
+            "starting",
             Some(launch.pid),
             Some(&launch.log_path),
         );
