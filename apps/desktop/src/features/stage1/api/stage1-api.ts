@@ -3,6 +3,9 @@ import { isInstallStep } from '../model/graph';
 import type {
   AppBootstrapState,
   DirectoryPickerResponse,
+  FeishuPluginInstallProgress,
+  FeishuPluginInstallResult,
+  FeishuPluginInstallStatus,
   InstallMode,
   OpenClawLaunchResult,
   OpenClawFeishuChannelSetupPayload,
@@ -104,6 +107,14 @@ export async function setupOpenClawFeishuChannel(
   input: OpenClawFeishuChannelSetupPayload
 ): Promise<OpenClawFeishuChannelSetupResult> {
   return invoke<OpenClawFeishuChannelSetupResult>('setup_openclaw_feishu_channel', { input });
+}
+
+export async function inspectFeishuPluginStatus(configPath: string): Promise<FeishuPluginInstallStatus> {
+  return invoke<FeishuPluginInstallStatus>('inspect_feishu_plugin_status', { configPath });
+}
+
+export async function installFeishuPlugin(configPath: string): Promise<FeishuPluginInstallResult> {
+  return invoke<FeishuPluginInstallResult>('install_feishu_plugin', { configPath });
 }
 
 export async function launchOpenClawRuntime(configPath: string): Promise<OpenClawLaunchResult> {

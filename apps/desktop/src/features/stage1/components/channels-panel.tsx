@@ -14,7 +14,6 @@ import {
   Settings2,
   BookOpen,
   ArrowRight,
-  HelpCircle,
   Hash
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
@@ -22,6 +21,8 @@ import { Input } from '../../../components/ui/input';
 import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Select } from '../../../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { useFeishuPluginInstall } from '../hooks/use-feishu-plugin-install';
+import { PluginInstallDialog } from './plugin-install-dialog';
 import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
@@ -135,6 +136,7 @@ export function ChannelsPanel({
   const [showVerificationToken, setShowVerificationToken] = useState(false);
   const [showEncryptKey, setShowEncryptKey] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const feishuPluginInstall = useFeishuPluginInstall(result.configPath);
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
@@ -207,6 +209,20 @@ export function ChannelsPanel({
     setWebhookPath(feishu.webhookPath ?? '/feishu/events');
     setWebhookHost(feishu.webhookHost ?? '127.0.0.1');
     setWebhookPort(feishu.webhookPort ? String(feishu.webhookPort) : '3000');
+  }
+
+  async function handleEnableFeishuToggle(nextEnabled: boolean) {
+    if (!nextEnabled) {
+      setEnabled(false);
+      return;
+    }
+
+    const pluginReady = await feishuPluginInstall.ensureReady();
+    if (!pluginReady) {
+      return;
+    }
+
+    setEnabled(true);
   }
 
   const postInstallActionLoading = statusLoading || feishuSetupLoading;
@@ -546,7 +562,12 @@ export function ChannelsPanel({
                       </span>
                     </div>
                     <div
-                      onClick={() => setEnabled(!enabled)}
+                      onClick={() => {
+                        if (postInstallActionLoading) {
+                          return;
+                        }
+                        void handleEnableFeishuToggle(!enabled);
+                      }}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${
                         enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
                       }`}
@@ -1027,6 +1048,15 @@ export function ChannelsPanel({
           </div>
         )}
       </div>
+
+      <PluginInstallDialog
+        open={feishuPluginInstall.open}
+        installing={feishuPluginInstall.installing}
+        progress={feishuPluginInstall.progress}
+        error={feishuPluginInstall.error}
+        {...feishuPluginInstall.dialog}
+        onCancel={feishuPluginInstall.close}
+      />
     </div>
   );
 }

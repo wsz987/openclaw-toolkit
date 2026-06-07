@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use tauri::Emitter;
+
 use crate::core::{
     app_state::{
         mark_installation_runtime_state, mark_runtime_action_required,
@@ -7,9 +9,10 @@ use crate::core::{
         sync_installation_status_by_config_path,
     },
     openclaw_config::{
-        apply_feishu_channel_setup, apply_provider_setup, read_openclaw_status,
-        FeishuChannelSetupInput, FeishuChannelSetupResult, OpenClawStatusSummary,
-        ProviderSetupInput, ProviderSetupResult,
+        apply_feishu_channel_setup, apply_provider_setup, ensure_feishu_plugin_installed,
+        inspect_feishu_plugin_installation, read_openclaw_status, FeishuChannelSetupInput,
+        FeishuChannelSetupResult, FeishuPluginInstallProgress, FeishuPluginInstallResult,
+        FeishuPluginInstallStatus, OpenClawStatusSummary, ProviderSetupInput, ProviderSetupResult,
     },
     process::{
         launch_managed_openclaw, stop_managed_openclaw, ManagedOpenClawLaunchResult,
@@ -18,6 +21,8 @@ use crate::core::{
     status_events::refresh_and_emit_openclaw_status,
     status_watcher::OpenClawStatusWatcher,
 };
+
+const FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-install-progress";
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -104,6 +109,50 @@ pub async fn setup_openclaw_feishu_channel(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("setup_openclaw_feishu_channel join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn inspect_feishu_plugin_status(
+    config_path: String,
+) -> Result<FeishuPluginInstallStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        inspect_feishu_plugin_installation(&PathBuf::from(config_path))
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("inspect_feishu_plugin_status join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn install_feishu_plugin(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    config_path: String,
+) -> Result<FeishuPluginInstallResult, String> {
+    watcher.watch_config_path(&config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let config_path_buf = PathBuf::from(&config_path);
+        let result = ensure_feishu_plugin_installed(
+            &config_path_buf,
+            Some(&|progress: &FeishuPluginInstallProgress| {
+                let _ = app.emit(FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT, progress);
+            }),
+        )?;
+        let _ = sync_installation_status_by_config_path(&config_path_buf);
+        let _ = refresh_and_emit_openclaw_status(&app, &config_path_buf);
+        Ok::<FeishuPluginInstallResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("install_feishu_plugin join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

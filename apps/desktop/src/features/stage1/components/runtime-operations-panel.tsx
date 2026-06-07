@@ -207,8 +207,7 @@ export function RuntimeOperationsPanel({
         <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">插件启用状态</span>
           <span className="text-xs font-medium text-[hsl(var(--on-dark))] mt-1 truncate">
-            飞书插件: {resolvedStatus?.feishuPluginEnabled ? '已启用' : '未开启'}
-            {resolvedStatus?.pluginsEnabled.length ? ` (${resolvedStatus.pluginsEnabled.join(', ')})` : ''}
+            {resolvedStatus?.pluginsEnabled.length ? resolvedStatus.pluginsEnabled.join(', ') : '未检测到已启用插件'}
           </span>
         </div>
 
