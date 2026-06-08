@@ -76,7 +76,7 @@ export function AppBootstrap() {
   if (loading) {
     return (
       <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
-        <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
+        <div className="workspace max-w-[1200px] w-full m-auto flex flex-col gap-8 animate-fade-in">
           <Card className="max-w-2xl mx-auto py-14">
             <CardContent className="flex flex-col items-center gap-4 text-center">
               <div className="w-14 h-14 rounded-full flex items-center justify-center bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
