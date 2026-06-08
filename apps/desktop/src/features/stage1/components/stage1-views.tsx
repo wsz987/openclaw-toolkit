@@ -288,16 +288,16 @@ export function ConfigStepView({
             <div>
               <h2 className="text-xl font-semibold text-[hsl(var(--ink))]">授权激活与模式</h2>
               <p className="text-xs text-[hsl(var(--muted))] mt-1">
-                验证激活密钥并设定依赖组件的获取源，准备开始拉取运行制品。
+                验证激活码并设定依赖组件的获取源，准备开始拉取运行制品。
               </p>
             </div>
 
             <div className="flex flex-col gap-4 mt-1">
               <SecretField
-                label="离线激活授权密钥"
+                label="离线激活码"
                 value={licenseKey}
                 onChange={onLicenseKeyChange}
-                placeholder="输入激活许可证密钥"
+                placeholder="8F3K-29HD-Q7M2"
               />
 
               <div className="form-group flex flex-col gap-2">
@@ -519,7 +519,7 @@ export function ProgressStageView({
       return '下载并安全安装 OpenClaw 执行所需的第三方核心算法依赖库。';
     }
     if (lbl.includes('授权') || lbl.includes('密钥') || lbl.includes('激活') || lbl.includes('license')) {
-      return '连接验证服务器，校验本地激活包或离线授权密钥的有效性。';
+      return '使用内置公钥在本机校验离线授权文件、激活码、效期和功能范围。';
     }
     if (lbl.includes('拉取') || lbl.includes('包') || lbl.includes('分发') || lbl.includes('下载')) {
       return '从安全节点获取主运行引擎程序，解压释放至工作目录。';

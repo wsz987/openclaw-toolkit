@@ -8,6 +8,10 @@
     "build": "pnpm --filter @openclaw-toolkit/desktop build",
     "dev:desktop": "pnpm --filter @openclaw-toolkit/desktop dev",
     "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck",
+    "license:generate-keys": "node scripts/license.mjs generate-keys",
+    "license:init-signing-keys": "node scripts/license.mjs generate-keys",
+    "license:issue": "node scripts/license.mjs issue",
+    "license:issue-key": "node scripts/license.mjs issue",
     "plugin:uninstall": "node scripts/uninstall-openclaw-plugin.mjs"
   },
   "devDependencies": {
@@ -16,5 +20,9 @@
   },
   "workspaces": [
     "apps/desktop"
-  ]
+  ],
+  "dependencies": {
+    "date-fns": "^4.4.0",
+    "tinyduration": "^3.4.1"
+  }
 }

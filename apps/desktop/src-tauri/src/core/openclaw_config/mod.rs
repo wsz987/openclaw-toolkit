@@ -394,7 +394,12 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .or_else(|| {
             bool_at_path(
                 &config,
-                &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
+                &[
+                    "plugins",
+                    "entries",
+                    DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
+                    "enabled",
+                ],
             )
         })
         .unwrap_or(false),
@@ -611,7 +616,8 @@ pub fn apply_feishu_channel_setup(
     let account_name = normalize_optional_non_empty(
         input.account_name.as_deref(),
         existing_account.and_then(|entry| {
-            entry.get("name")
+            entry
+                .get("name")
                 .and_then(Value::as_str)
                 .map(ToString::to_string)
         }),
@@ -624,10 +630,19 @@ pub fn apply_feishu_channel_setup(
     );
     set_value_at_path(
         &mut config,
-        &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ENTRY_ID, "enabled"],
+        &[
+            "plugins",
+            "entries",
+            DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
+            "enabled",
+        ],
         Value::Bool(input.enabled),
     );
-    set_value_at_path(&mut config, &["channels", "feishu", "enabled"], Value::Bool(input.enabled));
+    set_value_at_path(
+        &mut config,
+        &["channels", "feishu", "enabled"],
+        Value::Bool(input.enabled),
+    );
     set_value_at_path(
         &mut config,
         &["channels", "feishu", "domain"],
@@ -690,14 +705,26 @@ pub fn apply_feishu_channel_setup(
     );
     set_value_at_path(
         &mut config,
-        &["channels", "feishu", "accounts", default_account.as_str(), "domain"],
+        &[
+            "channels",
+            "feishu",
+            "accounts",
+            default_account.as_str(),
+            "domain",
+        ],
         Value::String(domain),
     );
 
     if let Some(account_name) = account_name {
         set_value_at_path(
             &mut config,
-            &["channels", "feishu", "accounts", default_account.as_str(), "name"],
+            &[
+                "channels",
+                "feishu",
+                "accounts",
+                default_account.as_str(),
+                "name",
+            ],
             Value::String(account_name),
         );
     }
@@ -705,7 +732,13 @@ pub fn apply_feishu_channel_setup(
     if let Some(app_id) = app_id.clone() {
         set_value_at_path(
             &mut config,
-            &["channels", "feishu", "accounts", default_account.as_str(), "appId"],
+            &[
+                "channels",
+                "feishu",
+                "accounts",
+                default_account.as_str(),
+                "appId",
+            ],
             Value::String(app_id),
         );
     }
@@ -713,7 +746,13 @@ pub fn apply_feishu_channel_setup(
     if let Some(app_secret) = app_secret.clone() {
         set_value_at_path(
             &mut config,
-            &["channels", "feishu", "accounts", default_account.as_str(), "appSecret"],
+            &[
+                "channels",
+                "feishu",
+                "accounts",
+                default_account.as_str(),
+                "appSecret",
+            ],
             Value::String(app_secret),
         );
     }
@@ -899,16 +938,8 @@ fn merge_agent_permissions(config: &mut Value) {
         &["tools", "profile"],
         Value::String("coding".to_string()),
     );
-    set_value_at_path(
-        config,
-        &["tools", "deny"],
-        json!(["browser", "canvas"]),
-    );
-    set_value_at_path(
-        config,
-        &["tools", "fs", "workspaceOnly"],
-        Value::Bool(true),
-    );
+    set_value_at_path(config, &["tools", "deny"], json!(["browser", "canvas"]));
+    set_value_at_path(config, &["tools", "fs", "workspaceOnly"], Value::Bool(true));
     set_value_at_path(
         config,
         &["tools", "exec", "security"],
@@ -1016,7 +1047,9 @@ fn provider_catalog_json(provider_catalog: &[ProviderCatalogEntry]) -> Value {
     Value::Object(providers)
 }
 
-fn default_provider_catalog(provider_catalog: &[ProviderCatalogEntry]) -> Vec<ProviderCatalogEntry> {
+fn default_provider_catalog(
+    provider_catalog: &[ProviderCatalogEntry],
+) -> Vec<ProviderCatalogEntry> {
     if provider_catalog.is_empty() {
         return vec![fallback_provider_entry()];
     }
@@ -1161,7 +1194,8 @@ fn merge_provider_catalog(
         .map(provider_descriptor_from_catalog)
         .collect();
 
-    let Some(config_providers) = value_at_path(config, &["models", "providers"]).and_then(Value::as_object)
+    let Some(config_providers) =
+        value_at_path(config, &["models", "providers"]).and_then(Value::as_object)
     else {
         return if merged.is_empty() {
             vec![provider_descriptor_from_catalog(&fallback_provider_entry())]
@@ -1209,7 +1243,10 @@ fn merge_provider_catalog(
             models: provider_models_from_value(provider_object.get("models")),
         };
 
-        if let Some(existing) = merged.iter_mut().find(|provider| provider.id == *provider_id) {
+        if let Some(existing) = merged
+            .iter_mut()
+            .find(|provider| provider.id == *provider_id)
+        {
             if !config_descriptor.base_url.trim().is_empty() {
                 existing.base_url = config_descriptor.base_url;
             }
@@ -1552,8 +1589,8 @@ fn run_command_with_progress(
     let status = thread::scope(|scope| -> anyhow::Result<std::process::ExitStatus> {
         let stdout_task = stdout
             .map(|stream| scope.spawn(move || stream_lines(stream, progress_callback, false)));
-        let stderr_task = stderr
-            .map(|stream| scope.spawn(move || stream_lines(stream, progress_callback, true)));
+        let stderr_task =
+            stderr.map(|stream| scope.spawn(move || stream_lines(stream, progress_callback, true)));
 
         let status = child.wait().with_context(|| context_message.to_string())?;
 

@@ -130,8 +130,8 @@ fn copy_dir(source: &Path, destination: &Path) -> anyhow::Result<()> {
 }
 
 fn copy_symlink_target(source_path: &Path, destination_path: &Path) -> anyhow::Result<()> {
-    let link_target =
-        fs::read_link(source_path).with_context(|| format!("read link {}", source_path.display()))?;
+    let link_target = fs::read_link(source_path)
+        .with_context(|| format!("read link {}", source_path.display()))?;
     let resolved_target = resolve_link_target(source_path, &link_target);
     let metadata = fs::metadata(&resolved_target)
         .with_context(|| format!("read link target {}", resolved_target.display()))?;
@@ -172,6 +172,9 @@ fn resolve_link_target(source_path: &Path, link_target: &Path) -> PathBuf {
 }
 
 fn should_skip_backup_path(path: &Path) -> bool {
-    let normalized = path.to_string_lossy().replace('/', "\\").to_ascii_lowercase();
+    let normalized = path
+        .to_string_lossy()
+        .replace('/', "\\")
+        .to_ascii_lowercase();
     normalized.contains("\\package\\node_modules")
 }

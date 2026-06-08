@@ -104,7 +104,9 @@ export const licensePayloadSchema = z.object({
   tier: serviceTierSchema,
   expiresAt: z.string().min(1),
   features: z.array(z.string()).default([]),
-  maxOpenClawVersion: z.string().optional()
+  activationHash: z.string().min(1).optional(),
+  iat: z.number().int().nonnegative().optional(),
+  exp: z.number().int().nonnegative().optional()
 });
 
 export type ToolkitManifest = z.infer<typeof toolkitManifestSchema>;

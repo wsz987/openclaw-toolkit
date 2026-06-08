@@ -71,7 +71,7 @@ export function useStage1Installer(
   const DASHBOARD_DEBOUNCE_MS = 350;
 
   const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : 'D:\\OpenClaw');
-  const [licenseKey, setLicenseKey] = useState('stage1-dev');
+  const [licenseKey, setLicenseKey] = useState('');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
   const [selectedVersion, setSelectedVersion] = useState('latest');
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -447,10 +447,7 @@ export function useStage1Installer(
     }
   }
 
-  async function handleInstallPlugin(
-    input: OpenClawPluginInstallPayload,
-    licenseKeyOverride?: string
-  ) {
+  async function handleInstallPlugin(input: OpenClawPluginInstallPayload) {
     const requestId = pluginInstallRequestGuard.begin();
     setPluginInstallLoading(true);
     setPluginInstallResult(null);
@@ -458,7 +455,7 @@ export function useStage1Installer(
     appendPluginInstallLog('info', `开始安装插件 ${input.pluginId}，将使用离线压缩包和国内 npm 镜像补齐依赖。`);
 
     try {
-      const response = await installOpenClawPlugin(input, licenseKeyOverride ?? licenseKey);
+      const response = await installOpenClawPlugin(input);
 
       if (!pluginInstallRequestGuard.isCurrent(requestId)) {
         return null;

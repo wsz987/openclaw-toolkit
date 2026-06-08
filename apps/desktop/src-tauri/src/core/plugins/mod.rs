@@ -146,7 +146,9 @@ fn resolve_plugin<'a>(
         .iter()
         .find(|plugin| {
             plugin.id.eq_ignore_ascii_case(requested_plugin_id)
-                || plugin.plugin_entry_id.eq_ignore_ascii_case(requested_plugin_id)
+                || plugin
+                    .plugin_entry_id
+                    .eq_ignore_ascii_case(requested_plugin_id)
                 || plugin
                     .aliases
                     .iter()
@@ -160,8 +162,13 @@ fn validate_plugin_compatibility(
     installed_manifest: &InstalledManifest,
 ) -> anyhow::Result<()> {
     if let Some(range) = plugin.openclaw_version_range.as_deref() {
-        let version = parse_semver_like(&installed_manifest.openclaw_version)
-            .with_context(|| format!("解析 OpenClaw 版本失败：{}", installed_manifest.openclaw_version))?;
+        let version =
+            parse_semver_like(&installed_manifest.openclaw_version).with_context(|| {
+                format!(
+                    "解析 OpenClaw 版本失败：{}",
+                    installed_manifest.openclaw_version
+                )
+            })?;
         ensure_version_matches(&version, range, "OpenClaw")?;
     }
 
@@ -176,8 +183,8 @@ fn validate_plugin_compatibility(
 
 fn ensure_version_matches(version: &Version, range: &str, label: &str) -> anyhow::Result<()> {
     let normalized = range.split_whitespace().collect::<Vec<_>>().join(", ");
-    let requirement =
-        VersionReq::parse(&normalized).with_context(|| format!("解析 {label} 版本范围失败：{range}"))?;
+    let requirement = VersionReq::parse(&normalized)
+        .with_context(|| format!("解析 {label} 版本范围失败：{range}"))?;
     if !requirement.matches(version) {
         anyhow::bail!("{label} 版本 {} 不满足插件要求 {}", version, range);
     }
@@ -242,7 +249,9 @@ fn update_installed_manifest(
         version: plugin.version.clone(),
         package: Some(plugin.package.clone()),
     });
-    updated.plugins.sort_by(|left, right| left.id.cmp(&right.id));
+    updated
+        .plugins
+        .sort_by(|left, right| left.id.cmp(&right.id));
 
     fs::write(manifest_path, serde_json::to_string_pretty(&updated)?)
         .with_context(|| format!("write installed manifest {}", manifest_path.display()))?;
@@ -250,9 +259,10 @@ fn update_installed_manifest(
 }
 
 fn read_installed_manifest(path: &Path) -> anyhow::Result<InstalledManifest> {
-    let raw =
-        fs::read_to_string(path).with_context(|| format!("read installed manifest {}", path.display()))?;
-    serde_json::from_str(&raw).with_context(|| format!("parse installed manifest {}", path.display()))
+    let raw = fs::read_to_string(path)
+        .with_context(|| format!("read installed manifest {}", path.display()))?;
+    serde_json::from_str(&raw)
+        .with_context(|| format!("parse installed manifest {}", path.display()))
 }
 
 fn resolve_resource_root_from_openclaw_dir(openclaw_dir: &Path) -> anyhow::Result<PathBuf> {
@@ -275,7 +285,11 @@ fn resolve_resource_root_from_openclaw_dir(openclaw_dir: &Path) -> anyhow::Resul
     }
 
     for candidate in candidates {
-        if candidate.join("artifacts").join("toolkit-manifest.json").exists() {
+        if candidate
+            .join("artifacts")
+            .join("toolkit-manifest.json")
+            .exists()
+        {
             return Ok(candidate);
         }
     }

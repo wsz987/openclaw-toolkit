@@ -61,9 +61,11 @@ impl OpenClawStatusWatcher {
     }
 
     pub fn bootstrap_active_installation(&self) {
-        let config_path = bootstrap_app_state()
-            .ok()
-            .and_then(|state| state.active_installation.map(|installation| installation.config_path));
+        let config_path = bootstrap_app_state().ok().and_then(|state| {
+            state
+                .active_installation
+                .map(|installation| installation.config_path)
+        });
 
         match config_path {
             Some(path) if !path.trim().is_empty() => self.watch_config_path(path),
@@ -127,10 +129,7 @@ impl OpenClawStatusWatcher {
     }
 }
 
-fn status_semantically_equal(
-    left: &OpenClawStatusSummary,
-    right: &OpenClawStatusSummary,
-) -> bool {
+fn status_semantically_equal(left: &OpenClawStatusSummary, right: &OpenClawStatusSummary) -> bool {
     left.openclaw_dir == right.openclaw_dir
         && left.node_dir == right.node_dir
         && left.config_path == right.config_path

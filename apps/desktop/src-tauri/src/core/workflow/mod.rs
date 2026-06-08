@@ -14,7 +14,9 @@ use crate::core::{
     },
     browser::configure_browser_runtime,
     environment::{validate_windows_environment, windows_environment_status},
-    license::verify_offline_license,
+    license::{
+        ensure_install_mode_allowed, ensure_license_feature, verify_offline_license,
+    },
     manifest::{
         load_provider_catalog, load_toolkit_manifest, load_toolkit_settings,
         models::{InstalledManifest, ReleaseArtifact, ToolkitManifest},
@@ -219,7 +221,7 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         .clone()
         .unwrap_or_else(|| "latest".to_string());
     let toolkit_manifest = load_toolkit_manifest(&project_root).ok();
-    let license = verify_offline_license(input.license_key.as_deref()).ok();
+    let license = verify_offline_license(input.license_key.as_deref(), &project_root).ok();
     let version_catalog = build_version_catalog(&project_root, install_mode.as_str());
     let release_manifest_available = version_catalog.source_ready;
     let resolved_release = resolve_release_for_install(
@@ -370,21 +372,27 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         &mut progress,
         InstallStep::ValidateLicense,
         Some(InstallStep::CheckEnvironment),
-        || verify_offline_license(input.license_key.as_deref()),
+        || verify_offline_license(input.license_key.as_deref(), &project_root),
     )?;
 
-    if !license
-        .features
-        .iter()
-        .any(|feature| feature == "managed-node-runtime")
-    {
+    if let Err(error) = ensure_license_feature(&license, "managed-node-runtime") {
         fail_stage1(
             &base_dir,
             &mut progress,
             InstallStep::ValidateLicense,
-            "当前授权不包含 OpenClaw 受管 Node Runtime 能力",
+            &error.to_string(),
         )?;
-        anyhow::bail!("当前授权不包含 OpenClaw 受管 Node Runtime 能力");
+        return Err(error);
+    }
+
+    if let Err(error) = ensure_install_mode_allowed(&license, &install_mode) {
+        fail_stage1(
+            &base_dir,
+            &mut progress,
+            InstallStep::ValidateLicense,
+            &error.to_string(),
+        )?;
+        return Err(error);
     }
 
     run_step(
@@ -876,7 +884,7 @@ fn build_environment_checks(
         .map(|dir| dir.join("installed-manifest.json"));
     let config_path = openclaw_dir.as_ref().map(|dir| dir.join("openclaw.json"));
     let windows_status = windows_environment_status(toolkit_manifest);
-    let license_ok = verify_offline_license(license_key).is_ok();
+    let license_ok = verify_offline_license(license_key, project_root).is_ok();
     let node_runtime_check = build_node_runtime_check(node_dir.as_deref(), resolved_release);
     let system_node_check = build_system_node_check(resolved_release);
     let system_openclaw_check = build_system_openclaw_check();
@@ -933,7 +941,7 @@ fn build_environment_checks(
             detail: if license_ok {
                 "授权校验通过".to_string()
             } else {
-                "激活密钥尚未通过离线验签".to_string()
+                "激活码或授权文件尚未通过离线验签".to_string()
             },
         },
         Stage1EnvironmentCheck {
@@ -1278,7 +1286,7 @@ fn infer_precheck_step(
         return Some(InstallStep::LoadManifest);
     }
 
-    if verify_offline_license(license_key).is_err() {
+    if verify_offline_license(license_key, project_root).is_err() {
         return Some(InstallStep::ValidateLicense);
     }
 
@@ -1321,7 +1329,9 @@ fn resolve_resource_root(project_root: Option<&str>) -> anyhow::Result<PathBuf> 
         }
     }
 
-    anyhow::bail!("未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json 和 artifacts/providers.json")
+    anyhow::bail!(
+        "未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json 和 artifacts/providers.json"
+    )
 }
 
 fn resource_root_candidates() -> Vec<PathBuf> {
@@ -1481,7 +1491,7 @@ fn step_title(step: InstallStep) -> &'static str {
 fn step_description(step: InstallStep) -> &'static str {
     match step {
         InstallStep::LoadManifest => "读取工具包和制品清单",
-        InstallStep::ValidateLicense => "校验离线激活密钥和功能范围",
+        InstallStep::ValidateLicense => "校验离线激活码、授权文件和功能范围",
         InstallStep::CheckEnvironment => "确认当前系统满足安装前提",
         InstallStep::SelectInstallMode => "确认本地、远程或 npm 安装模式",
         InstallStep::ResolveOpenClawVersion => "选出当前要安装的 OpenClaw 版本",

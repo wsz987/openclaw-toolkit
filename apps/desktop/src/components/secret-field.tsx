@@ -43,8 +43,8 @@ export function SecretField({ label, value, onChange, placeholder, description, 
           size="sm"
           className="absolute right-1 top-1/2 h-8 -translate-y-1/2 px-2 text-[hsl(var(--muted))] hover:text-[hsl(var(--ink))]"
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? '隐藏激活密钥' : '查看激活密钥'}
-          title={visible ? '隐藏激活密钥' : '查看激活密钥'}
+          aria-label={visible ? '隐藏激活码' : '查看激活码'}
+          title={visible ? '隐藏激活码' : '查看激活码'}
         >
           {visible ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
         </Button>

@@ -23,6 +23,7 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 - 远程制品下载
 - 内部 `toolkit-settings.json` 远程地址配置
 - 前端目录选择按钮
+- 短激活码 + `license.dat` 离线授权基础链路
 - 前端组件拆分
 
 ## Milestone 1：项目骨架（已完成）
@@ -77,7 +78,7 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 ## Milestone 7：前端安装向导（已完成基础版）
 
 - 目录选择：项目资源目录、OpenClaw 安装目录
-- 激活密钥输入
+- 激活码输入
 - 安装模式选择
 - 版本输入，支持 `latest`
 - 远程地址不对用户展示，由内部 settings 管理
@@ -118,4 +119,4 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 2. 把安装后操作页重构为基于 active installation 的长期首页，而不是依赖本次会话结果。
 3. 把远程下载进度和安装日志实时显示到前端。
 4. 把 browser runtime 检测从占位改为真实 Edge/Chrome/Chromium 检测。
-5. 接入正式离线授权验签公钥。
+5. 接入生产签发后台、密钥轮换和授权审计。

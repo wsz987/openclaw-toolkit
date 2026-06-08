@@ -157,8 +157,7 @@ fn hide_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
 
 #[cfg(target_os = "windows")]
 fn is_startup_launch_enabled() -> tauri::Result<bool> {
-    let executable_path = std::env::current_exe()
-        .map_err(to_setup_error)?;
+    let executable_path = std::env::current_exe().map_err(to_setup_error)?;
     let command = build_startup_command(&executable_path);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let (run_key, _) = hkcu
@@ -181,8 +180,7 @@ fn build_startup_command(executable_path: &PathBuf) -> String {
 
 #[cfg(target_os = "windows")]
 fn set_startup_launch_enabled(enabled: bool) -> tauri::Result<()> {
-    let executable_path = std::env::current_exe()
-        .map_err(to_setup_error)?;
+    let executable_path = std::env::current_exe().map_err(to_setup_error)?;
     let command = build_startup_command(&executable_path);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let (run_key, _) = hkcu

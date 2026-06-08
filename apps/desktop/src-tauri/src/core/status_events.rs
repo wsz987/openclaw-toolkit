@@ -3,8 +3,7 @@ use std::path::Path;
 use tauri::{AppHandle, Emitter};
 
 use crate::core::{
-    app_state::resolve_installation_status_by_config_path,
-    openclaw_config::OpenClawStatusSummary,
+    app_state::resolve_installation_status_by_config_path, openclaw_config::OpenClawStatusSummary,
 };
 
 pub const OPENCLAW_STATUS_CHANGED_EVENT: &str = "openclaw://status-changed";
@@ -21,7 +20,8 @@ pub fn refresh_and_emit_openclaw_status(
     app: &AppHandle,
     config_path: &Path,
 ) -> Result<OpenClawStatusSummary, String> {
-    let status = resolve_installation_status_by_config_path(config_path).map_err(render_anyhow_error)?;
+    let status =
+        resolve_installation_status_by_config_path(config_path).map_err(render_anyhow_error)?;
     emit_openclaw_status_changed(app, &status)?;
     Ok(status)
 }

@@ -108,13 +108,9 @@ export async function setupOpenClawFeishuChannel(
   return invoke<OpenClawFeishuChannelSetupResult>('setup_openclaw_feishu_channel', { input });
 }
 
-export async function installOpenClawPlugin(
-  input: OpenClawPluginInstallPayload,
-  licenseKey?: string
-): Promise<OpenClawPluginInstallResult> {
+export async function installOpenClawPlugin(input: OpenClawPluginInstallPayload): Promise<OpenClawPluginInstallResult> {
   return invoke<OpenClawPluginInstallResult>('install_openclaw_plugin', {
-    input,
-    licenseKey
+    input
   });
 }
 

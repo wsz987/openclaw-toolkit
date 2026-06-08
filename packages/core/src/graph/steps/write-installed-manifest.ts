@@ -18,7 +18,8 @@ export const writeInstalledManifestStep: WorkflowStep = {
       installedAt: new Date().toISOString(),
       runtimeDir: ctx.runtimeDir,
       configPath: ctx.configPath,
-      skills: ctx.artifact.skills
+      skills: ctx.artifact.skills,
+      plugins: []
     });
   }
 };

@@ -37,7 +37,7 @@ OpenClaw Package + Skills = 被工具包安装和管理的目标环境
 
 - Windows Tauri 桌面安装器
 - Rust Core 安装、配置、授权和版本管理
-- 离线激活密钥校验
+- 离线激活码校验
 - 三种安装模式：本地离线包、内部配置的远程服务器、官方 npm 下载指定版本
 - OpenClaw 版本锁定
 - OpenClaw 专用 Node Runtime 版本锁定
@@ -263,12 +263,15 @@ load settings
 
 ## 授权设计
 
-使用离线授权，不自定义易伪造格式。
+使用离线授权，不自定义易伪造格式。当前客户体验是短激活码 + 签名授权文件：
 
-- 生成端使用私钥签名
-- 客户端 Rust Core 内置公钥
-- Rust Core 离线验签
-- license payload 决定 tier、features、过期时间和可安装版本范围
+- 客户输入短激活码，例如 `8F3K-29HD-Q7M2`
+- 离线包携带 `artifacts/license.dat`
+- 生成端使用 Ed25519 私钥签名 `license.dat`
+- 客户端 Rust Core 内置 Ed25519 DER 公钥
+- Rust Core 离线验签并校验短码与 `activationHash` 绑定关系
+- license payload 决定 tier、features 和过期时间
+- 当前签发端先使用 `scripts/license.mjs` 内部 CLI，后续可平移为带审计和 KMS/HSM 的授权后台
 
 Stage 1 features：
 
@@ -307,7 +310,7 @@ openclaw.json 不直接字符串拼接，使用：
 
 ## 维护原则
 
-- 前端只展示用户需要选择的目录、版本、安装模式和激活密钥
+- 前端只展示用户需要选择的目录、版本、安装模式和激活码
 - 工具包自身不依赖 Node.js
 - Node.js 只作为 OpenClaw 运行环境被管理
 - 流程定义在 Rust workflow

@@ -10,6 +10,12 @@ coverage
 !.env.example
 apps/desktop/src-tauri/target
 runtime
+license-keys/
+license-keys*/
+artifacts/license.dat
+*-private.pem
+*.private.pem
+*.key.pem
 
 
 # Added by cargo
