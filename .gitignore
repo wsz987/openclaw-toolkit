@@ -21,4 +21,3 @@ artifacts/license.dat
 # Added by cargo
 
 /target
-artifacts/openclaw/*

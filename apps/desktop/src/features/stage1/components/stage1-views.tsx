@@ -176,14 +176,14 @@ export function PrecheckStepView({
           </div>
 
           <div className="flex flex-col gap-3 mt-8">
-            <Button variant="default" className="h-11 w-full text-sm font-medium" onClick={onNext} disabled={!step1Ready}>
-              下一步：配置授权与提取模式 <ChevronRightIcon size={14} className="ml-1.5" />
-            </Button>
             {dashboardLoading ? (
               <div className="text-[11px] text-[hsl(var(--muted-soft))] text-center">
                 正在同步校验本地配置状态...
               </div>
             ) : null}
+            <Button variant="default" className="h-11 w-full text-sm font-medium" onClick={onNext} disabled={!step1Ready}>
+              下一步：配置授权与提取模式 <ChevronRightIcon size={14} className="ml-1.5" />
+            </Button>
           </div>
         </div>
 

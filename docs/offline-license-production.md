@@ -16,11 +16,13 @@ OpenClaw 使用“短激活码 + 签名授权文件”的离线授权方案。
 apps/desktop/src-tauri/keys/openclaw-license-public.der
 ```
 
-客户端默认读取授权文件：
+客户端默认读取仓库内授权文件：
 
 ```text
-artifacts/license.dat
+licenses/license.dat
 ```
+
+`artifacts/` 只放随离线安装资源包交付的安装制品，默认授权文件不放在这里，避免打包时误带进通用安装包。
 
 私钥不能提交到仓库，也不能打包进桌面客户端。PEM/DER 公私钥都不是客户输入。
 
@@ -45,15 +47,15 @@ pnpm license:issue-key -- \
 
 ```text
 activation-code.txt   客户输入的短激活码，例如 8F3K-29HD-Q7M2
-license.dat           放进离线安装包的 artifacts/license.dat
+license.dat           放进客户专属离线包的授权文件位置，开发仓库默认是 licenses/license.dat
 ```
 
 客户安装时只需要做两件事：
 
-1. 确认离线安装包内存在 `artifacts/license.dat`。
+1. 确认离线安装包内存在客户专属 `license.dat`，开发仓库默认路径是 `licenses/license.dat`。
 2. 在安装器“离线激活码”输入框填入 `activation-code.txt` 里的短码。
 
-开发调试可以直接把授权文件写入当前资源目录：
+开发调试可以直接把授权文件写入当前仓库授权目录：
 
 ```bash
 pnpm license:issue-key -- \
@@ -151,7 +153,7 @@ License bundle: license-keys/issued/lic-...
 8F3K-29HD-Q7M2
 ```
 
-开发调试时可以把 `license.dat` 直接安装到当前资源目录：
+开发调试时可以把 `license.dat` 直接安装到当前仓库授权目录：
 
 ```bash
 pnpm license:issue-key -- \
@@ -171,7 +173,7 @@ pnpm license:issue-key -- \
 - `--out-dir`：指定客户授权包输出目录。
 - `--output`：额外写出短激活码文本。
 - `--license-file`：额外写出 `license.dat` 到指定路径。
-- `--install-license-file`：复制 `license.dat` 到 `artifacts/license.dat`。
+- `--install-license-file`：复制 `license.dat` 到 `licenses/license.dat`。
 
 签发 Stage 2 授权：
 

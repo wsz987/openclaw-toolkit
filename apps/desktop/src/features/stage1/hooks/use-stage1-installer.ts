@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
+import { normalizeOpenClawBaseDir } from '../../../lib/openclaw-path';
 import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '../model/graph';
 import {
   stage1Steps,
@@ -352,7 +353,7 @@ export function useStage1Installer(
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
-      setBaseDir(picked);
+      setBaseDir(normalizeOpenClawBaseDir(picked));
     }
   }
 

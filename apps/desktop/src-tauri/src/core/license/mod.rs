@@ -11,7 +11,7 @@ const LICENSE_PUBLIC_KEY_DER: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/keys/openclaw-license-public.der"
 ));
-const LICENSE_FILE_DIR: &str = "artifacts";
+const LICENSE_FILE_DIR: &str = "licenses";
 const LICENSE_FILE_NAME: &str = "license.dat";
 const LICENSE_FILE_VERSION: u8 = 1;
 const ED25519_PUBLIC_KEY_DER_PREFIX: &[u8] =

@@ -27,7 +27,7 @@ const DEFAULT_CLIENT_PUBLIC_KEY = path.join(
   'keys',
   'openclaw-license-public.der'
 );
-const DEFAULT_INSTALLED_LICENSE_FILE = path.join('artifacts', 'license.dat');
+const DEFAULT_INSTALLED_LICENSE_FILE = path.join('licenses', 'license.dat');
 const LICENSE_FILE_NAME = 'license.dat';
 const ACTIVATION_CODE_FILE_NAME = 'activation-code.txt';
 const LICENSE_FILE_VERSION = 1;

@@ -266,7 +266,7 @@ load settings
 使用离线授权，不自定义易伪造格式。当前客户体验是短激活码 + 签名授权文件：
 
 - 客户输入短激活码，例如 `8F3K-29HD-Q7M2`
-- 离线包携带 `artifacts/license.dat`
+- 离线包携带客户专属 `license.dat`；开发仓库默认读取 `licenses/license.dat`
 - 生成端使用 Ed25519 私钥签名 `license.dat`
 - 客户端 Rust Core 内置 Ed25519 DER 公钥
 - Rust Core 离线验签并校验短码与 `activationHash` 绑定关系
