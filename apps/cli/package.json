@@ -1,1 +1,0 @@
-{"name":"@openclaw-toolkit/cli","version":"0.1.0","type":"module","bin":{"openclaw-toolkit":"dist/index.js"},"scripts":{"dev":"tsx src/index.ts","build":"tsc -p tsconfig.json","typecheck":"tsc -p tsconfig.json --noEmit"},"dependencies":{"@openclaw-toolkit/core":"workspace:*"},"devDependencies":{"tsx":"^4.19.4"}}
