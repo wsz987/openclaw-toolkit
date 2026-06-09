@@ -66,7 +66,7 @@ export function PostInstallEntryView({
       </CardHeader>
       <CardContent className="w-full p-0 flex flex-col gap-6">
         <InstallationSummaryGrid result={result} />
-        <div className="rounded-xl border border-[hsl(var(--success)/0.18)] bg-[hsl(var(--success)/0.08)] px-5 py-4 text-left">
+        {/* <div className="rounded-xl border border-[hsl(var(--success)/0.18)] bg-[hsl(var(--success)/0.08)] px-5 py-4 text-left">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-base font-semibold text-[hsl(var(--ink))]">下一步</h3>
@@ -78,14 +78,14 @@ export function PostInstallEntryView({
             </div>
             <span
               className={`inline-flex px-3 py-1 rounded-full text-[11px] font-semibold ${providerReady
-                  ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                  : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
+                ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'
                 }`}
             >
               {statusLoading ? '状态检查中' : providerReady ? '已完成初始化' : '待初始化'}
             </span>
           </div>
-        </div>
+        </div> */}
       </CardContent>
       <div className="mt-8 flex flex-wrap gap-3 justify-center">
         <Button variant="default" onClick={onContinue}>
