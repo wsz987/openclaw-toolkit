@@ -1,19 +1,16 @@
-import { useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
 export function useLatestRequestGuard() {
   const requestIdRef = useRef(0);
 
-  function begin() {
+  const begin = useCallback(() => {
     requestIdRef.current += 1;
     return requestIdRef.current;
-  }
+  }, []);
 
-  function isCurrent(requestId: number) {
+  const isCurrent = useCallback((requestId: number) => {
     return requestId === requestIdRef.current;
-  }
+  }, []);
 
-  return {
-    begin,
-    isCurrent
-  };
+  return useMemo(() => ({ begin, isCurrent }), [begin, isCurrent]);
 }

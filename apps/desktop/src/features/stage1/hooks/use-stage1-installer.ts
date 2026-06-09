@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
 import { normalizeOpenClawBaseDir } from '../../../lib/openclaw-path';
@@ -40,11 +40,15 @@ import type {
   Stage1InstallLogTail,
   Stage1InstallPayload,
   Stage1InstallResult,
+  UninstallPlan,
+  UninstallResult,
   VersionCatalogResult
 } from '../model/types';
 import {
+  executeUninstall,
   importInstallationFromPath,
   installOpenClawPlugin,
+  inspectUninstallPlan,
   inspectOpenClawSkillCatalog,
   inspectOpenClawStatus,
   inspectStage1Dashboard,
@@ -105,6 +109,10 @@ export function useStage1Installer(
   const [installationDirOpening, setInstallationDirOpening] = useState(false);
   const [logsDirOpening, setLogsDirOpening] = useState(false);
   const [importingInstallation, setImportingInstallation] = useState(false);
+  const [uninstallPlanLoading, setUninstallPlanLoading] = useState(false);
+  const [uninstallExecuting, setUninstallExecuting] = useState(false);
+  const [uninstallPlan, setUninstallPlan] = useState<UninstallPlan | null>(null);
+  const [uninstallResult, setUninstallResult] = useState<UninstallResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<InstallerWizardStep>(initialWizardStep);
@@ -122,6 +130,8 @@ export function useStage1Installer(
   const runtimeStopRequestGuard = useLatestRequestGuard();
   const runtimeRestartRequestGuard = useLatestRequestGuard();
   const installLogRequestGuard = useLatestRequestGuard();
+  const uninstallPlanRequestGuard = useLatestRequestGuard();
+  const uninstallExecuteRequestGuard = useLatestRequestGuard();
 
   const payload = useMemo<Stage1InstallPayload>(
     () => ({
@@ -672,6 +682,71 @@ export function useStage1Installer(
     }
   }
 
+  const handleInspectUninstallPlan = useCallback(async (installationId: string) => {
+    const requestId = uninstallPlanRequestGuard.begin();
+    setUninstallPlanLoading(true);
+    setError(null);
+    try {
+      const response = await inspectUninstallPlan(installationId);
+      if (!uninstallPlanRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setUninstallPlan(response);
+      return response;
+    } catch (err) {
+      if (!uninstallPlanRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      setUninstallPlan(null);
+      return null;
+    } finally {
+      if (uninstallPlanRequestGuard.isCurrent(requestId)) {
+        setUninstallPlanLoading(false);
+      }
+    }
+  }, [uninstallPlanRequestGuard]);
+
+  const handleExecuteUninstall = useCallback(async (
+    installationId: string,
+    selectedScopes: string[],
+    typedConfirmation?: string | null
+  ) => {
+    const requestId = uninstallExecuteRequestGuard.begin();
+    setUninstallExecuting(true);
+    setError(null);
+    try {
+      const response = await executeUninstall({
+        installationId,
+        selectedScopes,
+        typedConfirmation
+      });
+      if (!uninstallExecuteRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setUninstallResult(response);
+      setResult(null);
+      setPostInstallStatus(null);
+      setSkillCatalog(null);
+      setShowPostInstallHome(false);
+      return response;
+    } catch (err) {
+      if (!uninstallExecuteRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (uninstallExecuteRequestGuard.isCurrent(requestId)) {
+        setUninstallExecuting(false);
+      }
+    }
+  }, [uninstallExecuteRequestGuard]);
+
   function handleEnterPostInstallHome() {
     setShowPostInstallHome(true);
   }
@@ -864,6 +939,10 @@ export function useStage1Installer(
     runtimeLaunchLoading,
     runtimeStopLoading,
     runtimeRestartLoading,
+    uninstallExecuting,
+    uninstallPlan,
+    uninstallPlanLoading,
+    uninstallResult,
     skillCatalog,
     skillCatalogLoading,
     skillToggleLoadingIds,
@@ -906,6 +985,8 @@ export function useStage1Installer(
     handleOpenControlPanel,
     handleOpenInstallationDirectory,
     handleOpenLogsDirectory,
+    handleInspectUninstallPlan,
+    handleExecuteUninstall,
     handleInstallPlugin,
     handleFeishuChannelSetup,
     handleProviderSetup,
@@ -920,6 +1001,7 @@ export type Stage1InstallerController = ReturnType<typeof useStage1Installer>;
 export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): Stage1InstallResult {
   return {
     workflowId: record.installationId,
+    installationId: record.installationId,
     status: record.status,
     openclawVersion: record.openclawVersion,
     nodeVersion: record.nodeVersion,

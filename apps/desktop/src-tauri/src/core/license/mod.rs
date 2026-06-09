@@ -14,8 +14,9 @@ const LICENSE_PUBLIC_KEY_DER: &[u8] = include_bytes!(concat!(
 const LICENSE_FILE_DIR: &str = "licenses";
 const LICENSE_FILE_NAME: &str = "license.dat";
 const LICENSE_FILE_VERSION: u8 = 1;
-const ED25519_PUBLIC_KEY_DER_PREFIX: &[u8] =
-    &[0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00];
+const ED25519_PUBLIC_KEY_DER_PREFIX: &[u8] = &[
+    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+];
 const ED25519_SIGNATURE_LEN: usize = 64;
 const CODE_ALPHABET: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
@@ -325,8 +326,9 @@ mod tests {
         let license_file = sign_test_license(&base_license(), &signing_key);
         let normalized_code = normalize_activation_code("ABCD-1234-WXYZ").unwrap();
 
-        assert!(verify_signed_license_file(&license_file, &normalized_code, &public_key_der)
-            .is_err());
+        assert!(
+            verify_signed_license_file(&license_file, &normalized_code, &public_key_der).is_err()
+        );
     }
 
     #[test]

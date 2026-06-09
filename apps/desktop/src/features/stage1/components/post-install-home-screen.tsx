@@ -117,6 +117,10 @@ export function PostInstallHomeScreen({
           controlPanelOpening={controller.controlPanelOpening}
           installationDirOpening={controller.installationDirOpening}
           logsDirOpening={controller.logsDirOpening}
+          uninstallPlanLoading={controller.uninstallPlanLoading}
+          uninstallExecuting={controller.uninstallExecuting}
+          uninstallPlan={controller.uninstallPlan}
+          uninstallResult={controller.uninstallResult}
           onProviderSetup={controller.handleProviderSetup}
           onFeishuChannelSetup={controller.handleFeishuChannelSetup}
           onReloadSkillCatalog={controller.loadSkillCatalog}
@@ -127,6 +131,10 @@ export function PostInstallHomeScreen({
           onOpenControlPanel={controller.handleOpenControlPanel}
           onOpenInstallationDirectory={controller.handleOpenInstallationDirectory}
           onOpenLogsDirectory={controller.handleOpenLogsDirectory}
+          onInspectUninstallPlan={controller.handleInspectUninstallPlan}
+          onExecuteUninstall={controller.handleExecuteUninstall}
+          error={controller.error}
+          onUninstallCompleted={onExitInstalledHome}
           mode={bootstrapResult ? getRecoveredInstallationMode(bootstrapState) : undefined}
           recoveryMessage={bootstrapResult ? bootstrapState?.message ?? null : undefined}
           importLoading={controller.importingInstallation}

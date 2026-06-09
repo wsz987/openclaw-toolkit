@@ -235,7 +235,10 @@ fn build_local_catalog(project_root: &Path) -> InternalCatalog {
                     release.required_node.version, release.required_node.range
                 )
             } else if !openclaw_ready {
-                format!("缺少内置 OpenClaw 稳定版安装包：{}", artifact_path.display())
+                format!(
+                    "缺少内置 OpenClaw 稳定版安装包：{}",
+                    artifact_path.display()
+                )
             } else {
                 format!("缺少内置受管 Node 运行包：{}", node_path.display())
             };

@@ -42,7 +42,8 @@ pub fn run() {
         })
         .setup(move |app| {
             status_watcher.start(app.handle().clone());
-            setup_system_tray(app.handle())?;
+            let tray_icon = setup_system_tray(app.handle())?;
+            app.manage(tray_icon);
 
             if should_start_hidden {
                 hide_main_window(app.handle())?;
@@ -72,13 +73,15 @@ pub fn run() {
             commands::post_install::launch_openclaw_runtime,
             commands::post_install::stop_openclaw_runtime,
             commands::post_install::restart_openclaw_runtime,
-            commands::post_install::read_openclaw_runtime_log_tail
+            commands::post_install::read_openclaw_runtime_log_tail,
+            commands::uninstall::inspect_uninstall_plan_command,
+            commands::uninstall::execute_uninstall_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
-fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<tauri::tray::TrayIcon> {
     let auto_start_enabled = is_startup_launch_enabled()?;
     let auto_start_item = CheckMenuItem::with_id(
         app,
@@ -123,12 +126,9 @@ fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             }
         });
 
-    if let Some(icon) = load_tray_icon() {
-        tray_builder = tray_builder.icon(icon);
-    }
+    tray_builder = tray_builder.icon(load_tray_icon()?);
 
-    tray_builder.build(app)?;
-    Ok(())
+    tray_builder.build(app)
 }
 
 fn show_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
@@ -141,8 +141,8 @@ fn show_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-fn load_tray_icon() -> Option<Image<'static>> {
-    Image::from_path("icons/icon.ico").ok()
+fn load_tray_icon() -> tauri::Result<Image<'static>> {
+    Image::from_bytes(include_bytes!("../icons/icon.ico"))
 }
 
 fn should_start_hidden() -> bool {
@@ -206,10 +206,18 @@ fn set_startup_launch_enabled(_enabled: bool) -> tauri::Result<()> {
 }
 
 fn toggle_startup_launch(menu_item: &CheckMenuItem<tauri::Wry>) -> tauri::Result<()> {
-    let next_enabled = !menu_item.is_checked()?;
-    set_startup_launch_enabled(next_enabled)?;
-    menu_item.set_checked(next_enabled)?;
-    Ok(())
+    let desired_enabled = menu_item.is_checked()?;
+    let set_result = set_startup_launch_enabled(desired_enabled);
+    let sync_result = sync_startup_menu_item(menu_item);
+
+    set_result?;
+    sync_result.map(|_| ())
+}
+
+fn sync_startup_menu_item(menu_item: &CheckMenuItem<tauri::Wry>) -> tauri::Result<bool> {
+    let enabled = is_startup_launch_enabled()?;
+    menu_item.set_checked(enabled)?;
+    Ok(enabled)
 }
 
 #[cfg(target_os = "windows")]

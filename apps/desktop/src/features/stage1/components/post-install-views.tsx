@@ -8,13 +8,16 @@ import type {
   ManagedSkillCatalog,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
-  Stage1InstallResult
+  Stage1InstallResult,
+  UninstallPlan,
+  UninstallResult
 } from '../model/types';
 import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
 import { ChannelsPanel } from './channels-panel';
 import { ServiceControlPanel } from './service-control-panel';
 import { SkillsManagementPanel } from './skills-management-panel';
+import { UninstallPanel } from './uninstall-panel';
 
 type PostInstallHomeViewProps = {
   result: Stage1InstallResult;
@@ -33,6 +36,10 @@ type PostInstallHomeViewProps = {
   controlPanelOpening?: boolean;
   installationDirOpening?: boolean;
   logsDirOpening?: boolean;
+  uninstallPlanLoading: boolean;
+  uninstallExecuting: boolean;
+  uninstallPlan: UninstallPlan | null;
+  uninstallResult: UninstallResult | null;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
   onReloadSkillCatalog: (configPath: string) => Promise<ManagedSkillCatalog | null>;
@@ -43,6 +50,14 @@ type PostInstallHomeViewProps = {
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
   onOpenLogsDirectory?: (configPath: string) => Promise<string | null>;
+  onInspectUninstallPlan: (installationId: string) => Promise<UninstallPlan | null>;
+  onExecuteUninstall: (
+    installationId: string,
+    selectedScopes: string[],
+    typedConfirmation?: string | null
+  ) => Promise<UninstallResult | null>;
+  error?: string | null;
+  onUninstallCompleted?: () => void;
   mode?: 'installed' | 'recovery';
   recoveryMessage?: string | null;
   importLoading?: boolean;
@@ -69,6 +84,10 @@ export function PostInstallHomeView({
   controlPanelOpening = false,
   installationDirOpening = false,
   logsDirOpening = false,
+  uninstallPlanLoading,
+  uninstallExecuting,
+  uninstallPlan,
+  uninstallResult,
   onProviderSetup,
   onFeishuChannelSetup,
   onReloadSkillCatalog,
@@ -79,6 +98,10 @@ export function PostInstallHomeView({
   onOpenControlPanel,
   onOpenInstallationDirectory,
   onOpenLogsDirectory,
+  onInspectUninstallPlan,
+  onExecuteUninstall,
+  error,
+  onUninstallCompleted,
   mode = 'installed',
   recoveryMessage,
   importLoading = false,
@@ -159,7 +182,7 @@ export function PostInstallHomeView({
             feishuSetupResult={feishuSetupResult}
             onFeishuChannelSetup={onFeishuChannelSetup}
           />
-        ) : (
+        ) : activeTab === 'skills' ? (
           <SkillsManagementPanel
             result={result}
             catalog={skillCatalog}
@@ -167,6 +190,18 @@ export function PostInstallHomeView({
             toggleLoadingIds={skillToggleLoadingIds}
             onReloadCatalog={onReloadSkillCatalog}
             onSkillToggle={onSkillToggle}
+          />
+        ) : (
+          <UninstallPanel
+            result={result}
+            plan={uninstallPlan}
+            planLoading={uninstallPlanLoading}
+            executing={uninstallExecuting}
+            uninstallResult={uninstallResult}
+            error={error ?? null}
+            onInspectPlan={onInspectUninstallPlan}
+            onExecuteUninstall={onExecuteUninstall}
+            onCompleted={onUninstallCompleted}
           />
         )}
       </div>

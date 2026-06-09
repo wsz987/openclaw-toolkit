@@ -16,6 +16,7 @@ import type {
   OpenClawPostInstallStatus,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
+  ExecuteUninstallPayload,
   Stage1CheckState,
   Stage1Dashboard,
   Stage1InstallPayload,
@@ -23,6 +24,8 @@ import type {
   Stage1InstallResult,
   ManagedSkillCatalog,
   Stage1StepState,
+  UninstallPlan,
+  UninstallResult,
   VersionCatalogResult
 } from '../model/types';
 
@@ -166,4 +169,12 @@ export async function openInstallationDirectory(path: string): Promise<OpenPathR
 
 export async function openLogsDirectory(configPath: string): Promise<OpenPathResult> {
   return invoke<OpenPathResult>('open_logs_directory_command', { configPath });
+}
+
+export async function inspectUninstallPlan(installationId: string): Promise<UninstallPlan> {
+  return invoke<UninstallPlan>('inspect_uninstall_plan_command', { installationId });
+}
+
+export async function executeUninstall(input: ExecuteUninstallPayload): Promise<UninstallResult> {
+  return invoke<UninstallResult>('execute_uninstall_command', { input });
 }

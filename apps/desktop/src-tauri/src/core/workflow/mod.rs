@@ -52,6 +52,7 @@ pub struct Stage1InstallInput {
 #[serde(rename_all = "camelCase")]
 pub struct Stage1InstallResult {
     pub workflow_id: String,
+    pub installation_id: Option<String>,
     pub status: String,
     pub openclaw_version: String,
     pub node_version: String,
@@ -651,6 +652,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
 
     Ok(Stage1InstallResult {
         workflow_id,
+        installation_id: installed_manifest.installation_id.clone(),
         status: "succeeded".to_string(),
         openclaw_version: release.version,
         node_version: release.required_node.version,

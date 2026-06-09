@@ -2,7 +2,7 @@ export type InstallMode = 'local' | 'remote' | 'npm';
 export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
 export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
 export type Stage1CheckState = 'ok' | 'warn' | 'error';
-export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills';
+export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills' | 'uninstall';
 
 export type InstallStep =
   | 'loadManifest'
@@ -74,6 +74,7 @@ export type Stage1Dashboard = {
 
 export type Stage1InstallResult = {
   workflowId: string;
+  installationId?: string | null;
   status: string;
   openclawVersion: string;
   nodeVersion: string;
@@ -283,6 +284,57 @@ export type OpenClawStopResult = {
 };
 
 export type OpenPathResult = string;
+
+export type UninstallRuntimePlan = {
+  running: boolean;
+  pid: number | null;
+  label: string;
+};
+
+export type UninstallDeletionTarget = {
+  scope: string;
+  path: string;
+  kind: string;
+  estimatedBytes: number | null;
+  selectedByDefault: boolean;
+  risk: 'low' | 'medium' | 'high' | string;
+  reason: string;
+  owned: boolean;
+};
+
+export type UninstallRetainedPath = {
+  label: string;
+  path: string;
+  reason: string;
+};
+
+export type UninstallPlan = {
+  planId: string;
+  installationId: string;
+  displayName: string;
+  baseDir: string;
+  openclawDir: string;
+  runtime: UninstallRuntimePlan;
+  targets: UninstallDeletionTarget[];
+  retained: UninstallRetainedPath[];
+  warnings: string[];
+  requiresTypedConfirmation: boolean;
+  confirmationText: string;
+};
+
+export type ExecuteUninstallPayload = {
+  installationId: string;
+  selectedScopes: string[];
+  typedConfirmation?: string | null;
+};
+
+export type UninstallResult = {
+  installationId: string;
+  status: string;
+  deletedScopes: string[];
+  retained: UninstallRetainedPath[];
+  warnings: string[];
+};
 
 export type VersionCatalogOption = {
   value: string;

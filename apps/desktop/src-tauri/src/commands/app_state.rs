@@ -49,20 +49,20 @@ pub async fn import_installation_from_path_command(
         );
         rendered
     })?
-        .map_err(|error| {
-            let rendered = render_error_chain(&error);
-            eprintln!(
-                "import_installation_from_path_command failed:\n{}",
-                rendered
-            );
+    .map_err(|error| {
+        let rendered = render_error_chain(&error);
+        eprintln!(
+            "import_installation_from_path_command failed:\n{}",
             rendered
-        })
-        .map(|state| {
-            if let Some(installation) = &state.active_installation {
-                watcher.watch_config_path(&installation.config_path);
-            }
-            state
-        })
+        );
+        rendered
+    })
+    .map(|state| {
+        if let Some(installation) = &state.active_installation {
+            watcher.watch_config_path(&installation.config_path);
+        }
+        state
+    })
 }
 
 #[tauri::command]

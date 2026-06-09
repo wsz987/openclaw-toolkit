@@ -681,11 +681,12 @@ fn pick_latest_manifest(manifests: Vec<PathBuf>) -> Option<PathBuf> {
 }
 
 fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStatusSummary) {
-    record.status = if status.runtime_running || status.runtime_state.eq_ignore_ascii_case("starting") {
-        "installed".to_string()
-    } else {
-        "degraded".to_string()
-    };
+    record.status =
+        if status.runtime_running || status.runtime_state.eq_ignore_ascii_case("starting") {
+            "installed".to_string()
+        } else {
+            "degraded".to_string()
+        };
     record.config_state = "ready".to_string();
     record.provider_state = if status.provider_initialized {
         "ready".to_string()
@@ -854,7 +855,7 @@ pub fn derive_installation_id(
     format!("inst_{}", hex::encode(&digest[..8]))
 }
 
-fn load_app_settings() -> anyhow::Result<AppSettings> {
+pub fn load_app_settings() -> anyhow::Result<AppSettings> {
     let path = settings_path()?;
     if !path.exists() {
         return Ok(AppSettings::default());
@@ -863,12 +864,12 @@ fn load_app_settings() -> anyhow::Result<AppSettings> {
     read_json(&path)
 }
 
-fn save_app_settings(settings: &AppSettings) -> anyhow::Result<()> {
+pub fn save_app_settings(settings: &AppSettings) -> anyhow::Result<()> {
     let path = settings_path()?;
     write_json(&path, settings)
 }
 
-fn load_install_registry() -> anyhow::Result<InstallationRegistry> {
+pub fn load_install_registry() -> anyhow::Result<InstallationRegistry> {
     let path = registry_path()?;
     if !path.exists() {
         return Ok(InstallationRegistry::default());
@@ -877,7 +878,7 @@ fn load_install_registry() -> anyhow::Result<InstallationRegistry> {
     read_json(&path)
 }
 
-fn save_install_registry(registry: &InstallationRegistry) -> anyhow::Result<()> {
+pub fn save_install_registry(registry: &InstallationRegistry) -> anyhow::Result<()> {
     let path = registry_path()?;
     write_json(&path, registry)
 }
@@ -890,7 +891,7 @@ fn registry_path() -> anyhow::Result<PathBuf> {
     Ok(app_data_dir()?.join("install-registry.json"))
 }
 
-fn app_data_dir() -> anyhow::Result<PathBuf> {
+pub fn app_data_dir() -> anyhow::Result<PathBuf> {
     let project_dirs = ProjectDirs::from("com", "OpenClaw", "OpenClawToolkit")
         .context("resolve OpenClaw Toolkit app data dir")?;
     let dir = project_dirs.data_local_dir().to_path_buf();
@@ -927,4 +928,30 @@ fn same_path(left: impl AsRef<Path>, right: impl AsRef<Path>) -> bool {
     left.as_ref()
         .to_string_lossy()
         .eq_ignore_ascii_case(&right.as_ref().to_string_lossy())
+}
+
+pub fn unregister_installation(installation_id: &str) -> anyhow::Result<()> {
+    let mut settings = load_app_settings()?;
+    let mut registry = load_install_registry()?;
+
+    registry
+        .installations
+        .retain(|item| item.installation_id != installation_id);
+    if registry.active_installation_id.as_deref() == Some(installation_id) {
+        registry.active_installation_id = registry
+            .installations
+            .first()
+            .map(|item| item.installation_id.clone());
+    }
+
+    settings
+        .recent_installation_ids
+        .retain(|item| item != installation_id);
+    if settings.active_installation_id.as_deref() == Some(installation_id) {
+        settings.active_installation_id = registry.active_installation_id.clone();
+    }
+
+    save_install_registry(&registry)?;
+    save_app_settings(&settings)?;
+    Ok(())
 }
