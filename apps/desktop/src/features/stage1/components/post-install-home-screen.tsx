@@ -39,6 +39,12 @@ export function PostInstallHomeScreen({
     }
   }, [resolvedStatus, hasInitializedTab]);
 
+  useEffect(() => {
+    console.info(
+      `[服务配置与控制] 已渲染侧边栏，当前页面：${activeTab}，Skill 管理入口已挂载。`
+    );
+  }, [activeTab]);
+
   if (!result) {
     return null;
   }

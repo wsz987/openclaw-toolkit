@@ -149,14 +149,27 @@ pub async fn install_openclaw_plugin(
 pub async fn inspect_openclaw_skill_catalog(
     config_path: String,
 ) -> Result<ManagedSkillCatalog, String> {
+    eprintln!("[Skill 管理] 开始读取内置 skill 清单：{}", config_path);
     tauri::async_runtime::spawn_blocking(move || inspect_skill_catalog(&PathBuf::from(config_path)))
         .await
         .map_err(|error| {
             let rendered = error.to_string();
-            eprintln!("inspect_openclaw_skill_catalog join failed:\n{}", rendered);
+            eprintln!("[Skill 管理] 读取清单任务异常：\n{}", rendered);
             rendered
         })?
-        .map_err(render_error)
+        .map(|catalog| {
+            eprintln!(
+                "[Skill 管理] 清单读取完成：共 {} 个 skill，skills 目录 {}",
+                catalog.skills.len(),
+                catalog.skills_dir
+            );
+            catalog
+        })
+        .map_err(|error| {
+            let rendered = render_error(error);
+            eprintln!("[Skill 管理] 清单读取失败：\n{}", rendered);
+            rendered
+        })
 }
 
 #[tauri::command]
@@ -166,6 +179,11 @@ pub async fn set_openclaw_skill_enabled(
     input: SkillToggleInput,
 ) -> Result<SkillToggleResult, String> {
     watcher.watch_config_path(&input.config_path);
+    eprintln!(
+        "[Skill 管理] 准备{} skill：{}",
+        if input.enabled { "启用" } else { "关闭" },
+        input.skill_id
+    );
     tauri::async_runtime::spawn_blocking(move || {
         let result = set_skill_enabled(&input)?;
         let _ = mark_runtime_action_required(
@@ -179,10 +197,23 @@ pub async fn set_openclaw_skill_enabled(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("set_openclaw_skill_enabled join failed:\n{}", rendered);
+        eprintln!("[Skill 管理] 切换任务异常：\n{}", rendered);
         rendered
     })?
-    .map_err(render_error)
+    .map(|result| {
+        eprintln!(
+            "[Skill 管理] skill {} 已{}，配置文件 {}",
+            result.skill_id,
+            if result.enabled { "启用" } else { "关闭" },
+            result.config_path
+        );
+        result
+    })
+    .map_err(|error| {
+        let rendered = render_error(error);
+        eprintln!("[Skill 管理] 切换失败：\n{}", rendered);
+        rendered
+    })
 }
 
 #[tauri::command]

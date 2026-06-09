@@ -26,8 +26,8 @@ export function DebugFlowPanel({
   onInstallerStepChange
 }: DebugFlowPanelProps) {
   return (
-    <section className="max-w-[1200px] w-full mx-auto mb-4">
-      <div className="rounded-xl border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.08)] px-4 py-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <section className="fixed top-3 right-3 z-50 w-[min(720px,calc(100vw-24px))]">
+      <div className="rounded-xl border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--canvas)/0.96)] px-4 py-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between shadow-lg backdrop-blur">
         <div className="flex flex-col gap-1">
           <div className="text-[11px] font-semibold tracking-[0.18em] uppercase text-[hsl(var(--warning))]">
             Frontend Debug

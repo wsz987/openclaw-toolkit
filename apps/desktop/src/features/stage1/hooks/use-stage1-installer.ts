@@ -276,6 +276,7 @@ export function useStage1Installer(
 
     const requestId = skillCatalogRequestGuard.begin();
     setSkillCatalogLoading(true);
+    console.info(`[Skill 管理] 开始读取内置 skill 清单：${configPath}`);
 
     try {
       const response = await inspectOpenClawSkillCatalog(configPath);
@@ -284,13 +285,16 @@ export function useStage1Installer(
       }
 
       setSkillCatalog(response);
+      console.info(`[Skill 管理] 清单读取完成：共 ${response.skills.length} 个 skill。`);
       return response;
     } catch (err) {
       if (!skillCatalogRequestGuard.isCurrent(requestId)) {
         return null;
       }
 
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[Skill 管理] 清单读取失败：${message}`);
+      setError(message);
       setSkillCatalog(null);
       return null;
     } finally {
@@ -304,14 +308,18 @@ export function useStage1Installer(
     const skillId = input.skillId;
     setError(null);
     setSkillToggleLoadingIds((current) => Array.from(new Set([...current, skillId])));
+    console.info(`[Skill 管理] 准备${input.enabled ? '启用' : '关闭'} skill：${skillId}`);
 
     try {
       const response = await setOpenClawSkillEnabled(input);
+      console.info(`[Skill 管理] skill ${response.skillId} 已${response.enabled ? '启用' : '关闭'}，正在刷新清单。`);
       await loadSkillCatalog(response.configPath);
       await finalizePostInstallMutation(response.configPath);
       return response;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[Skill 管理] skill ${skillId} 切换失败：${message}`);
+      setError(message);
       return null;
     } finally {
       setSkillToggleLoadingIds((current) => current.filter((id) => id !== skillId));
@@ -329,16 +337,16 @@ export function useStage1Installer(
     setPluginInstallLogs((current) => [...current.slice(-39), entry]);
 
     if (level === 'error') {
-      console.error(`[channels][plugin-install] ${message}`);
+      console.error(`[聊天渠道][插件安装] ${message}`);
       return;
     }
 
     if (level === 'success') {
-      console.info(`[channels][plugin-install] ${message}`);
+      console.info(`[聊天渠道][插件安装] ${message}`);
       return;
     }
 
-    console.log(`[channels][plugin-install] ${message}`);
+    console.log(`[聊天渠道][插件安装] ${message}`);
   }
 
   async function handlePickDirectory() {
