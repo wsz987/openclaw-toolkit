@@ -16,7 +16,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
           actionButton:
             'group-[.toast]:bg-[hsl(var(--primary))] group-[.toast]:text-[hsl(var(--on-primary))]',
           cancelButton:
-            'group-[.toast]:bg-[hsl(var(--surface-soft))] group-[.toast]:text-[hsl(var(--body))]'
+            'group-[.toast]:bg-[hsl(var(--surface-soft))] group-[.toast]:text-[hsl(var(--body))]',
+          success: '[&_svg]:!text-[hsl(var(--success))]',
+          error: '[&_svg]:!text-[hsl(var(--error))]',
+          warning: '[&_svg]:!text-[hsl(var(--warning))]',
+          info: '[&_svg]:!text-[hsl(var(--primary))]'
         }
       }}
       {...props}
