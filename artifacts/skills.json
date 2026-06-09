@@ -38,6 +38,132 @@
         "files",
         "workspace"
       ]
+    },
+    {
+      "id": "self-improving-agent",
+      "name": "self-improvement",
+      "version": "3.0.23",
+      "title": "Self-Improving Agent",
+      "description": "Capture learnings, command failures, corrections, and recurring workflow improvements for later review.",
+      "category": "productivity",
+      "sourceDir": "artifacts/skills/self-improving-agent",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "self-improving-agent",
+        "self-improvement"
+      ],
+      "tags": [
+        "memory",
+        "learning",
+        "workflow"
+      ]
+    },
+    {
+      "id": "skill-vetter",
+      "name": "skill-vetter",
+      "version": "1.0.0",
+      "title": "Skill Vetter",
+      "description": "Security-first review checklist for evaluating third-party skills before installing or running them.",
+      "category": "security",
+      "sourceDir": "artifacts/skills/skill-vetter",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "skill-review",
+        "skill-security"
+      ],
+      "tags": [
+        "security",
+        "review",
+        "skills"
+      ]
+    },
+    {
+      "id": "multi-search-engine",
+      "name": "multi-search-engine",
+      "version": "2.1.3",
+      "title": "Multi Search Engine",
+      "description": "Use Chinese and global search engines with no API keys for broader web research and result aggregation.",
+      "category": "research",
+      "sourceDir": "artifacts/skills/multi-search-engine",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "multi-search",
+        "search-engine"
+      ],
+      "tags": [
+        "search",
+        "research",
+        "china"
+      ]
+    },
+    {
+      "id": "humanizer",
+      "name": "humanizer",
+      "version": "1.0.0",
+      "title": "Humanizer",
+      "description": "Edit AI-like writing into more natural, specific, and human-sounding prose while preserving meaning.",
+      "category": "writing",
+      "sourceDir": "artifacts/skills/humanizer",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "writing-humanizer",
+        "natural-writing"
+      ],
+      "tags": [
+        "writing",
+        "editing",
+        "productivity"
+      ]
+    },
+    {
+      "id": "markdown-converter",
+      "name": "markdown-converter",
+      "version": "1.0.0",
+      "title": "Markdown Converter",
+      "description": "Convert PDFs, Office files, HTML, data files, media, archives, and web sources into Markdown for analysis.",
+      "category": "documents",
+      "sourceDir": "artifacts/skills/markdown-converter",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "markitdown",
+        "document-to-markdown"
+      ],
+      "tags": [
+        "markdown",
+        "documents",
+        "conversion"
+      ]
+    },
+    {
+      "id": "nano-pdf",
+      "name": "nano-pdf",
+      "version": "1.0.0",
+      "title": "Nano PDF",
+      "description": "Edit PDFs with natural-language instructions through the nano-pdf CLI.",
+      "category": "documents",
+      "sourceDir": "artifacts/skills/nano-pdf",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": false,
+      "aliases": [
+        "pdf-edit",
+        "pdf-editor"
+      ],
+      "tags": [
+        "pdf",
+        "documents",
+        "editing"
+      ]
     }
   ]
 }

@@ -31,7 +31,10 @@ use crate::core::{
     permissions::configure_permissions,
     process::{detect_system_openclaw, verify_openclaw_runtime},
     runtime::{append_error_chain_log, append_install_log, backup_existing_dir},
-    skills::{ensure_managed_skills_config, install_skills, resolve_default_skills},
+    skills::{
+        ensure_managed_skills_config, install_skills, resolve_default_skills,
+        resolve_install_skills,
+    },
     version_catalog::{build_version_catalog, resolve_release_for_install},
 };
 
@@ -418,6 +421,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
     )?;
     let release = resolve_release_for_install(&project_root, &install_mode, &selected_version)?;
     let default_skills = resolve_default_skills(&project_root, &release.skills)?;
+    let install_skills_plan = resolve_install_skills(&project_root, &release.skills)?;
     validate_required_node(&release.required_node)?;
     prepare_installation_target(&base_dir, &release.version)?;
 
@@ -564,7 +568,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
                     openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
                     node_dir: node_dir.to_string_lossy().to_string(),
                     config_path: config_path.to_string_lossy().to_string(),
-                    skills: default_skills.clone(),
+                    skills: install_skills_plan.clone(),
                     plugins: Vec::new(),
                 },
             )
@@ -596,7 +600,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         InstallStep::InstallSkills,
         Some(InstallStep::ConfigurePermissions),
         || {
-            install_skills(&project_root, &openclaw_dir, &default_skills)?;
+            install_skills(&project_root, &openclaw_dir, &release.skills)?;
             ensure_managed_skills_config(&config_path)
         },
     )?;

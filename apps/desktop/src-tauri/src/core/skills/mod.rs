@@ -72,7 +72,7 @@ pub fn install_skills(
     fs::create_dir_all(&skills_dir)
         .with_context(|| format!("create skills dir {}", skills_dir.display()))?;
 
-    let planned_skills = resolve_default_skills_from_manifest(&manifest.skills, release_skills);
+    let planned_skills = resolve_install_skills_from_manifest(&manifest.skills, release_skills);
     let desired_names = desired_release_skill_names(&planned_skills);
 
     for skill in &manifest.skills {
@@ -109,6 +109,17 @@ pub fn resolve_default_skills(
 ) -> anyhow::Result<Vec<ReleaseSkill>> {
     let manifest = load_skill_manifest(project_root)?;
     Ok(resolve_default_skills_from_manifest(
+        &manifest.skills,
+        release_skills,
+    ))
+}
+
+pub fn resolve_install_skills(
+    project_root: &Path,
+    release_skills: &[ReleaseSkill],
+) -> anyhow::Result<Vec<ReleaseSkill>> {
+    let manifest = load_skill_manifest(project_root)?;
+    Ok(resolve_install_skills_from_manifest(
         &manifest.skills,
         release_skills,
     ))
@@ -298,12 +309,30 @@ fn resolve_default_skills_from_manifest(
     manifest_skills: &[SkillArtifact],
     release_skills: &[ReleaseSkill],
 ) -> Vec<ReleaseSkill> {
+    resolve_manifest_skills(manifest_skills, release_skills, |skill| {
+        skill.enabled_by_default
+    })
+}
+
+fn resolve_install_skills_from_manifest(
+    manifest_skills: &[SkillArtifact],
+    release_skills: &[ReleaseSkill],
+) -> Vec<ReleaseSkill> {
+    resolve_manifest_skills(manifest_skills, release_skills, |skill| {
+        skill.install_by_default || skill.enabled_by_default
+    })
+}
+
+fn resolve_manifest_skills(
+    manifest_skills: &[SkillArtifact],
+    release_skills: &[ReleaseSkill],
+    include_catalog_skill: impl Fn(&SkillArtifact) -> bool,
+) -> Vec<ReleaseSkill> {
     let requested_names = desired_release_skill_names(release_skills);
-    let default_catalog_skills: Vec<ReleaseSkill> = manifest_skills
+    let catalog_skills: Vec<ReleaseSkill> = manifest_skills
         .iter()
         .filter(|skill| {
-            skill.install_by_default
-                || skill.enabled_by_default
+            include_catalog_skill(skill)
                 || requested_names.contains(skill.name.as_str())
                 || requested_names.contains(skill.id.as_str())
                 || skill
@@ -314,7 +343,7 @@ fn resolve_default_skills_from_manifest(
         .map(release_skill_from_artifact)
         .collect();
 
-    let mut merged = merge_release_skills(release_skills, &default_catalog_skills);
+    let mut merged = merge_release_skills(release_skills, &catalog_skills);
     merged.sort_by(|left, right| left.name.cmp(&right.name));
     merged
 }
@@ -471,4 +500,64 @@ fn set_value_at_path(root: &mut Value, path: &[&str], value: Value) {
 
     let object = current.as_object_mut().expect("object ensured");
     object.insert(path[path.len() - 1].to_string(), value);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        resolve_default_skills_from_manifest, resolve_install_skills_from_manifest, ReleaseSkill,
+        SkillArtifact,
+    };
+
+    #[test]
+    fn install_by_default_does_not_enable_by_default() {
+        let manifest_skills = vec![
+            sample_skill("installed-only", false, true),
+            sample_skill("enabled-default", true, true),
+            sample_skill("release-requested", false, false),
+        ];
+        let release_skills = vec![ReleaseSkill {
+            name: "release-requested".to_string(),
+            version: "1.0.0".to_string(),
+        }];
+
+        let default_skills =
+            resolve_default_skills_from_manifest(&manifest_skills, &release_skills);
+        let install_skills =
+            resolve_install_skills_from_manifest(&manifest_skills, &release_skills);
+
+        assert_eq!(
+            names(&default_skills),
+            vec!["enabled-default", "release-requested"]
+        );
+        assert_eq!(
+            names(&install_skills),
+            vec!["enabled-default", "installed-only", "release-requested"]
+        );
+    }
+
+    fn sample_skill(
+        name: &str,
+        enabled_by_default: bool,
+        install_by_default: bool,
+    ) -> SkillArtifact {
+        SkillArtifact {
+            id: name.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            title: name.to_string(),
+            description: name.to_string(),
+            category: None,
+            source_dir: Some(format!("artifacts/skills/{name}")),
+            bundled: false,
+            install_by_default,
+            enabled_by_default,
+            aliases: Vec::new(),
+            tags: Vec::new(),
+        }
+    }
+
+    fn names(skills: &[ReleaseSkill]) -> Vec<String> {
+        skills.iter().map(|skill| skill.name.clone()).collect()
+    }
 }
