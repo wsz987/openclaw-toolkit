@@ -49,7 +49,7 @@
       "sourceDir": "artifacts/skills/self-improving-agent",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "self-improving-agent",
         "self-improvement"
@@ -70,7 +70,7 @@
       "sourceDir": "artifacts/skills/skill-vetter",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "skill-review",
         "skill-security"
@@ -91,7 +91,7 @@
       "sourceDir": "artifacts/skills/multi-search-engine",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "multi-search",
         "search-engine"
@@ -112,7 +112,7 @@
       "sourceDir": "artifacts/skills/humanizer",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "writing-humanizer",
         "natural-writing"
@@ -133,7 +133,7 @@
       "sourceDir": "artifacts/skills/markdown-converter",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "markitdown",
         "document-to-markdown"
@@ -154,7 +154,7 @@
       "sourceDir": "artifacts/skills/nano-pdf",
       "bundled": false,
       "installByDefault": true,
-      "enabledByDefault": false,
+      "enabledByDefault": true,
       "aliases": [
         "pdf-edit",
         "pdf-editor"

@@ -62,7 +62,7 @@ export function PostInstallHomeScreen({
                 </span>
               </div>
               <h1 className="font-serif text-2xl text-[hsl(var(--ink))] font-normal tracking-tight leading-tight">
-                服务配置与控制
+                控制面板
               </h1>
             </div>
 
