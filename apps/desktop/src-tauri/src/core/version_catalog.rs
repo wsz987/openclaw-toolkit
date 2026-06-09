@@ -209,7 +209,7 @@ fn build_local_catalog(project_root: &Path) -> InternalCatalog {
                 source_ready: false,
                 latest_version: None,
                 entries: Vec::new(),
-                message: Some(format!("读取本地离线包清单失败：{}", error)),
+                message: Some(format!("读取内置稳定版清单失败：{}", error)),
             };
         }
     };
@@ -231,13 +231,13 @@ fn build_local_catalog(project_root: &Path) -> InternalCatalog {
 
             let detail = if selectable {
                 format!(
-                    "离线包已就绪，Node {} ({})",
+                    "内置稳定版已就绪，Node {} ({})",
                     release.required_node.version, release.required_node.range
                 )
             } else if !openclaw_ready {
-                format!("缺少离线 OpenClaw 安装包：{}", artifact_path.display())
+                format!("缺少内置 OpenClaw 稳定版安装包：{}", artifact_path.display())
             } else {
-                format!("缺少受管 Node 离线包：{}", node_path.display())
+                format!("缺少内置受管 Node 运行包：{}", node_path.display())
             };
 
             CatalogEntry {
@@ -254,7 +254,7 @@ fn build_local_catalog(project_root: &Path) -> InternalCatalog {
     let message = if source_ready {
         None
     } else {
-        Some("本地离线包清单为空".to_string())
+        Some("内置稳定版清单为空".to_string())
     };
 
     InternalCatalog {

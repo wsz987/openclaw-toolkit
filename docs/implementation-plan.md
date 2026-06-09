@@ -53,7 +53,7 @@ Tauri v2 + React UI + Rust Core + OpenClaw 专用受管 Node Runtime
 
 ## Milestone 4：安装模式（已完成基础版）
 
-- 本地离线包安装
+- 内置稳定版安装
 - 远程服务器安装
 - 官方 npm 下载指定版本安装
 - 使用 OpenClaw 专用受管 Node/npm

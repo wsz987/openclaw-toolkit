@@ -305,7 +305,7 @@ export function ConfigStepView({
                   <span>使用源</span>
                 </label>
                 <Select value={installMode} onChange={(event) => onInstallModeChange(event.target.value as InstallMode)}>
-                  <option value="local">本地离线包</option>
+                  <option value="local">内置稳定版</option>
                   <option value="remote">远程包</option>
                   <option value="npm">NPM 官方包分发</option>
                 </Select>
