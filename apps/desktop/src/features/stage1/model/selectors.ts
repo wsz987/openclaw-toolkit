@@ -71,11 +71,7 @@ export function getConfirmationDescription(
   systemOpenclaw: Stage1Dashboard['systemOpenclaw'],
   installActionLabel: string
 ) {
-  if (systemOpenclaw.version) {
-    return `当前电脑已存在 OpenClaw ${systemOpenclaw.version}，继续后将按官方安装规范在受管运行环境中执行${installActionLabel}。`;
-  }
-
-  return '当前电脑已存在系统级 OpenClaw，但未成功读取版本信息。继续后仍会按官方安装规范在受管运行环境中执行安装或更新。';
+  return '检测到您系统已安装 OpenClaw。为避免运行冲突，本工具将为您部署在完全隔离的专属受管目录中。';
 }
 
 export function getConfirmationTargetVersion(
