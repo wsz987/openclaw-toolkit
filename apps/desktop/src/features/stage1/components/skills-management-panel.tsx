@@ -5,6 +5,7 @@ import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Switch } from '../../../components/ui/switch';
 import { SpinnerIcon } from '../../../components/icons';
 import { Search, RefreshCw, AlertCircle, Blocks, Tag } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 import type {
   ManagedSkillCatalog,
   OpenClawSkillTogglePayload,
@@ -22,19 +23,24 @@ type SkillsManagementPanelProps = {
 
 function SkillCardSkeleton() {
   return (
-    <div className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-card))] p-4 flex flex-col gap-3 animate-pulse">
+    <div className="rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-card))] p-5 flex flex-col gap-4 animate-pulse">
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-2 w-2/3">
-          <div className="h-4 w-24 bg-[hsl(var(--surface-cream-strong))] rounded" />
-          <div className="h-3 w-36 bg-[hsl(var(--surface-cream-strong))] rounded" />
+          <div className="flex gap-2 items-center">
+            <div className="h-4 w-24 bg-[hsl(var(--surface-cream-strong))] rounded" />
+            <div className="h-3 w-10 bg-[hsl(var(--surface-cream-strong))] rounded" />
+          </div>
+          <div className="h-3.5 w-36 bg-[hsl(var(--surface-cream-strong))] rounded" />
         </div>
         <div className="h-5 w-9 bg-[hsl(var(--surface-cream-strong))] rounded-full" />
       </div>
-      <div className="h-3.5 w-full bg-[hsl(var(--surface-cream-strong))] rounded mt-1" />
-      <div className="h-3.5 w-5/6 bg-[hsl(var(--surface-cream-strong))] rounded" />
-      <div className="flex gap-2 mt-2">
-        <div className="h-4 w-12 bg-[hsl(var(--surface-cream-strong))] rounded" />
-        <div className="h-4 w-16 bg-[hsl(var(--surface-cream-strong))] rounded" />
+      <div className="h-3 w-full bg-[hsl(var(--surface-cream-strong))] rounded mt-1" />
+      <div className="h-3 w-5/6 bg-[hsl(var(--surface-cream-strong))] rounded" />
+      <div className="flex justify-between items-center mt-auto pt-2 border-t border-[hsl(var(--hairline-soft))]/50">
+        <div className="flex gap-2">
+          <div className="h-4 w-12 bg-[hsl(var(--surface-cream-strong))] rounded" />
+          <div className="h-4 w-16 bg-[hsl(var(--surface-cream-strong))] rounded" />
+        </div>
       </div>
     </div>
   );
@@ -170,14 +176,15 @@ export function SkillsManagementPanel({
       {/* Main List content */}
       <div className="flex-1 min-h-0">
         {loading && !catalog ? (
-          <div className="grid grid-cols-1 gap-3 pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-1 pb-4">
+            <SkillCardSkeleton />
             <SkillCardSkeleton />
             <SkillCardSkeleton />
             <SkillCardSkeleton />
           </div>
         ) : filteredSkills.length ? (
           <ScrollArea className="h-full pr-2">
-            <div className="grid grid-cols-1 gap-3 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
               {filteredSkills.map((skill) => {
                 const busy = toggleLoadingIds.includes(skill.id);
                 const unavailable = !skill.installed && !skill.sourceDir;
@@ -185,30 +192,38 @@ export function SkillsManagementPanel({
                 return (
                   <div
                     key={skill.id}
-                    className="rounded-lg border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-card))] p-4 flex flex-col gap-2"
+                    className={cn(
+                      "group rounded-xl border p-5 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden",
+                      skill.enabled
+                        ? "bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--primary)/0.02)] border-[hsl(var(--primary)/0.2)] shadow-2xs hover:border-[hsl(var(--primary)/0.35)] hover:shadow-md"
+                        : "bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] border-[hsl(var(--hairline))] hover:border-[hsl(var(--primary)/0.2)] hover:shadow-sm"
+                    )}
                   >
-                    {/* Header info & Toggle switch */}
+                    {/* Top Section: Title & Toggle */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex flex-col gap-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-[hsl(var(--ink))]">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-semibold text-sm text-[hsl(var(--ink))] group-hover:text-[hsl(var(--primary))] transition-colors duration-200 truncate">
                             {skill.title}
                           </span>
-                          <code className="text-[10px] font-mono text-[hsl(var(--muted-soft))] bg-[hsl(var(--surface-soft))] px-1.5 py-0.2 rounded border border-[hsl(var(--hairline-soft))]">
+                          <code className="text-[9px] font-mono text-[hsl(var(--muted-soft))] bg-[hsl(var(--surface-soft))] px-1.5 py-0.2 rounded border border-[hsl(var(--hairline-soft))]">
                             v{skill.version}
                           </code>
-                          {!skill.installed ? (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.06)] text-[hsl(var(--warning))] font-medium">
+                          {!skill.installed && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.06)] text-[hsl(var(--warning))] font-medium whitespace-nowrap">
                               未安装
                             </span>
-                          ) : null}
+                          )}
                         </div>
+                        <span className="text-[10px] font-mono text-[hsl(var(--muted-soft))] tracking-tight select-all">
+                          {skill.name}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {busy ? (
+                        {busy && (
                           <SpinnerIcon size={12} className="spinning text-[hsl(var(--primary))]" />
-                        ) : null}
+                        )}
                         <Switch
                           checked={skill.enabled}
                           disabled={busy || unavailable}
@@ -223,33 +238,37 @@ export function SkillsManagementPanel({
                       </div>
                     </div>
 
-                    {/* Skill Description */}
-                    <p className="text-xs leading-relaxed text-[hsl(var(--body))]">
+                    {/* Middle Section: Description */}
+                    <p className="text-xs leading-relaxed text-[hsl(var(--body))] flex-1 min-h-[36px] line-clamp-3 hover:line-clamp-none transition-all duration-200">
                       {skill.description}
                     </p>
 
-                    {/* Footer Info: Tags & Error banners */}
-                    <div className="flex items-center justify-between gap-4 mt-0.5">
-                      <div className="flex flex-wrap gap-1.5">
-                        {skill.tags.length ? (
+                    {/* Bottom Section: Tags & Errors */}
+                    <div className="flex items-center justify-between gap-4 pt-2 border-t border-[hsl(var(--hairline-soft))]/50 mt-auto">
+                      <div className="flex flex-wrap gap-1">
+                        {skill.tags.length > 0 ? (
                           skill.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="text-[9px] text-[hsl(var(--muted-soft))] bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline-soft))] rounded px-1.5 py-0.2 flex items-center gap-1 font-medium"
+                              className="text-[9px] text-[hsl(var(--muted))] bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline-soft))] rounded px-1.5 py-0.2 flex items-center gap-1 font-medium transition-colors hover:bg-[hsl(var(--surface-cream-strong))/0.6]"
                             >
-                              <Tag size={9} className="opacity-70" />
+                              <Tag size={9} className="opacity-70 text-[hsl(var(--muted-soft))]" />
                               {tag}
                             </span>
                           ))
-                        ) : null}
+                        ) : (
+                          <span className="text-[9px] text-[hsl(var(--muted-soft))] italic">
+                            无标签
+                          </span>
+                        )}
                       </div>
 
-                      {unavailable ? (
-                        <span className="text-[9px] text-[hsl(var(--error))] flex items-center gap-1 font-medium">
+                      {unavailable && (
+                        <span className="text-[9px] text-[hsl(var(--error))] flex items-center gap-1 font-medium whitespace-nowrap bg-[hsl(var(--error)/0.05)] border border-[hsl(var(--error)/0.15)] px-1.5 py-0.5 rounded">
                           <AlertCircle size={10} />
-                          未安装且无本地源码
+                          缺本地源码
                         </span>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 );
@@ -257,16 +276,16 @@ export function SkillsManagementPanel({
             </div>
           </ScrollArea>
         ) : (
-          <div className="h-full min-h-64 flex flex-col items-center justify-center gap-3 text-center border border-dashed border-[hsl(var(--hairline-soft))] rounded-lg bg-[hsl(var(--surface-card))/0.1] p-6">
-            <div className="w-10 h-10 rounded-full bg-[hsl(var(--surface-soft))] flex items-center justify-center text-[hsl(var(--muted))]">
-              <Blocks size={18} className="opacity-70" />
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center gap-4 text-center border border-dashed border-[hsl(var(--hairline-soft))] rounded-2xl bg-[hsl(var(--surface-card))/0.02] p-8">
+            <div className="w-12 h-12 rounded-full bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline-soft))] flex items-center justify-center text-[hsl(var(--muted))] shadow-2xs">
+              <Blocks size={20} className="opacity-70 text-[hsl(var(--primary))]" />
             </div>
-            <div className="flex flex-col gap-1">
-              <strong className="text-xs font-semibold text-[hsl(var(--ink))]">
+            <div className="flex flex-col gap-1.5 max-w-sm">
+              <strong className="text-sm font-semibold text-[hsl(var(--ink))]">
                 未找到匹配的 Skill
               </strong>
-              <span className="text-[11px] text-[hsl(var(--muted))]">
-                {searchQuery ? '尝试换个关键词搜索一下吧' : '当前内置 skill 清单为空'}
+              <span className="text-xs text-[hsl(var(--muted))] leading-relaxed">
+                {searchQuery ? '尝试换个关键词搜索一下吧，或者切换到其他状态分类' : '当前内置 skill 清单为空'}
               </span>
             </div>
           </div>
