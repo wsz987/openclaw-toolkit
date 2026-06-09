@@ -80,6 +80,36 @@ pub struct ReleaseSkill {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SkillArtifact {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub title: String,
+    pub description: String,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub source_dir: Option<String>,
+    #[serde(default)]
+    pub bundled: bool,
+    #[serde(default)]
+    pub install_by_default: bool,
+    #[serde(default)]
+    pub enabled_by_default: bool,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillManifest {
+    #[serde(default)]
+    pub skills: Vec<SkillArtifact>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PluginArtifact {
     pub id: String,
     pub package: String,

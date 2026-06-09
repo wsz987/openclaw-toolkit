@@ -102,6 +102,9 @@ export function PostInstallHomeScreen({
           providerSetupResult={controller.providerSetupResult}
           feishuSetupLoading={controller.feishuSetupLoading}
           feishuSetupResult={controller.feishuSetupResult}
+          skillCatalog={controller.skillCatalog}
+          skillCatalogLoading={controller.skillCatalogLoading}
+          skillToggleLoadingIds={controller.skillToggleLoadingIds}
           runtimeLaunchLoading={controller.runtimeLaunchLoading}
           runtimeStopLoading={controller.runtimeStopLoading}
           runtimeRestartLoading={controller.runtimeRestartLoading}
@@ -110,6 +113,8 @@ export function PostInstallHomeScreen({
           logsDirOpening={controller.logsDirOpening}
           onProviderSetup={controller.handleProviderSetup}
           onFeishuChannelSetup={controller.handleFeishuChannelSetup}
+          onReloadSkillCatalog={controller.loadSkillCatalog}
+          onSkillToggle={controller.handleSkillToggle}
           onLaunchRuntime={controller.handleLaunchRuntime}
           onStopRuntime={controller.handleStopRuntime}
           onRestartRuntime={controller.handleRestartRuntime}

@@ -228,7 +228,8 @@ pub fn install_openclaw(
 
 pub fn write_openclaw_config(
     config_path: &Path,
-    release: &ReleaseArtifact,
+    _release: &ReleaseArtifact,
+    default_skills: &[ReleaseSkill],
     _tier: &str,
     openclaw_dir: &Path,
     _node_dir: &Path,
@@ -247,7 +248,7 @@ pub fn write_openclaw_config(
         .unwrap_or_else(fallback_provider_entry);
 
     let default_agent_models = default_agent_models_map(std::slice::from_ref(&default_provider));
-    let default_skills = default_skill_allowlist(&release.skills);
+    let default_skills = default_skill_names(default_skills);
 
     let config = json!({
         "gateway": {
@@ -271,7 +272,7 @@ pub fn write_openclaw_config(
                 },
                 "models": default_agent_models,
                 "workspace": workspace_dir.to_string_lossy(),
-                "skills": default_skills,
+                "skills": &default_skills,
                 "heartbeat": {
                     "every": "0m"
                 },
@@ -301,7 +302,8 @@ pub fn write_openclaw_config(
         "skills": {
             "load": {
                 "extraDirs": [openclaw_dir.join("skills").to_string_lossy()]
-            }
+            },
+            "entries": default_skill_entries(&default_skills)
         },
         "plugins": {
             "entries": {
@@ -404,7 +406,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         })
         .unwrap_or(false),
         feishu_channel,
-        skills_installed: string_array_at_path(&config, &["agents", "defaults", "skills"]),
+        skills_installed: enabled_skill_ids(&config),
         plugins_enabled: enabled_plugin_ids(&config),
         installed_plugins: installed_manifest
             .map(|manifest| manifest.plugins)
@@ -900,6 +902,24 @@ fn enabled_plugin_ids(value: &Value) -> Vec<String> {
         .collect()
 }
 
+fn enabled_skill_ids(value: &Value) -> Vec<String> {
+    let mut skills = string_array_at_path(value, &["agents", "defaults", "skills"]);
+    let Some(entries) = value_at_path(value, &["skills", "entries"]).and_then(Value::as_object)
+    else {
+        return skills;
+    };
+
+    skills.retain(|skill| {
+        entries
+            .get(skill)
+            .and_then(|entry| entry.get("enabled"))
+            .and_then(Value::as_bool)
+            .unwrap_or(true)
+    });
+
+    skills
+}
+
 fn infer_primary_provider_id(config: &Value) -> Option<String> {
     let primary_model = string_at_path(config, &["agents", "defaults", "model", "primary"])?;
     let provider = primary_model.split('/').next()?.trim();
@@ -962,7 +982,7 @@ fn merge_agent_permissions(config: &mut Value) {
     );
 }
 
-fn default_skill_allowlist(skills: &[ReleaseSkill]) -> Value {
+fn default_skill_names(skills: &[ReleaseSkill]) -> Vec<String> {
     let names: Vec<String> = skills
         .iter()
         .map(|skill| skill.name.trim().to_string())
@@ -974,7 +994,19 @@ fn default_skill_allowlist(skills: &[ReleaseSkill]) -> Value {
         .map(|skill| skill.to_string())
         .collect();
 
-    json!(if names.is_empty() { fallback } else { names })
+    if names.is_empty() {
+        fallback
+    } else {
+        names
+    }
+}
+
+fn default_skill_entries(skills: &[String]) -> Value {
+    let entries: serde_json::Map<String, Value> = skills
+        .iter()
+        .map(|skill| (skill.clone(), json!({ "enabled": true })))
+        .collect();
+    Value::Object(entries)
 }
 
 #[derive(Debug, Clone)]
@@ -1698,10 +1730,12 @@ mod tests {
         let openclaw_dir = temp_dir.join("openclaw");
         fs::create_dir_all(&openclaw_dir).unwrap();
         let config_path = openclaw_dir.join("openclaw.json");
+        let release = sample_release();
 
         write_openclaw_config(
             &config_path,
-            &sample_release(),
+            &release,
+            &release.skills,
             "community",
             &openclaw_dir,
             &temp_dir.join("node"),
@@ -1729,10 +1763,12 @@ mod tests {
         let openclaw_dir = temp_dir.join("openclaw");
         fs::create_dir_all(&openclaw_dir).unwrap();
         let config_path = openclaw_dir.join("openclaw.json");
+        let release = sample_release();
 
         write_openclaw_config(
             &config_path,
-            &sample_release(),
+            &release,
+            &release.skills,
             "community",
             &openclaw_dir,
             &temp_dir.join("node"),

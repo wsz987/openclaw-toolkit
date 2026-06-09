@@ -6,7 +6,8 @@ use std::{
 use anyhow::Context;
 
 use self::models::{
-    InstalledManifest, PluginManifest, ProviderCatalogManifest, ReleaseManifest, ToolkitManifest,
+    InstalledManifest, PluginManifest, ProviderCatalogManifest, ReleaseManifest, SkillManifest,
+    ToolkitManifest,
 };
 use self::settings::ToolkitSettings;
 
@@ -46,6 +47,15 @@ pub fn load_plugin_manifest(project_root: &Path) -> anyhow::Result<PluginManifes
     read_json(&path)
 }
 
+pub fn load_skill_manifest(project_root: &Path) -> anyhow::Result<SkillManifest> {
+    let path = project_root.join("artifacts").join("skills.json");
+    if !path.exists() {
+        return Ok(SkillManifest { skills: Vec::new() });
+    }
+
+    read_json(&path)
+}
+
 pub fn load_toolkit_settings(project_root: &Path) -> anyhow::Result<ToolkitSettings> {
     let path = project_root.join("artifacts").join("toolkit-settings.json");
     if !path.exists() {
@@ -72,7 +82,7 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &PathBuf) -> anyhow::Result<T
     serde_json::from_str(&content).with_context(|| format!("parse {}", path.display()))
 }
 
-fn resolve_resource_root_from_config_path(config_path: &Path) -> anyhow::Result<PathBuf> {
+pub fn resolve_resource_root_from_config_path(config_path: &Path) -> anyhow::Result<PathBuf> {
     let openclaw_dir = config_path
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
@@ -103,16 +113,15 @@ fn resolve_resource_root_from_base_dir(base_dir: &Path) -> anyhow::Result<PathBu
             .join("artifacts")
             .join("toolkit-manifest.json")
             .exists()
-            && candidate
-                .join("artifacts")
-                .join("providers.json")
-            .exists()
+            && candidate.join("artifacts").join("providers.json").exists()
         {
             return Ok(candidate);
         }
     }
 
-    anyhow::bail!("未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json 和 artifacts/providers.json")
+    anyhow::bail!(
+        "未找到安装资源目录：需要存在 artifacts/toolkit-manifest.json 和 artifacts/providers.json"
+    )
 }
 
 fn path_with_ancestors(start: PathBuf, levels: usize) -> Vec<PathBuf> {

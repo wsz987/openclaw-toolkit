@@ -1,0 +1,43 @@
+{
+  "skills": [
+    {
+      "id": "browser-control",
+      "name": "browser-control",
+      "version": "1.0.0",
+      "title": "Browser Control",
+      "description": "Use OpenClaw browser-control workflows for page inspection and browser automation.",
+      "category": "core",
+      "sourceDir": "artifacts/skills/browser-control",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": true,
+      "aliases": [
+        "browser"
+      ],
+      "tags": [
+        "browser",
+        "automation"
+      ]
+    },
+    {
+      "id": "local-filesystem",
+      "name": "local-filesystem",
+      "version": "1.0.0",
+      "title": "Local Filesystem",
+      "description": "Use local workspace file workflows with OpenClaw filesystem constraints.",
+      "category": "core",
+      "sourceDir": "artifacts/skills/local-filesystem",
+      "bundled": false,
+      "installByDefault": true,
+      "enabledByDefault": true,
+      "aliases": [
+        "filesystem",
+        "workspace-files"
+      ],
+      "tags": [
+        "files",
+        "workspace"
+      ]
+    }
+  ]
+}

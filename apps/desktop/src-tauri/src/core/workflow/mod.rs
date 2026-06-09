@@ -14,9 +14,7 @@ use crate::core::{
     },
     browser::configure_browser_runtime,
     environment::{validate_windows_environment, windows_environment_status},
-    license::{
-        ensure_install_mode_allowed, ensure_license_feature, verify_offline_license,
-    },
+    license::{ensure_install_mode_allowed, ensure_license_feature, verify_offline_license},
     manifest::{
         load_provider_catalog, load_toolkit_manifest, load_toolkit_settings,
         models::{InstalledManifest, ReleaseArtifact, ToolkitManifest},
@@ -33,7 +31,7 @@ use crate::core::{
     permissions::configure_permissions,
     process::{detect_system_openclaw, verify_openclaw_runtime},
     runtime::{append_error_chain_log, append_install_log, backup_existing_dir},
-    skills::install_skills,
+    skills::{ensure_managed_skills_config, install_skills, resolve_default_skills},
     version_catalog::{build_version_catalog, resolve_release_for_install},
 };
 
@@ -419,6 +417,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         || resolve_release_for_install(&project_root, &install_mode, &selected_version).map(|_| ()),
     )?;
     let release = resolve_release_for_install(&project_root, &install_mode, &selected_version)?;
+    let default_skills = resolve_default_skills(&project_root, &release.skills)?;
     validate_required_node(&release.required_node)?;
     prepare_installation_target(&base_dir, &release.version)?;
 
@@ -565,7 +564,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
                     openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
                     node_dir: node_dir.to_string_lossy().to_string(),
                     config_path: config_path.to_string_lossy().to_string(),
-                    skills: release.skills.clone(),
+                    skills: default_skills.clone(),
                     plugins: Vec::new(),
                 },
             )
@@ -582,6 +581,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
             write_openclaw_config(
                 &config_path,
                 &release,
+                &default_skills,
                 &license.tier,
                 &openclaw_dir,
                 &node_dir,
@@ -595,7 +595,10 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         &mut progress,
         InstallStep::InstallSkills,
         Some(InstallStep::ConfigurePermissions),
-        || install_skills(&openclaw_dir, &release.skills),
+        || {
+            install_skills(&project_root, &openclaw_dir, &default_skills)?;
+            ensure_managed_skills_config(&config_path)
+        },
     )?;
 
     run_step(

@@ -41,6 +41,25 @@ export const releaseSkillSchema = z.object({
   version: z.string().min(1)
 });
 
+export const skillArtifactSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  version: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  category: z.string().min(1).optional(),
+  sourceDir: z.string().min(1).optional(),
+  bundled: z.boolean().default(false),
+  installByDefault: z.boolean().default(false),
+  enabledByDefault: z.boolean().default(false),
+  aliases: z.array(z.string().min(1)).default([]),
+  tags: z.array(z.string().min(1)).default([])
+});
+
+export const skillManifestSchema = z.object({
+  skills: z.array(skillArtifactSchema).default([])
+});
+
 export const installedPluginSchema = z.object({
   id: z.string().min(1),
   version: z.string().min(1),
@@ -114,9 +133,11 @@ export type ProviderCatalogManifest = z.infer<typeof providerCatalogManifestSche
 export type ProviderCatalogEntry = z.infer<typeof providerCatalogEntrySchema>;
 export type ReleaseManifest = z.infer<typeof releaseManifestSchema>;
 export type PluginManifest = z.infer<typeof pluginManifestSchema>;
+export type SkillManifest = z.infer<typeof skillManifestSchema>;
 export type RequiredNodeRuntime = z.infer<typeof requiredNodeRuntimeSchema>;
 export type ReleaseArtifact = z.infer<typeof releaseArtifactSchema>;
 export type PluginArtifact = z.infer<typeof pluginArtifactSchema>;
+export type SkillArtifact = z.infer<typeof skillArtifactSchema>;
 export type InstalledManifest = z.infer<typeof installedManifestSchema>;
 export type InstalledPlugin = z.infer<typeof installedPluginSchema>;
 export type LicensePayload = z.infer<typeof licensePayloadSchema>;

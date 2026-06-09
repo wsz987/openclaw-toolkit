@@ -1,1 +1,83 @@
-{"gateway":{"mode":"local","bind":"loopback","port":18789,"auth":{"mode":"none"},"controlUi":{"allowedOrigins":["http://127.0.0.1:18789","http://localhost:18789"]}},"agents":{"defaults":{"workspace":"${openclawDir}\\workspace","skills":["browser-control","local-filesystem"],"heartbeat":{"every":"0m"},"sandbox":{"mode":"off"}}},"tools":{"profile":"coding","deny":["browser","canvas"],"fs":{"workspaceOnly":true},"exec":{"security":"full","ask":"off","applyPatch":{"workspaceOnly":true}}},"skills":{"load":{"extraDirs":["${openclawDir}\\skills"]}},"models":{"mode":"merge","providers":{}},"update":{"checkOnStart":false,"auto":{"enabled":false}},"plugins":{"entries":{"browser":{"enabled":true},"feishu":{"enabled":false}}}}
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "port": 18789,
+    "auth": {
+      "mode": "none"
+    },
+    "controlUi": {
+      "allowedOrigins": [
+        "http://127.0.0.1:18789",
+        "http://localhost:18789"
+      ]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "${openclawDir}\\workspace",
+      "skills": [
+        "browser-control",
+        "local-filesystem"
+      ],
+      "heartbeat": {
+        "every": "0m"
+      },
+      "sandbox": {
+        "mode": "off"
+      }
+    }
+  },
+  "tools": {
+    "profile": "coding",
+    "deny": [
+      "browser",
+      "canvas"
+    ],
+    "fs": {
+      "workspaceOnly": true
+    },
+    "exec": {
+      "security": "full",
+      "ask": "off",
+      "applyPatch": {
+        "workspaceOnly": true
+      }
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": [
+        "${openclawDir}\\skills"
+      ]
+    },
+    "entries": {
+      "browser-control": {
+        "enabled": true
+      },
+      "local-filesystem": {
+        "enabled": true
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {}
+  },
+  "update": {
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  },
+  "plugins": {
+    "entries": {
+      "browser": {
+        "enabled": true
+      },
+      "feishu": {
+        "enabled": false
+      }
+    }
+  }
+}

@@ -9,6 +9,8 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
+  OpenClawSkillTogglePayload,
+  OpenClawSkillToggleResult,
   OpenClawStopResult,
   OpenPathResult,
   OpenClawPostInstallStatus,
@@ -19,6 +21,7 @@ import type {
   Stage1InstallPayload,
   Stage1InstallLogTail,
   Stage1InstallResult,
+  ManagedSkillCatalog,
   Stage1StepState,
   VersionCatalogResult
 } from '../model/types';
@@ -110,6 +113,20 @@ export async function setupOpenClawFeishuChannel(
 
 export async function installOpenClawPlugin(input: OpenClawPluginInstallPayload): Promise<OpenClawPluginInstallResult> {
   return invoke<OpenClawPluginInstallResult>('install_openclaw_plugin', {
+    input
+  });
+}
+
+export async function inspectOpenClawSkillCatalog(configPath: string): Promise<ManagedSkillCatalog> {
+  return invoke<ManagedSkillCatalog>('inspect_openclaw_skill_catalog', {
+    configPath
+  });
+}
+
+export async function setOpenClawSkillEnabled(
+  input: OpenClawSkillTogglePayload
+): Promise<OpenClawSkillToggleResult> {
+  return invoke<OpenClawSkillToggleResult>('set_openclaw_skill_enabled', {
     input
   });
 }

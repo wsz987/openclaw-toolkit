@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { KeyIcon, MessageSquareIcon, MonitorIcon } from '../../../components/icons';
+import { KeyIcon, MessageSquareIcon, MonitorIcon, SettingsIcon } from '../../../components/icons';
 import type { PostInstallTab } from '../model/types';
 
 type MenuIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
@@ -60,6 +60,12 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
       feishuEnabled ? (
         <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] absolute -top-1 -right-1" />
       ) : null
+  },
+  {
+    tab: 'skills',
+    title: 'Skill 管理',
+    description: '启用内置技能',
+    icon: SettingsIcon
   }
 ];
 

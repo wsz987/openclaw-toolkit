@@ -20,6 +20,10 @@ use crate::core::{
         launch_managed_openclaw, stop_managed_openclaw, ManagedOpenClawLaunchResult,
         ManagedOpenClawStopResult,
     },
+    skills::{
+        inspect_skill_catalog, set_skill_enabled, ManagedSkillCatalog, SkillToggleInput,
+        SkillToggleResult,
+    },
     status_events::refresh_and_emit_openclaw_status,
     status_watcher::OpenClawStatusWatcher,
 };
@@ -136,6 +140,46 @@ pub async fn install_openclaw_plugin(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("install_openclaw_plugin join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn inspect_openclaw_skill_catalog(
+    config_path: String,
+) -> Result<ManagedSkillCatalog, String> {
+    tauri::async_runtime::spawn_blocking(move || inspect_skill_catalog(&PathBuf::from(config_path)))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("inspect_openclaw_skill_catalog join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn set_openclaw_skill_enabled(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: SkillToggleInput,
+) -> Result<SkillToggleResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = set_skill_enabled(&input)?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            &format!("skills.{}", result.skill_id),
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<SkillToggleResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("set_openclaw_skill_enabled join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

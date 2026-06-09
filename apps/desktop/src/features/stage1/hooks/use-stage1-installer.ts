@@ -29,7 +29,9 @@ import type {
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
+  OpenClawSkillTogglePayload,
   PluginInstallLogEntry,
+  ManagedSkillCatalog,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   OpenClawStopResult,
@@ -42,6 +44,7 @@ import type {
 import {
   importInstallationFromPath,
   installOpenClawPlugin,
+  inspectOpenClawSkillCatalog,
   inspectOpenClawStatus,
   inspectStage1Dashboard,
   inspectVersionCatalog,
@@ -52,6 +55,7 @@ import {
   pickDirectory,
   readStage1InstallLogTail,
   restartOpenClawRuntime,
+  setOpenClawSkillEnabled,
   setupOpenClawFeishuChannel,
   setupOpenClawProvider,
   stopOpenClawRuntime,
@@ -90,6 +94,9 @@ export function useStage1Installer(
   const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
   const [pluginInstallResult, setPluginInstallResult] = useState<OpenClawPluginInstallResult | null>(null);
   const [pluginInstallLogs, setPluginInstallLogs] = useState<PluginInstallLogEntry[]>([]);
+  const [skillCatalogLoading, setSkillCatalogLoading] = useState(false);
+  const [skillCatalog, setSkillCatalog] = useState<ManagedSkillCatalog | null>(null);
+  const [skillToggleLoadingIds, setSkillToggleLoadingIds] = useState<string[]>([]);
   const [runtimeLaunchLoading, setRuntimeLaunchLoading] = useState(false);
   const [runtimeStopLoading, setRuntimeStopLoading] = useState(false);
   const [runtimeRestartLoading, setRuntimeRestartLoading] = useState(false);
@@ -109,6 +116,7 @@ export function useStage1Installer(
   const providerSetupRequestGuard = useLatestRequestGuard();
   const feishuSetupRequestGuard = useLatestRequestGuard();
   const pluginInstallRequestGuard = useLatestRequestGuard();
+  const skillCatalogRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
   const runtimeStopRequestGuard = useLatestRequestGuard();
   const runtimeRestartRequestGuard = useLatestRequestGuard();
@@ -258,6 +266,56 @@ export function useStage1Installer(
   async function finalizePostInstallMutation(configPath: string) {
     await refreshStatusViaFallback(configPath);
     handleEnterPostInstallHome();
+  }
+
+  async function loadSkillCatalog(configPath: string) {
+    if (!configPath.trim()) {
+      setSkillCatalog(null);
+      return null;
+    }
+
+    const requestId = skillCatalogRequestGuard.begin();
+    setSkillCatalogLoading(true);
+
+    try {
+      const response = await inspectOpenClawSkillCatalog(configPath);
+      if (!skillCatalogRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setSkillCatalog(response);
+      return response;
+    } catch (err) {
+      if (!skillCatalogRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      setSkillCatalog(null);
+      return null;
+    } finally {
+      if (skillCatalogRequestGuard.isCurrent(requestId)) {
+        setSkillCatalogLoading(false);
+      }
+    }
+  }
+
+  async function handleSkillToggle(input: OpenClawSkillTogglePayload) {
+    const skillId = input.skillId;
+    setError(null);
+    setSkillToggleLoadingIds((current) => Array.from(new Set([...current, skillId])));
+
+    try {
+      const response = await setOpenClawSkillEnabled(input);
+      await loadSkillCatalog(response.configPath);
+      await finalizePostInstallMutation(response.configPath);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      setSkillToggleLoadingIds((current) => current.filter((id) => id !== skillId));
+    }
   }
 
   function appendPluginInstallLog(level: PluginInstallLogEntry['level'], message: string) {
@@ -617,6 +675,7 @@ export function useStage1Installer(
     setFeishuSetupResult(null);
     setPluginInstallResult(null);
     setPluginInstallLogs([]);
+    setSkillCatalog(null);
     setShowPostInstallHome(false);
     setLoading(false);
     setWizardStep(0);
@@ -643,6 +702,7 @@ export function useStage1Installer(
     }
 
     void loadPostInstallStatus(activeConfigPath);
+    void loadSkillCatalog(activeConfigPath);
   }, [initialConfigPath, initialShowPostInstallHome, result, showPostInstallHome]);
 
   useEffect(() => {
@@ -795,6 +855,9 @@ export function useStage1Installer(
     runtimeLaunchLoading,
     runtimeStopLoading,
     runtimeRestartLoading,
+    skillCatalog,
+    skillCatalogLoading,
+    skillToggleLoadingIds,
     showPostInstallHome,
     selectedVersion,
     selectedVersionOption,
@@ -837,6 +900,8 @@ export function useStage1Installer(
     handleInstallPlugin,
     handleFeishuChannelSetup,
     handleProviderSetup,
+    handleSkillToggle,
+    loadSkillCatalog,
     loadPostInstallStatus
   };
 }

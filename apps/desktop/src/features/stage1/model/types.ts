@@ -2,7 +2,7 @@ export type InstallMode = 'local' | 'remote' | 'npm';
 export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
 export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
 export type Stage1CheckState = 'ok' | 'warn' | 'error';
-export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels';
+export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills';
 
 export type InstallStep =
   | 'loadManifest'
@@ -229,6 +229,42 @@ export type OpenClawPluginInstallResult = {
   package: string;
   version: string;
   artifactPath: string;
+};
+
+export type ManagedSkillStatus = {
+  id: string;
+  name: string;
+  version: string;
+  title: string;
+  description: string;
+  category: string | null;
+  bundled: boolean;
+  installed: boolean;
+  enabled: boolean;
+  installByDefault: boolean;
+  enabledByDefault: boolean;
+  sourceDir: string | null;
+  installedPath: string | null;
+  tags: string[];
+};
+
+export type ManagedSkillCatalog = {
+  configPath: string;
+  openclawDir: string;
+  skillsDir: string;
+  skills: ManagedSkillStatus[];
+};
+
+export type OpenClawSkillTogglePayload = {
+  configPath: string;
+  skillId: string;
+  enabled: boolean;
+};
+
+export type OpenClawSkillToggleResult = {
+  configPath: string;
+  skillId: string;
+  enabled: boolean;
 };
 
 export type PluginInstallLogEntry = {

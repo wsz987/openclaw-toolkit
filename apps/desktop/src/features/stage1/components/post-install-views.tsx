@@ -3,7 +3,9 @@ import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
   OpenClawPostInstallStatus,
+  OpenClawSkillTogglePayload,
   PostInstallTab,
+  ManagedSkillCatalog,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   Stage1InstallResult
@@ -12,6 +14,7 @@ import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
 import { ChannelsPanel } from './channels-panel';
 import { ServiceControlPanel } from './service-control-panel';
+import { SkillsManagementPanel } from './skills-management-panel';
 
 type PostInstallHomeViewProps = {
   result: Stage1InstallResult;
@@ -21,6 +24,9 @@ type PostInstallHomeViewProps = {
   providerSetupResult: OpenClawProviderSetupResult | null;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
+  skillCatalog: ManagedSkillCatalog | null;
+  skillCatalogLoading: boolean;
+  skillToggleLoadingIds: string[];
   runtimeLaunchLoading: boolean;
   runtimeStopLoading: boolean;
   runtimeRestartLoading: boolean;
@@ -29,6 +35,8 @@ type PostInstallHomeViewProps = {
   logsDirOpening?: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
+  onReloadSkillCatalog: (configPath: string) => Promise<ManagedSkillCatalog | null>;
+  onSkillToggle: (input: OpenClawSkillTogglePayload) => Promise<unknown>;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
   onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
@@ -52,6 +60,9 @@ export function PostInstallHomeView({
   providerSetupResult,
   feishuSetupLoading,
   feishuSetupResult,
+  skillCatalog,
+  skillCatalogLoading,
+  skillToggleLoadingIds,
   runtimeLaunchLoading,
   runtimeStopLoading,
   runtimeRestartLoading,
@@ -60,6 +71,8 @@ export function PostInstallHomeView({
   logsDirOpening = false,
   onProviderSetup,
   onFeishuChannelSetup,
+  onReloadSkillCatalog,
+  onSkillToggle,
   onLaunchRuntime,
   onStopRuntime,
   onRestartRuntime,
@@ -137,7 +150,7 @@ export function PostInstallHomeView({
             importLoading={importLoading}
             onImportInstallation={onImportInstallation}
           />
-        ) : (
+        ) : activeTab === 'channels' ? (
           <ChannelsPanel
             result={result}
             status={status}
@@ -145,6 +158,15 @@ export function PostInstallHomeView({
             feishuSetupLoading={feishuSetupLoading}
             feishuSetupResult={feishuSetupResult}
             onFeishuChannelSetup={onFeishuChannelSetup}
+          />
+        ) : (
+          <SkillsManagementPanel
+            result={result}
+            catalog={skillCatalog}
+            loading={skillCatalogLoading}
+            toggleLoadingIds={skillToggleLoadingIds}
+            onReloadCatalog={onReloadSkillCatalog}
+            onSkillToggle={onSkillToggle}
           />
         )}
       </div>
