@@ -81,6 +81,48 @@ function ZhipuIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function OpenAIIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="9" fill="#111827" />
+      <path
+        d="M8.7 9.6c.12-1.53 1.7-2.5 3.08-1.82l.78.38.18-.84c.33-1.5 2.13-2.14 3.32-1.18l.68.55.45-.75c.79-1.32 2.84-1.3 3.6.04.48.86.33 1.93-.38 2.6l-.63.6.83.24c1.47.43 2.02 2.26 1 3.4a2.2 2.2 0 0 1-2.62.5l-.79-.38-.17.85c-.32 1.5-2.12 2.15-3.31 1.2l-.69-.55-.44.75c-.78 1.33-2.83 1.32-3.59-.03a2.2 2.2 0 0 1 .38-2.6l.63-.6-.83-.24A2.2 2.2 0 0 1 8.7 9.6Z"
+        stroke="#F8FAFC"
+        strokeWidth="1.15"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m11.8 8.2 2.25 1.3v2.6l-2.25 1.3-2.25-1.3V9.5l2.25-1.3Z"
+        stroke="#F8FAFC"
+        strokeWidth="1.15"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function XiaomiIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="#FF6900" />
+      <path
+        d="M7.6 15.7V9.1h6.1c1.72 0 2.7.98 2.7 2.7v3.9h-1.75v-3.82c0-.82-.4-1.22-1.22-1.22h-.68v5.04H11V10.66H9.35v5.04H7.6Z"
+        fill="#fff"
+      />
+      <path d="M17.2 9.1h1.75v6.6H17.2V9.1Z" fill="#fff" />
+    </svg>
+  );
+}
+
+function MiniMaxIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="4" fill="#0E7490" />
+      <path d="M7.5 16V8l4.5 4.55L16.5 8v8h-1.75v-3.88L12 14.9l-2.75-2.78V16H7.5Z" fill="#ECFEFF" />
+    </svg>
+  );
+}
+
 function DefaultProviderIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -106,6 +148,15 @@ function normalizeProviderKey(providerId: string) {
   if (providerId.includes('zhipu') || providerId.includes('glm') || providerId.includes('bigmodel')) {
     return 'zhipu';
   }
+  if (providerId.includes('openai')) {
+    return 'openai';
+  }
+  if (providerId.includes('xiaomi') || providerId.includes('mimo')) {
+    return 'xiaomi';
+  }
+  if (providerId.includes('minimax')) {
+    return 'minimax';
+  }
   return 'default';
 }
 
@@ -123,6 +174,12 @@ export function ProviderBrandIcon({ providerId, ...props }: ProviderBrandIconPro
       return <MoonshotIcon {...props} />;
     case 'zhipu':
       return <ZhipuIcon {...props} />;
+    case 'openai':
+      return <OpenAIIcon {...props} />;
+    case 'xiaomi':
+      return <XiaomiIcon {...props} />;
+    case 'minimax':
+      return <MiniMaxIcon {...props} />;
     default:
       return <DefaultProviderIcon {...props} />;
   }

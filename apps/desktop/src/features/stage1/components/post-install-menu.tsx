@@ -1,8 +1,8 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { KeyIcon, MessageSquareIcon, MonitorIcon, SettingsIcon } from '../../../components/icons';
+import { Activity, Terminal, Key, Radio, Component } from 'lucide-react';
 import type { PostInstallTab } from '../model/types';
 
-type MenuIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
+type MenuIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>;
 
 type PostInstallMenuProps = {
   activeTab: PostInstallTab;
@@ -20,7 +20,7 @@ type PostInstallMenuItem = {
 };
 
 const menuButtonBaseClassName =
-  'w-full text-left px-4 py-3.5 rounded-lg flex items-center gap-3 transition-all duration-200 cursor-pointer border';
+  'group w-full text-left px-4 py-3.5 rounded-lg flex items-center gap-3 transition-all duration-200 cursor-pointer border';
 
 const menuButtonActiveClassName =
   'bg-[hsl(var(--canvas))] text-[hsl(var(--primary))] border-[hsl(var(--hairline))] shadow-[0_2px_6px_rgba(20,20,19,0.04)] ring-3 ring-[hsl(var(--primary)/0.12)] font-semibold';
@@ -33,19 +33,19 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
     tab: 'controls',
     title: '网关服务',
     description: 'openclaw 控制面板',
-    icon: MonitorIcon
+    icon: Activity
   },
   {
     tab: 'advanced-console',
     title: '运行日志',
     description: '监控实时运行日志',
-    icon: MonitorIcon
+    icon: Terminal
   },
   {
     tab: 'provider',
     title: 'API 授权',
     description: '配置 AI 大模型服务商',
-    icon: KeyIcon,
+    icon: Key,
     renderIndicator: ({ providerReady }) =>
       providerReady ? null : (
         <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--warning))] animate-pulse absolute -top-1 -right-1" />
@@ -55,7 +55,7 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
     tab: 'channels',
     title: '聊天渠道',
     description: '接入聊天应用',
-    icon: MessageSquareIcon,
+    icon: Radio,
     renderIndicator: ({ feishuEnabled }) =>
       feishuEnabled ? (
         <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] absolute -top-1 -right-1" />
@@ -65,7 +65,7 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
     tab: 'skills',
     title: 'Skill 管理',
     description: '启用内置技能',
-    icon: SettingsIcon
+    icon: Component
   }
 ];
 

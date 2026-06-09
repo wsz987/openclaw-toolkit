@@ -1411,6 +1411,9 @@ fn inferred_api_key_env(provider_id: &str) -> String {
         "deepseek" => "DEEPSEEK_API_KEY".to_string(),
         "moonshot" => "MOONSHOT_API_KEY".to_string(),
         "zhipu" => "ZHIPU_API_KEY".to_string(),
+        "openai" => "OPENAI_API_KEY".to_string(),
+        "xiaomi" | "mimo" | "xiaomi-mimo" => "MIMO_API_KEY".to_string(),
+        "minimax" | "minimaxi" => "MINIMAX_API_KEY".to_string(),
         other => format!("{}_API_KEY", other.to_ascii_uppercase().replace('-', "_")),
     }
 }

@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { toast } from 'sonner';
 import {
   Cpu,
   Eye,
@@ -12,7 +13,6 @@ import {
   Check,
   Shield,
   Settings,
-  AlertTriangle,
   Key,
   Network,
   FolderOpen,
@@ -67,11 +67,19 @@ export function ProviderSetupPanel({
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const providerReady = resolvedStatus?.providerInitialized ?? false;
   const postInstallActionLoading =
     providerSetupLoading || runtimeLaunchLoading || statusLoading || subscribedStatusLoading;
+
+  function describeProviderApi(api: string) {
+    return api === 'openai' || api === 'openai-completions' ? 'OpenAI 兼容协议' : api;
+  }
+
+  function modelIdForProviderRequest(model: string) {
+    const prefix = `${providerId}/`;
+    return model.startsWith(prefix) ? model.slice(prefix.length) : model;
+  }
 
   function findProviderById(id: string | null | undefined): ProviderCatalogEntry | null {
     if (!id) {
@@ -106,7 +114,6 @@ export function ProviderSetupPanel({
     }
 
     setApiKey('');
-    setTestResult(null);
   }
 
   function copyToClipboard(text: string) {
@@ -145,31 +152,33 @@ export function ProviderSetupPanel({
       setApiUrl(resolvedProvider.baseUrl);
       setPrimaryModel(resolvedProvider.defaultModel);
     }
-    setTestResult(null);
   }, [providerId, providerReady, isEditing]);
 
   async function handleTestConnection() {
     if (!apiKey.trim() && !providerReady) {
-      setTestResult({ success: false, message: '请先输入 API Key 再进行连通性测试。' });
+      toast.warning('请先输入 API Key 再进行连通性测试。');
       return;
     }
 
     setTestingConnection(true);
-    setTestResult(null);
 
     try {
-      const isVolc = providerId.includes('volcengine') || apiUrl.includes('volces.com');
-      const testUrl = isVolc ? `${apiUrl}/chat/completions` : `${apiUrl}/models`;
-      const method = isVolc ? 'POST' : 'GET';
+      const usesChatCompletionProbe =
+        providerId.includes('volcengine') ||
+        providerId.includes('xiaomi') ||
+        apiUrl.includes('volces.com') ||
+        apiUrl.includes('xiaomimimo.com');
+      const testUrl = usesChatCompletionProbe ? `${apiUrl}/chat/completions` : `${apiUrl}/models`;
+      const method = usesChatCompletionProbe ? 'POST' : 'GET';
       const headers: Record<string, string> = {
         Authorization: `Bearer ${apiKey}`
       };
 
       let body: string | undefined;
-      if (isVolc) {
+      if (usesChatCompletionProbe) {
         headers['Content-Type'] = 'application/json';
         body = JSON.stringify({
-          model: primaryModel,
+          model: modelIdForProviderRequest(primaryModel),
           messages: [{ role: 'user', content: 'ping' }],
           max_tokens: 1
         });
@@ -188,7 +197,7 @@ export function ProviderSetupPanel({
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        setTestResult({ success: true, message: '连接成功！API 终结点与密钥验证通过。' });
+        toast.success('连接成功！API 终结点与密钥验证通过。');
       } else {
         const errText = await response.text().catch(() => '');
         let detail = `HTTP ${response.status}`;
@@ -200,21 +209,19 @@ export function ProviderSetupPanel({
             detail = `${detail}: ${errText.trim().substring(0, 80)}...`;
           }
         }
-        setTestResult({ success: false, message: `连接测试失败: ${detail}` });
+        toast.error(`连接测试失败: ${detail}`);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        setTestResult({ success: false, message: '连接测试超时，请检查您的网络连接或代理设置。' });
+        toast.error('连接测试超时，请检查您的网络连接或代理设置。');
       } else {
         const isFailedFetch = err instanceof TypeError && err.message.includes('fetch');
         if (isFailedFetch) {
-          setTestResult({
-            success: false,
-            message:
-              '连接验证受阻。这通常是由于浏览器 CORS 跨域安全限制。此限制不影响主程序运行，您可以直接保存配置后再通过运行控制中心验证。'
-          });
+          toast.warning(
+            '连接验证受阻。这通常是由于浏览器 CORS 跨域安全限制。此限制不影响主程序运行，您可以直接保存配置后再通过运行控制中心验证。'
+          );
         } else {
-          setTestResult({ success: false, message: `连接异常: ${err instanceof Error ? err.message : String(err)}` });
+          toast.error(`连接异常: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     } finally {
@@ -240,11 +247,10 @@ export function ProviderSetupPanel({
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${
-                  providerReady
-                    ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                    : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${providerReady
+                  ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
+                  : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
+                  }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${providerReady ? 'bg-[hsl(var(--success))]' : 'bg-[hsl(var(--warning))] animate-pulse'}`} />
                 {providerReady ? '已接入服务商' : '等待初始化'}
@@ -366,19 +372,17 @@ export function ProviderSetupPanel({
                       <div
                         key={provider.id}
                         onClick={() => setProviderId(provider.id)}
-                        className={`group relative p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-3 select-none ${
-                          isSelected
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-xs'
-                            : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
-                        }`}
+                        className={`group relative p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-3 select-none ${isSelected
+                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-xs'
+                          : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
+                          }`}
                       >
                         <div className="flex items-start justify-between">
                           <div
-                            className={`p-2 rounded-lg transition-transform group-hover:scale-105 border ${
-                              isSelected
-                                ? 'bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--primary))/0.25] shadow-2xs'
-                                : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]'
-                            }`}
+                            className={`p-2 rounded-lg transition-transform group-hover:scale-105 border ${isSelected
+                              ? 'bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--primary))/0.25] shadow-2xs'
+                              : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]'
+                              }`}
                           >
                             <ProviderBrandIcon providerId={provider.id} className="w-5 h-5" />
                           </div>
@@ -391,7 +395,7 @@ export function ProviderSetupPanel({
                         <div>
                           <h4 className="text-xs font-semibold text-[hsl(var(--ink))]">{provider.label}</h4>
                           <p className="text-[10px] text-[hsl(var(--muted))] mt-1 truncate">
-                            {provider.api === 'openai' ? 'OpenAI 兼容协议' : provider.api}
+                            {describeProviderApi(provider.api)}
                           </p>
                         </div>
                       </div>
@@ -470,11 +474,10 @@ export function ProviderSetupPanel({
                                 type="button"
                                 key={model.id}
                                 onClick={() => setPrimaryModel(formattedModel)}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-mono border transition-all duration-150 cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-[hsl(var(--primary)/0.08)] border-[hsl(var(--primary))] text-[hsl(var(--primary))] font-semibold'
-                                    : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))] text-[hsl(var(--body))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))]'
-                                }`}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-mono border transition-all duration-150 cursor-pointer ${isSelected
+                                  ? 'bg-[hsl(var(--primary)/0.08)] border-[hsl(var(--primary))] text-[hsl(var(--primary))] font-semibold'
+                                  : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))] text-[hsl(var(--body))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))]'
+                                  }`}
                               >
                                 {model.name}
                               </button>
@@ -513,26 +516,6 @@ export function ProviderSetupPanel({
                   </label>
                 </div>
               </div>
-
-              {testResult && (
-                <div
-                  className={`rounded-lg border px-4 py-3 text-xs leading-relaxed animate-fade-in flex items-start gap-2.5 ${
-                    testResult.success
-                      ? 'border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] text-[hsl(var(--body-strong))]'
-                      : 'border-[hsl(var(--warning)/0.2)] bg-[hsl(var(--warning)/0.06)] text-[hsl(var(--body-strong))]'
-                  }`}
-                >
-                  {testResult.success ? (
-                    <Check className="text-[hsl(var(--success))] w-4 h-4 mt-0.5 flex-shrink-0" />
-                  ) : (
-                    <AlertTriangle className="text-[hsl(var(--warning))] w-4 h-4 mt-0.5 flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <strong>{testResult.success ? '测试通过' : '测试提示'}：</strong>
-                    <span>{testResult.message}</span>
-                  </div>
-                </div>
-              )}
 
               {providerSetupResult ? (
                 <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] animate-fade-in flex items-start gap-2.5 shadow-2xs">
