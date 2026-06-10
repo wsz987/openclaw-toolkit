@@ -96,7 +96,10 @@ pub async fn test_openclaw_provider_connection(
         .await
         .map_err(|error| {
             let rendered = error.to_string();
-            eprintln!("test_openclaw_provider_connection join failed:\n{}", rendered);
+            eprintln!(
+                "test_openclaw_provider_connection join failed:\n{}",
+                rendered
+            );
             rendered
         })?
         .map_err(render_error)

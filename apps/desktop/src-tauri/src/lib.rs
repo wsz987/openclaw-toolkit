@@ -41,6 +41,9 @@ pub fn run() {
             }
         })
         .setup(move |app| {
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                std::env::set_var("OPENCLAW_TOOLKIT_ROOT", &resource_dir);
+            }
             status_watcher.start(app.handle().clone());
             let tray_icon = setup_system_tray(app.handle())?;
             app.manage(tray_icon);

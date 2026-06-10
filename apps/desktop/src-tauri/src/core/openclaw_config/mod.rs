@@ -526,11 +526,7 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         .clone()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| provider.default_model.clone());
-    let api_key = resolve_provider_api_key(
-        &config,
-        &provider.id,
-        Some(input.api_key.as_str()),
-    )?;
+    let api_key = resolve_provider_api_key(&config, &provider.id, Some(input.api_key.as_str()))?;
     let active_provider = provider_catalog_entry_from_choice(&provider);
 
     set_value_at_path(
@@ -607,7 +603,12 @@ pub fn test_provider_connection(
     } else {
         format!("{}/models", api_url.trim_end_matches('/'))
     };
-    let method = if uses_chat_completion_probe { "POST" } else { "GET" }.to_string();
+    let method = if uses_chat_completion_probe {
+        "POST"
+    } else {
+        "GET"
+    }
+    .to_string();
 
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(8))
@@ -1541,9 +1542,10 @@ fn resolve_provider_api_key(
         return Ok(api_key.to_string());
     }
 
-    if let Some(existing_api_key) = string_at_path(config, &["models", "providers", provider_id, "apiKey"])
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+    if let Some(existing_api_key) =
+        string_at_path(config, &["models", "providers", provider_id, "apiKey"])
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
     {
         return Ok(existing_api_key);
     }

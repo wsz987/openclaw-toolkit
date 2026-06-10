@@ -272,6 +272,9 @@ fn resolve_resource_root_from_openclaw_dir(openclaw_dir: &Path) -> anyhow::Resul
         .with_context(|| format!("resolve base dir from {}", openclaw_dir.display()))?;
 
     let mut candidates = Vec::new();
+    if let Ok(explicit_root) = std::env::var("OPENCLAW_TOOLKIT_ROOT") {
+        candidates.push(PathBuf::from(explicit_root));
+    }
     candidates.extend(path_with_ancestors(base_dir.to_path_buf(), 4));
 
     if let Ok(current_dir) = std::env::current_dir() {

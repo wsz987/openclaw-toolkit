@@ -81,25 +81,53 @@ pub struct UninstallResult {
 }
 
 pub fn inspect_uninstall_plan(installation_id: &str) -> anyhow::Result<UninstallPlan> {
+    eprintln!(
+        "[卸载] 开始检查卸载计划: installation_id={}",
+        installation_id
+    );
     let record = find_installation_record(installation_id)?;
-    build_uninstall_plan(&record)
+    let plan = build_uninstall_plan(&record)?;
+    eprintln!(
+        "[卸载] 卸载计划已生成: installation_id={}, display_name={}, target_count={}, retained_count={}",
+        plan.installation_id,
+        plan.display_name,
+        plan.targets.len(),
+        plan.retained.len()
+    );
+    Ok(plan)
 }
 
 pub fn execute_uninstall(input: ExecuteUninstallInput) -> anyhow::Result<UninstallResult> {
+    eprintln!(
+        "[卸载] 开始执行: installation_id={}, requested_scopes={:?}",
+        input.installation_id, input.selected_scopes
+    );
     let record = find_installation_record(&input.installation_id)?;
     let plan = build_uninstall_plan(&record)?;
     let selected_scopes = normalize_selected_scopes(&input.selected_scopes, &plan);
+    eprintln!(
+        "[卸载] 解析后的删除范围: installation_id={}, scopes={:?}",
+        input.installation_id, selected_scopes
+    );
 
     validate_selected_scopes(&selected_scopes, &plan)?;
     if input.typed_confirmation.as_deref() != Some(CONFIRMATION_TEXT) {
         anyhow::bail!("请输入 {} 后再执行卸载", CONFIRMATION_TEXT);
     }
+    eprintln!(
+        "[卸载] 二次确认已通过: installation_id={}",
+        input.installation_id
+    );
 
     if plan.runtime.running {
         if let Some(pid) = plan.runtime.pid {
+            eprintln!("[卸载] 检测到运行中的 OpenClaw，准备停止进程: pid={}", pid);
             stop_managed_openclaw(pid)
                 .with_context(|| format!("停止 OpenClaw 运行进程 {}", pid))?;
+            eprintln!("[卸载] OpenClaw 运行进程已停止: pid={}", pid);
         }
+    } else {
+        eprintln!("[卸载] 当前未检测到运行中的 OpenClaw 进程");
     }
 
     let mut deleted_scopes = Vec::new();
@@ -108,20 +136,43 @@ pub fn execute_uninstall(input: ExecuteUninstallInput) -> anyhow::Result<Uninsta
         .iter()
         .filter(|target| selected_scopes.contains(&target.scope))
     {
+        eprintln!(
+            "[卸载] 准备删除目标: scope={}, kind={}, path={}",
+            target.scope, target.kind, target.path
+        );
         validate_deletion_target(target, &record)?;
         remove_target(target, &record)?;
+        eprintln!(
+            "[卸载] 删除目标完成: scope={}, path={}",
+            target.scope, target.path
+        );
         deleted_scopes.push(target.scope.clone());
     }
 
+    eprintln!(
+        "[卸载] 准备移除安装注册记录: installation_id={}",
+        input.installation_id
+    );
     unregister_installation(&input.installation_id)?;
+    eprintln!(
+        "[卸载] 安装注册记录已移除: installation_id={}",
+        input.installation_id
+    );
 
-    Ok(UninstallResult {
+    let result = UninstallResult {
         installation_id: input.installation_id,
         status: "uninstalled".to_string(),
         deleted_scopes,
         retained: plan.retained,
         warnings: plan.warnings,
-    })
+    };
+    eprintln!(
+        "[卸载] 执行完成: installation_id={}, deleted_scopes={:?}, warning_count={}",
+        result.installation_id,
+        result.deleted_scopes,
+        result.warnings.len()
+    );
+    Ok(result)
 }
 
 fn find_installation_record(installation_id: &str) -> anyhow::Result<InstallationRecord> {
@@ -392,6 +443,10 @@ fn validate_deletion_target(
 fn remove_target(target: &DeletionTarget, record: &InstallationRecord) -> anyhow::Result<()> {
     let path = PathBuf::from(&target.path);
     if !path.exists() {
+        eprintln!(
+            "[卸载] 目标不存在，跳过删除: scope={}, path={}",
+            target.scope, target.path
+        );
         return Ok(());
     }
 
@@ -407,6 +462,10 @@ fn remove_openclaw_app_contents(
     openclaw_dir: &Path,
     record: &InstallationRecord,
 ) -> anyhow::Result<()> {
+    eprintln!(
+        "[卸载] 开始清理 OpenClaw 主目录内容: {}",
+        openclaw_dir.display()
+    );
     let workspace_path = openclaw_dir.join("workspace");
     let workspace_selected = false;
     let mut entries = Vec::new();
@@ -423,6 +482,7 @@ fn remove_openclaw_app_contents(
 
     let trash_root = trash_root(Path::new(&record.base_dir), "openclawApp")?;
     for path in entries {
+        eprintln!("[卸载] 清理 OpenClaw 子项: {}", path.display());
         move_then_delete(&path, &trash_root)?;
     }
 
@@ -431,6 +491,15 @@ fn remove_openclaw_app_contents(
         .unwrap_or(false)
     {
         let _ = fs::remove_dir(openclaw_dir);
+        eprintln!(
+            "[卸载] OpenClaw 主目录为空，已移除目录壳: {}",
+            openclaw_dir.display()
+        );
+    } else {
+        eprintln!(
+            "[卸载] OpenClaw 主目录保留未删除内容（通常为 workspace）: {}",
+            openclaw_dir.display()
+        );
     }
 
     Ok(())
@@ -438,6 +507,12 @@ fn remove_openclaw_app_contents(
 
 fn remove_path_via_trash(path: &Path, base_dir: &Path, label: &str) -> anyhow::Result<()> {
     let trash_root = trash_root(base_dir, label)?;
+    eprintln!(
+        "[卸载] 通过临时回收目录删除: label={}, path={}, trash_root={}",
+        label,
+        path.display(),
+        trash_root.display()
+    );
     move_then_delete(path, &trash_root)
 }
 
@@ -454,8 +529,21 @@ fn move_then_delete(path: &Path, trash_root: &Path) -> anyhow::Result<()> {
     let destination = unique_trash_path(trash_root.join(file_name));
 
     match fs::rename(path, &destination) {
-        Ok(()) => remove_moved_path(&destination),
+        Ok(()) => {
+            eprintln!(
+                "[卸载] 已移动到临时目录，继续删除: source={}, destination={}",
+                path.display(),
+                destination.display()
+            );
+            remove_moved_path(&destination)
+        }
         Err(rename_error) => {
+            eprintln!(
+                "[卸载] 移动到临时目录失败，直接删除原路径: source={}, destination={}, reason={}",
+                path.display(),
+                destination.display(),
+                rename_error
+            );
             if is_real_dir(path) {
                 remove_dir_all::remove_dir_all(path).with_context(|| {
                     format!(
@@ -482,9 +570,11 @@ fn move_then_delete(path: &Path, trash_root: &Path) -> anyhow::Result<()> {
 
 fn remove_moved_path(path: &Path) -> anyhow::Result<()> {
     if is_real_dir(path) {
+        eprintln!("[卸载] 删除目录: {}", path.display());
         remove_dir_all::remove_dir_all(path)
             .with_context(|| format!("delete {}", path.display()))?;
     } else if path.exists() {
+        eprintln!("[卸载] 删除文件: {}", path.display());
         fs::remove_file(path).with_context(|| format!("delete {}", path.display()))?;
     }
 

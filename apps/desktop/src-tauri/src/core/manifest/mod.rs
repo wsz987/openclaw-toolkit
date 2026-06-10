@@ -96,6 +96,10 @@ pub fn resolve_resource_root_from_config_path(config_path: &Path) -> anyhow::Res
 fn resolve_resource_root_from_base_dir(base_dir: &Path) -> anyhow::Result<PathBuf> {
     let mut candidates = Vec::new();
 
+    if let Ok(explicit_root) = std::env::var("OPENCLAW_TOOLKIT_ROOT") {
+        candidates.push(PathBuf::from(explicit_root));
+    }
+
     candidates.extend(path_with_ancestors(base_dir.to_path_buf(), 4));
 
     if let Ok(current_dir) = std::env::current_dir() {

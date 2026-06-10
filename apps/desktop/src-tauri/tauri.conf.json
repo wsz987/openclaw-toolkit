@@ -16,7 +16,8 @@
         "title": "OpenClaw Toolkit",
         "width": 1200,
         "height": 760,
-        "resizable": true
+        "resizable": true,
+        "maximizable": false
       }
     ],
     "security": { "csp": null }
@@ -24,8 +25,17 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "resources": {
+      "../../../artifacts": "artifacts",
+      "../../../licenses": "licenses"
+    },
     "windows": {
-      "nsis": { "installMode": "perMachine", "installerIcon": null }
+      "nsis": {
+        "installMode": "perMachine",
+        "installerIcon": null,
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false
+      }
     }
   }
 }
