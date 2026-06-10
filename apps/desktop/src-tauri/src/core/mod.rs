@@ -1,5 +1,6 @@
 pub mod app_state;
 pub mod artifact;
+pub mod background_process;
 pub mod browser;
 pub mod dialog;
 pub mod environment;

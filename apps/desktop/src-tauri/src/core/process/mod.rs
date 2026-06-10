@@ -7,7 +7,10 @@ use std::{
 
 use anyhow::Context;
 
-use crate::core::{node_runtime::node_runtime_executable, openclaw_config::OpenClawStatusSummary};
+use crate::core::{
+    background_process::background_command, node_runtime::node_runtime_executable,
+    openclaw_config::OpenClawStatusSummary,
+};
 
 pub struct SystemOpenClawDetection {
     pub executable: Option<PathBuf>,
@@ -85,7 +88,8 @@ pub fn launch_managed_openclaw(
         .try_clone()
         .with_context(|| format!("clone log handle {}", log_path.display()))?;
 
-    let child = Command::new(&node_exe)
+    let mut command = background_command(&node_exe);
+    command
         .arg(&openclaw_entry)
         .arg("gateway")
         .env("OPENCLAW_CONFIG_PATH", &status.config_path)
@@ -93,7 +97,9 @@ pub fn launch_managed_openclaw(
         .current_dir(PathBuf::from(&status.openclaw_dir).join("package"))
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
-        .stderr(Stdio::from(stderr))
+        .stderr(Stdio::from(stderr));
+
+    let child = command
         .spawn()
         .with_context(|| format!("launch managed openclaw via {}", node_exe.display()))?;
 
@@ -106,7 +112,7 @@ pub fn launch_managed_openclaw(
 pub fn stop_managed_openclaw(pid: u32) -> anyhow::Result<ManagedOpenClawStopResult> {
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("taskkill")
+        let status = background_command("taskkill")
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .status()
             .with_context(|| format!("stop managed openclaw pid {}", pid))?;
@@ -160,14 +166,14 @@ fn openclaw_version_command(executable: &Path) -> Command {
         .map(|value| value.to_ascii_lowercase());
 
     match extension.as_deref() {
-        Some("exe") => Command::new(executable),
+        Some("exe") => background_command(executable),
         Some("cmd") | Some("bat") => {
-            let mut command = Command::new("cmd");
+            let mut command = background_command("cmd");
             command.arg("/c").arg(executable);
             command
         }
         Some("ps1") => {
-            let mut command = Command::new("powershell");
+            let mut command = background_command("powershell");
             command
                 .arg("-NoProfile")
                 .arg("-ExecutionPolicy")
@@ -178,16 +184,16 @@ fn openclaw_version_command(executable: &Path) -> Command {
         }
         _ => {
             if let Some(sibling_cmd) = sibling_command(executable, "cmd") {
-                let mut command = Command::new("cmd");
+                let mut command = background_command("cmd");
                 command.arg("/c").arg(sibling_cmd);
                 return command;
             }
 
             if let Some(sibling_exe) = sibling_command(executable, "exe") {
-                return Command::new(sibling_exe);
+                return background_command(sibling_exe);
             }
 
-            let mut command = Command::new("cmd");
+            let mut command = background_command("cmd");
             command.arg("/c").arg(executable);
             command
         }
@@ -222,7 +228,7 @@ fn parse_openclaw_version_output(output: &str) -> anyhow::Result<String> {
 #[cfg(target_os = "windows")]
 fn find_system_openclaw() -> Option<PathBuf> {
     for candidate in ["openclaw.cmd", "openclaw.exe", "openclaw.ps1", "openclaw"] {
-        let output = Command::new("where").arg(candidate).output().ok()?;
+        let output = background_command("where").arg(candidate).output().ok()?;
         if !output.status.success() {
             continue;
         }

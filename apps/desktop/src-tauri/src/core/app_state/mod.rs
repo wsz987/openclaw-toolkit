@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::core::{
+    background_process::background_command,
     manifest::{models::InstalledManifest, write_installed_manifest},
     openclaw_config::{read_openclaw_status, OpenClawStatusSummary},
 };
@@ -279,7 +280,7 @@ pub fn open_control_panel(config_path: &Path) -> anyhow::Result<String> {
     let status = read_openclaw_status(config_path)?;
     let url = status.control_ui_url.clone();
 
-    Command::new("cmd")
+    background_command("cmd")
         .args(["/C", "start", "", &url])
         .spawn()
         .with_context(|| format!("open control panel {}", url))?;
@@ -777,7 +778,7 @@ fn upsert_installation(registry: &mut InstallationRegistry, record: Installation
 #[cfg(target_os = "windows")]
 fn process_id_is_running(pid: u32) -> bool {
     let filter = format!("PID eq {pid}");
-    let output = Command::new("tasklist")
+    let output = background_command("tasklist")
         .args(["/FI", &filter, "/FO", "CSV", "/NH"])
         .output();
 

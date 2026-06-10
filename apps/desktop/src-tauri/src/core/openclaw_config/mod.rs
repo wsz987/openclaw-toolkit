@@ -3,7 +3,7 @@ use std::{
     io::{BufRead, BufReader},
     net::{TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Stdio,
     thread,
     time::Duration,
 };
@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 
 use crate::core::{
     artifact::{install_archive, verify_sha256},
+    background_process::background_command,
     manifest::{
         load_provider_catalog_from_config_path,
         models::{
@@ -464,7 +465,7 @@ fn probe_gateway_runtime(gateway_url: &str) -> bool {
 
 #[cfg(target_os = "windows")]
 fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
-    let output = Command::new("netstat")
+    let output = background_command("netstat")
         .args(["-ano", "-p", "tcp"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -1631,7 +1632,7 @@ fn install_openclaw_via_npm(
         anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
     }
 
-    let status = Command::new("cmd")
+    let status = background_command("cmd")
         .args([
             "/C",
             npm_cmd.to_string_lossy().as_ref(),
@@ -1773,7 +1774,7 @@ fn run_command_with_progress(
     args: &[&str],
     ignore_scripts: bool,
 ) -> anyhow::Result<std::process::ExitStatus> {
-    let mut command_builder = Command::new(command);
+    let mut command_builder = background_command(command);
     command_builder
         .args(args)
         .current_dir(working_dir)

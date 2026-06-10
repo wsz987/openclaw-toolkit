@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use anyhow::Context;
@@ -9,6 +8,7 @@ use semver::{Version, VersionReq};
 
 use crate::core::{
     artifact::{install_archive, verify_sha256},
+    background_process::background_command,
     manifest::models::RequiredNodeRuntime,
     remote::download_remote_file,
 };
@@ -156,7 +156,7 @@ pub fn parse_node_version(value: &str) -> anyhow::Result<Version> {
 }
 
 fn read_node_version(node_exe: &Path) -> anyhow::Result<Version> {
-    let output = Command::new(node_exe)
+    let output = background_command(node_exe)
         .arg("--version")
         .output()
         .with_context(|| format!("执行 {} --version 失败", node_exe.display()))?;
@@ -200,7 +200,7 @@ fn resolve_node_runtime_file(node_dir: &Path, file_name: &str) -> Option<PathBuf
 }
 
 fn find_system_node() -> Option<PathBuf> {
-    let output = Command::new("where").arg("node").output().ok()?;
+    let output = background_command("where").arg("node").output().ok()?;
     if !output.status.success() {
         return None;
     }

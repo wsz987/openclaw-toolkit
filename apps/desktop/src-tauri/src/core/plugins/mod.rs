@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use anyhow::Context;
@@ -9,6 +8,7 @@ use semver::{Version, VersionReq};
 
 use crate::core::{
     artifact::verify_sha256,
+    background_process::background_command,
     manifest::{
         load_plugin_manifest,
         models::{InstalledManifest, InstalledPlugin, PluginArtifact},
@@ -212,7 +212,7 @@ fn install_plugin_package(
         anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
     }
 
-    let status = Command::new("cmd")
+    let status = background_command("cmd")
         .args([
             "/C",
             npm_cmd.to_string_lossy().as_ref(),
