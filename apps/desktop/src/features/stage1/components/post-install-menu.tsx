@@ -79,7 +79,7 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
 
 export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuEnabled }: PostInstallMenuProps) {
   return (
-    <div className="flex flex-col gap-4 w-full py-4 select-none">
+    <div className="flex flex-col gap-4 w-full py-4 select-none flex-1">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted))] mb-1 pl-1">
         管理与配置
       </div>
