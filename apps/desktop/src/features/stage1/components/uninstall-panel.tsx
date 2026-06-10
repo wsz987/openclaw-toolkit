@@ -211,7 +211,7 @@ export function UninstallPanel({
   if (executing) {
     return (
       <UninstallShell>
-        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto w-full">
+        <div className="flex flex-col flex-1 items-center justify-center py-20 text-center max-w-md mx-auto w-full">
           <RefreshCw size={28} className="text-[hsl(var(--primary))] animate-spin mb-4" />
           <h3 className="text-sm font-semibold text-[hsl(var(--ink))]">正在卸载 OpenClaw...</h3>
           <p className="text-xs text-[hsl(var(--muted))] mt-1.5 leading-relaxed">

@@ -71,7 +71,7 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
   {
     tab: 'uninstall',
     title: '卸载清理',
-    description: '移除受管环境',
+    description: '移除 openclaw 及环境',
     icon: Trash2,
     className: 'mt-auto'
   }
