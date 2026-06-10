@@ -49,56 +49,6 @@
           "version": "1.0.0"
         }
       ]
-    },
-    {
-      "name": "openclaw",
-      "version": "2026.5.18",
-      "platform": "win32-x64",
-      "artifact": "openclaw-2026.5.18.tgz",
-      "sha256": "12223d7ac9dbe90c47c55a57f23854123655463063190f2c5b1293f16fe9e3aa",
-      "signature": null,
-      "requiredNode": {
-        "version": "22.19.0",
-        "range": ">=22.19.0 <23",
-        "artifact": "node-v22.19.0-win-x64.zip",
-        "sha256": "ea3fad0e67a991d8477d8c01344b56e69c676ccb733f065b22436994b1253f86",
-        "signature": null
-      },
-      "skills": [
-        {
-          "name": "browser-control",
-          "version": "1.0.0"
-        },
-        {
-          "name": "local-filesystem",
-          "version": "1.0.0"
-        }
-      ]
-    },
-    {
-      "name": "openclaw",
-      "version": "2026.5.12",
-      "platform": "win32-x64",
-      "artifact": "openclaw-2026.5.12.tgz",
-      "sha256": "1cae4d1d4132e5fd548478ab3ad3c578627a9c78e37e67379dde7659c674bf1e",
-      "signature": null,
-      "requiredNode": {
-        "version": "22.19.0",
-        "range": ">=22.19.0 <23",
-        "artifact": "node-v22.19.0-win-x64.zip",
-        "sha256": "ea3fad0e67a991d8477d8c01344b56e69c676ccb733f065b22436994b1253f86",
-        "signature": null
-      },
-      "skills": [
-        {
-          "name": "browser-control",
-          "version": "1.0.0"
-        },
-        {
-          "name": "local-filesystem",
-          "version": "1.0.0"
-        }
-      ]
     }
   ]
 }

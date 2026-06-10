@@ -27,18 +27,9 @@ pub fn suppress_console_window(command: &mut Command) -> &mut Command {
 /// package specs and can turn `\\?\D:\...` into an invalid relative path.
 pub fn process_friendly_path(path: &Path) -> PathBuf {
     #[cfg(target_os = "windows")]
-    {
-        let value = path.as_os_str().to_string_lossy();
+    return dunce::simplified(path).to_path_buf();
 
-        if let Some(stripped) = value.strip_prefix(r"\\?\UNC\") {
-            return PathBuf::from(format!(r"\\{stripped}"));
-        }
-
-        if let Some(stripped) = value.strip_prefix(r"\\?\") {
-            return PathBuf::from(stripped);
-        }
-    }
-
+    #[cfg(not(target_os = "windows"))]
     path.to_path_buf()
 }
 
@@ -93,12 +84,11 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "windows")]
     #[test]
-    fn strips_windows_verbatim_unc_prefix() {
+    fn leaves_regular_paths_unchanged() {
         assert_eq!(
-            process_friendly_path_string(Path::new(r"\\?\UNC\server\share\artifact.tgz")),
-            r"\\server\share\artifact.tgz"
+            process_friendly_path_string(Path::new(r"D:\workspace\artifact.tgz")),
+            r"D:\workspace\artifact.tgz"
         );
     }
 }

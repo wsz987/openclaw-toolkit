@@ -420,7 +420,7 @@ export function UninstallPanel({
                     className="h-8 bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))] text-xs focus-visible:ring-[hsl(var(--primary))]"
                     value={typedConfirmation}
                     disabled={executing}
-                    onChange={(event) => setTypedConfirmation(event.target.value)}
+                    onChange={(event) => setTypedConfirmation(event.target.value.toUpperCase())}
                     placeholder={plan.confirmationText}
                   />
                 </div>

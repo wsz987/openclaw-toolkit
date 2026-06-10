@@ -2784,6 +2784,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "directories",
+ "dunce",
  "ed25519-dalek",
  "flate2",
  "hex",
