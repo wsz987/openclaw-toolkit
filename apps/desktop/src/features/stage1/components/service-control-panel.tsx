@@ -265,12 +265,11 @@ export function ServiceControlPanel({
         )}
 
         {/* Restart & Stop Buttons (Always in DOM to preserve height, preventing layout jumps) */}
-        <div 
-          className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${
-            (isRunning || isStarting)
-              ? 'opacity-100 translate-y-0 pointer-events-auto' 
-              : 'opacity-0 -translate-y-2 pointer-events-none'
-          }`}
+        <div
+          className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${(isRunning || isStarting)
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 -translate-y-2 pointer-events-none'
+            }`}
         >
           <Button
             variant="outline"
@@ -313,7 +312,7 @@ export function ServiceControlPanel({
       </div>
 
       {/* Pending Config Changes Warning Banner */}
-      {runtimeActionRequired !== 'none' && (
+      {/* {runtimeActionRequired !== 'none' && (
         <div className="w-full rounded-xl border border-[hsl(var(--warning)/0.24)] bg-[hsl(var(--warning)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] flex items-start gap-2.5 text-left animate-slide-in">
           <span className="text-[hsl(var(--warning))] text-sm select-none font-bold mt-0.5">⚠️</span>
           <div className="flex flex-col gap-0.5">
@@ -324,7 +323,7 @@ export function ServiceControlPanel({
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Advanced Console Link */}
       {/* {onNavigateToAdvancedConsole && (

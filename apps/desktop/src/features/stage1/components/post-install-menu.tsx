@@ -71,7 +71,7 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
   {
     tab: 'uninstall',
     title: '卸载清理',
-    description: '移除 openclaw 及环境',
+    description: '清理 openclaw 环境',
     icon: Trash2,
     className: 'mt-auto'
   }
@@ -83,7 +83,7 @@ export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuE
       <div className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted))] mb-1 pl-1">
         管理与配置
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 flex-1">
         {postInstallMenuItems.map(({ tab, title, description, icon: Icon, renderIndicator, className }) => {
           const isActive = activeTab === tab;
 
