@@ -14,6 +14,8 @@ import type {
   OpenClawStopResult,
   OpenPathResult,
   OpenClawPostInstallStatus,
+  OpenClawProviderConnectionTestPayload,
+  OpenClawProviderConnectionTestResult,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   ExecuteUninstallPayload,
@@ -106,6 +108,14 @@ export async function setupOpenClawProvider(
   input: OpenClawProviderSetupPayload
 ): Promise<OpenClawProviderSetupResult> {
   return invoke<OpenClawProviderSetupResult>('setup_openclaw_provider', { input });
+}
+
+export async function testOpenClawProviderConnection(
+  input: OpenClawProviderConnectionTestPayload
+): Promise<OpenClawProviderConnectionTestResult> {
+  return invoke<OpenClawProviderConnectionTestResult>('test_openclaw_provider_connection', {
+    input
+  });
 }
 
 export async function setupOpenClawFeishuChannel(

@@ -24,7 +24,6 @@ type PostInstallHomeViewProps = {
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   providerSetupLoading: boolean;
-  providerSetupResult: OpenClawProviderSetupResult | null;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
   skillCatalog: ManagedSkillCatalog | null;
@@ -72,7 +71,6 @@ export function PostInstallHomeView({
   status,
   statusLoading,
   providerSetupLoading,
-  providerSetupResult,
   feishuSetupLoading,
   feishuSetupResult,
   skillCatalog,
@@ -165,7 +163,6 @@ export function PostInstallHomeView({
             result={result}
             status={status}
             providerSetupLoading={providerSetupLoading}
-            providerSetupResult={providerSetupResult}
             runtimeLaunchLoading={runtimeLaunchLoading}
             statusLoading={statusLoading}
             onProviderSetup={onProviderSetup}

@@ -176,6 +176,24 @@ export type OpenClawProviderSetupResult = {
   agentPermissionsGranted: boolean;
 };
 
+export type OpenClawProviderConnectionTestPayload = {
+  configPath: string;
+  providerId: string;
+  apiKey?: string;
+  apiUrl?: string;
+  primaryModel?: string;
+};
+
+export type OpenClawProviderConnectionTestResult = {
+  providerId: string;
+  apiUrl: string;
+  testUrl: string;
+  method: string;
+  ok: boolean;
+  status: number | null;
+  detail: string;
+};
+
 export type OpenClawFeishuChannelSetupPayload = {
   configPath: string;
   enabled: boolean;

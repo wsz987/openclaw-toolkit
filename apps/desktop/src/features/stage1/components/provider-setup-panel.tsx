@@ -4,6 +4,7 @@ import { Input } from '../../../components/ui/input';
 import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { toast } from 'sonner';
+import { testOpenClawProviderConnection } from '../api/stage1-api';
 import {
   Cpu,
   Eye,
@@ -11,6 +12,7 @@ import {
   Lock,
   Copy,
   Check,
+  AlertTriangle,
   Shield,
   Settings,
   Key,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import type {
   OpenClawPostInstallStatus,
+  OpenClawProviderConnectionTestResult,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   ProviderCatalogEntry,
@@ -32,7 +35,6 @@ type ProviderSetupPanelProps = {
   result: Stage1InstallResult;
   status: OpenClawPostInstallStatus | null;
   providerSetupLoading: boolean;
-  providerSetupResult: OpenClawProviderSetupResult | null;
   runtimeLaunchLoading: boolean;
   statusLoading: boolean;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
@@ -45,7 +47,6 @@ export function ProviderSetupPanel({
   result,
   status,
   providerSetupLoading,
-  providerSetupResult,
   runtimeLaunchLoading,
   statusLoading,
   onProviderSetup,
@@ -67,6 +68,7 @@ export function ProviderSetupPanel({
   const [showApiKey, setShowApiKey] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<OpenClawProviderConnectionTestResult | null>(null);
 
   const providerReady = resolvedStatus?.providerInitialized ?? false;
   const postInstallActionLoading =
@@ -76,9 +78,14 @@ export function ProviderSetupPanel({
     return api === 'openai' || api === 'openai-completions' ? 'OpenAI 兼容协议' : api;
   }
 
-  function modelIdForProviderRequest(model: string) {
-    const prefix = `${providerId}/`;
-    return model.startsWith(prefix) ? model.slice(prefix.length) : model;
+  function buildDisplayedTestUrl() {
+    const normalizedApiUrl = apiUrl.trim().replace(/\/+$/, '');
+    const usesChatCompletionProbe =
+      providerId.includes('volcengine') ||
+      providerId.includes('xiaomi') ||
+      normalizedApiUrl.includes('volces.com') ||
+      normalizedApiUrl.includes('xiaomimimo.com');
+    return usesChatCompletionProbe ? `${normalizedApiUrl}/chat/completions` : `${normalizedApiUrl}/models`;
   }
 
   function findProviderById(id: string | null | undefined): ProviderCatalogEntry | null {
@@ -154,6 +161,10 @@ export function ProviderSetupPanel({
     }
   }, [providerId, providerReady, isEditing]);
 
+  useEffect(() => {
+    setConnectionTestResult(null);
+  }, [providerId, apiUrl, apiKey, primaryModel, isEditing]);
+
   async function handleTestConnection() {
     if (!apiKey.trim() && !providerReady) {
       toast.warning('请先输入 API Key 再进行连通性测试。');
@@ -163,73 +174,68 @@ export function ProviderSetupPanel({
     setTestingConnection(true);
 
     try {
-      const usesChatCompletionProbe =
-        providerId.includes('volcengine') ||
-        providerId.includes('xiaomi') ||
-        apiUrl.includes('volces.com') ||
-        apiUrl.includes('xiaomimimo.com');
-      const testUrl = usesChatCompletionProbe ? `${apiUrl}/chat/completions` : `${apiUrl}/models`;
-      const method = usesChatCompletionProbe ? 'POST' : 'GET';
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${apiKey}`
-      };
-
-      let body: string | undefined;
-      if (usesChatCompletionProbe) {
-        headers['Content-Type'] = 'application/json';
-        body = JSON.stringify({
-          model: modelIdForProviderRequest(primaryModel),
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 1
-        });
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const response = await fetch(testUrl, {
-        method,
-        headers,
-        body,
-        signal: controller.signal
+      const response = await testOpenClawProviderConnection({
+        configPath: result.configPath,
+        providerId,
+        apiKey: apiKey.trim() || undefined,
+        apiUrl,
+        primaryModel
       });
 
-      clearTimeout(timeoutId);
+      setConnectionTestResult(response);
 
       if (response.ok) {
-        toast.success('连接成功！API 终结点与密钥验证通过。');
+        toast.success(`连接成功！API 端点与密钥验证通过。`);
       } else {
-        const errText = await response.text().catch(() => '');
-        let detail = `HTTP ${response.status}`;
-        try {
-          const errJson = JSON.parse(errText);
-          detail = errJson?.error?.message || errJson?.message || detail;
-        } catch {
-          if (errText.trim().substring(0, 100)) {
-            detail = `${detail}: ${errText.trim().substring(0, 80)}...`;
-          }
-        }
-        toast.error(`连接测试失败: ${detail}`);
+        toast.error(`连接测试失败: ${response.detail}`);
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        toast.error('连接测试超时，请检查您的网络连接或代理设置。');
-      } else {
-        const isFailedFetch = err instanceof TypeError && err.message.includes('fetch');
-        if (isFailedFetch) {
-          toast.warning(
-            '连接验证受阻。这通常是由于浏览器 CORS 跨域安全限制。此限制不影响主程序运行，您可以直接保存配置后再通过运行控制中心验证。'
-          );
-        } else {
-          toast.error(`连接异常: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
+    } catch (err) {
+      toast.error(`连接异常: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setTestingConnection(false);
     }
   }
 
+  async function handleProviderSetupSubmit() {
+    const response = await onProviderSetup({
+      configPath: result.configPath,
+      providerId,
+      apiKey,
+      apiUrl,
+      primaryModel,
+      grantAgentPermissions
+    });
+
+    if (response) {
+      toast.success(`启用 ${response.primaryModel} 模型`);
+    }
+  }
+
   const resolvedProvider = findProviderById(providerId);
+
+  function renderTestConnectionButton(className: string) {
+    return (
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={postInstallActionLoading || testingConnection}
+        onClick={handleTestConnection}
+        className={className}
+      >
+        {testingConnection ? (
+          <>
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            正在连接测试中...
+          </>
+        ) : (
+          <>
+            <Network className="w-4 h-4 mr-2 text-[hsl(var(--primary))]" />
+            测试端点连接
+          </>
+        )}
+      </Button>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full flex-1 min-h-0 relative animate-fade-in">
@@ -301,7 +307,7 @@ export function ProviderSetupPanel({
 
                 <Card className="md:col-span-2 hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
                   <CardContent className="p-5">
-                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">API 终结点 (Endpoint)</span>
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">API 端点 (API URL)</span>
                     <div className="flex items-center justify-between gap-4 mt-1.5 bg-[hsl(var(--canvas))] p-2.5 rounded-lg border border-[hsl(var(--hairline))]">
                       <code className="text-xs font-mono font-medium text-[hsl(var(--body-strong))] break-all select-all">
                         {resolvedStatus?.providerApiUrl ?? apiUrl}
@@ -407,13 +413,13 @@ export function ProviderSetupPanel({
               <div className="flex flex-col gap-4 mt-2">
                 <label className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
                   <span className="w-5 h-5 rounded-full bg-[hsl(var(--primary))] text-white text-[10px] flex items-center justify-center font-bold">2</span>
-                  配置访问终结点与凭据 (Credentials)
+                  配置访问端点与凭据 (Credentials)
                 </label>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[hsl(var(--surface-soft))] p-5 rounded-xl border border-[hsl(var(--hairline))]">
                   <div className="flex flex-col gap-1.5 md:col-span-2">
                     <label className="text-xs font-semibold text-[hsl(var(--body-strong))] flex items-center justify-between">
-                      <span>API 终结点 (API URL)</span>
+                      <span>API 端点 (API URL)</span>
                       <span className="text-[10px] text-[hsl(var(--muted))] font-normal">一般采用默认缺省值即可</span>
                     </label>
                     <Input
@@ -429,7 +435,7 @@ export function ProviderSetupPanel({
                     <label className="text-xs font-semibold text-[hsl(var(--body-strong))] flex items-center justify-between">
                       <span>API 密钥 (API Key)</span>
                       {providerReady && (
-                        <span className="text-[10px] text-[hsl(var(--warning))] font-normal">留空表示维持上次的配置</span>
+                        <span className="text-[10px] text-[hsl(var(--warning))] font-normal">留空表示维持上次的配置，并用已保存 key 做测试</span>
                       )}
                     </label>
                     <div className="relative flex items-center">
@@ -500,7 +506,7 @@ export function ProviderSetupPanel({
                   <label className="group flex items-start gap-3 p-3.5 rounded-lg border border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] cursor-pointer select-none bg-[hsl(var(--canvas))] transition-all">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 mt-0.5 rounded border-[hsl(var(--hairline))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))/0.15] bg-[hsl(var(--canvas))] cursor-pointer"
+                      className="w-4 h-4 mt-0.5 rounded border-[hsl(var(--hairline))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))/0.15] bg-[hsl(var(--canvas))] cursor-pointer accent-[hsl(var(--primary))]"
                       checked={grantAgentPermissions}
                       onChange={(event) => setGrantAgentPermissions(event.target.checked)}
                       disabled={providerSetupLoading}
@@ -517,15 +523,6 @@ export function ProviderSetupPanel({
                 </div>
               </div>
 
-              {providerSetupResult ? (
-                <div className="rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] animate-fade-in flex items-start gap-2.5 shadow-2xs">
-                  <Check className="text-[hsl(var(--success))] w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <strong>系统环境更新成功：</strong>
-                    <span>服务商配置已安全写入，绑定运行模型为 `{providerSetupResult.primaryModel}`。</span>
-                  </div>
-                </div>
-              ) : null}
             </div>
           )}
         </div>
@@ -533,39 +530,29 @@ export function ProviderSetupPanel({
 
       <div className="flex-none pt-4 border-t border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] mt-2 z-10 relative shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
         {!isEditing && providerReady ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              resetFormToCurrentStatus();
-              setIsEditing(true);
-            }}
-            disabled={postInstallActionLoading}
-            className="w-full h-11 hover:bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--hairline))] cursor-pointer font-medium"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            修改授权配置
-          </Button>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {renderTestConnectionButton(
+              'h-11 px-4 hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--body))] font-medium cursor-pointer'
+            )}
+
+            <Button
+              variant="secondary"
+              onClick={() => {
+                resetFormToCurrentStatus();
+                setIsEditing(true);
+              }}
+              disabled={postInstallActionLoading}
+              className="flex-1 sm:flex-none h-11 hover:bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--hairline))] cursor-pointer font-medium"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              修改授权配置
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={postInstallActionLoading || testingConnection}
-              onClick={handleTestConnection}
-              className="h-10 px-4 hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--body))] font-medium cursor-pointer"
-            >
-              {testingConnection ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  正在连接测试中...
-                </>
-              ) : (
-                <>
-                  <Network className="w-4 h-4 mr-2 text-[hsl(var(--primary))]" />
-                  测试端点连接
-                </>
-              )}
-            </Button>
+            {renderTestConnectionButton(
+              'h-10 px-4 hover:bg-[hsl(var(--surface-cream-strong))] text-[hsl(var(--body))] font-medium cursor-pointer'
+            )}
 
             <div className="flex gap-3 flex-1 sm:flex-initial sm:justify-end">
               {providerReady && (
@@ -606,16 +593,7 @@ export function ProviderSetupPanel({
               <Button
                 variant="default"
                 disabled={postInstallActionLoading || !resolvedStatus || (!apiKey.trim() && !providerReady)}
-                onClick={() =>
-                  void onProviderSetup({
-                    configPath: result.configPath,
-                    providerId,
-                    apiKey,
-                    apiUrl,
-                    primaryModel,
-                    grantAgentPermissions
-                  })
-                }
+                onClick={() => void handleProviderSetupSubmit()}
                 className="flex-1 sm:flex-none min-w-[140px] h-10 bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] cursor-pointer font-medium shadow-sm"
               >
                 {providerSetupLoading ? (

@@ -226,7 +226,7 @@ export function UninstallPanel({
   if (planLoading) {
     return (
       <UninstallShell>
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center flex-1 justify-center py-20 text-center">
           <RefreshCw size={24} className="text-[hsl(var(--muted-soft))] animate-spin mb-3" />
           <p className="text-xs text-[hsl(var(--muted))]">正在扫描实例并生成安全卸载预览...</p>
         </div>

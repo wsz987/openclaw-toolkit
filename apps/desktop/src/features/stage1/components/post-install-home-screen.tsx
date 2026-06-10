@@ -105,7 +105,6 @@ export function PostInstallHomeScreen({
           status={resolvedStatus}
           statusLoading={subscribedStatusLoading}
           providerSetupLoading={controller.providerSetupLoading}
-          providerSetupResult={controller.providerSetupResult}
           feishuSetupLoading={controller.feishuSetupLoading}
           feishuSetupResult={controller.feishuSetupResult}
           skillCatalog={controller.skillCatalog}

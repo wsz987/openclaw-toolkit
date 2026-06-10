@@ -66,6 +66,7 @@ pub fn run() {
             commands::dialog::pick_file_dialog,
             commands::post_install::inspect_openclaw_status,
             commands::post_install::setup_openclaw_provider,
+            commands::post_install::test_openclaw_provider_connection,
             commands::post_install::setup_openclaw_feishu_channel,
             commands::post_install::install_openclaw_plugin,
             commands::post_install::inspect_openclaw_skill_catalog,

@@ -93,7 +93,6 @@ export function useStage1Installer(
   const [postInstallStatus, setPostInstallStatus] = useState<OpenClawPostInstallStatus | null>(null);
   const [postInstallLoading, setPostInstallLoading] = useState(false);
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
-  const [providerSetupResult, setProviderSetupResult] = useState<OpenClawProviderSetupResult | null>(null);
   const [feishuSetupLoading, setFeishuSetupLoading] = useState(false);
   const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
   const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
@@ -390,7 +389,6 @@ export function useStage1Installer(
     setError(null);
     setResult(null);
     setInstallLogTail(null);
-    setProviderSetupResult(null);
     setShowPostInstallHome(false);
     setWizardStep(2);
     setDashboard((current) => {
@@ -478,7 +476,6 @@ export function useStage1Installer(
         return null;
       }
 
-      setProviderSetupResult(response);
       await finalizePostInstallMutation(response.configPath);
       return response;
     } catch (err) {
@@ -755,7 +752,6 @@ export function useStage1Installer(
     setError(null);
     setResult(null);
     setPostInstallStatus(null);
-    setProviderSetupResult(null);
     setFeishuSetupResult(null);
     setPluginInstallResult(null);
     setPluginInstallLogs([]);
@@ -965,7 +961,6 @@ export function useStage1Installer(
     systemOpenclaw,
     timelineContainerRef,
     providerSetupLoading,
-    providerSetupResult,
     feishuSetupLoading,
     feishuSetupResult,
     pluginInstallLoading,

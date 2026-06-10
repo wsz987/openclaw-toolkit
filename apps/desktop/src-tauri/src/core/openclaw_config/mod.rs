@@ -97,6 +97,28 @@ pub struct ProviderSetupResult {
     pub agent_permissions_granted: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderConnectionTestInput {
+    pub config_path: String,
+    pub provider_id: String,
+    pub api_key: Option<String>,
+    pub api_url: Option<String>,
+    pub primary_model: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderConnectionTestResult {
+    pub provider_id: String,
+    pub api_url: String,
+    pub test_url: String,
+    pub method: String,
+    pub ok: bool,
+    pub status: Option<u16>,
+    pub detail: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeishuChannelSummary {
@@ -504,6 +526,11 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         .clone()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| provider.default_model.clone());
+    let api_key = resolve_provider_api_key(
+        &config,
+        &provider.id,
+        Some(input.api_key.as_str()),
+    )?;
     let active_provider = provider_catalog_entry_from_choice(&provider);
 
     set_value_at_path(
@@ -524,7 +551,7 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
     set_value_at_path(
         &mut config,
         &["models", "providers", provider.id.as_str(), "apiKey"],
-        Value::String(input.api_key.clone()),
+        Value::String(api_key),
     );
     set_value_at_path(
         &mut config,
@@ -551,6 +578,90 @@ pub fn apply_provider_setup(input: &ProviderSetupInput) -> anyhow::Result<Provid
         primary_model,
         api_url,
         agent_permissions_granted: input.grant_agent_permissions,
+    })
+}
+
+pub fn test_provider_connection(
+    input: &ProviderConnectionTestInput,
+) -> anyhow::Result<ProviderConnectionTestResult> {
+    let config_path = PathBuf::from(&input.config_path);
+    let config = read_openclaw_config_value(&config_path)?;
+    let manifest_catalog = load_provider_catalog_from_config_path(&config_path)
+        .map(|manifest| manifest.providers)
+        .unwrap_or_default();
+    let provider = normalize_provider_choice(&input.provider_id, &manifest_catalog, &config)?;
+    let api_url = resolve_provider_api_url(&provider, input.api_url.as_deref());
+    let primary_model = input
+        .primary_model
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
+            string_at_path(&config, &["agents", "defaults", "model", "primary"])
+                .unwrap_or_else(|| provider.default_model.clone())
+        });
+    let api_key = resolve_provider_api_key(&config, &provider.id, input.api_key.as_deref())?;
+
+    let uses_chat_completion_probe = should_use_chat_completion_probe(&provider.id, &api_url);
+    let test_url = if uses_chat_completion_probe {
+        format!("{}/chat/completions", api_url.trim_end_matches('/'))
+    } else {
+        format!("{}/models", api_url.trim_end_matches('/'))
+    };
+    let method = if uses_chat_completion_probe { "POST" } else { "GET" }.to_string();
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .context("创建 API 测试客户端失败")?;
+
+    let mut request = client
+        .request(
+            if uses_chat_completion_probe {
+                reqwest::Method::POST
+            } else {
+                reqwest::Method::GET
+            },
+            &test_url,
+        )
+        .bearer_auth(api_key);
+
+    if uses_chat_completion_probe {
+        request = request
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .json(&json!({
+                "model": model_id_for_provider_request(&provider.id, &primary_model),
+                "messages": [{ "role": "user", "content": "ping" }],
+                "max_tokens": 1
+            }));
+    }
+
+    let response = request
+        .send()
+        .with_context(|| format!("请求测试端点失败: {}", test_url))?;
+    let status = response.status();
+    let status_code = status.as_u16();
+    let body_text = response.text().unwrap_or_default();
+
+    if status.is_success() {
+        return Ok(ProviderConnectionTestResult {
+            provider_id: provider.id,
+            api_url,
+            test_url,
+            method,
+            ok: true,
+            status: Some(status_code),
+            detail: format!("连接成功，HTTP {}", status_code),
+        });
+    }
+
+    Ok(ProviderConnectionTestResult {
+        provider_id: provider.id,
+        api_url,
+        test_url,
+        method,
+        ok: false,
+        status: Some(status_code),
+        detail: extract_provider_test_error_detail(status_code, &body_text),
     })
 }
 
@@ -1416,6 +1527,77 @@ fn inferred_api_key_env(provider_id: &str) -> String {
         "minimax" | "minimaxi" => "MINIMAX_API_KEY".to_string(),
         other => format!("{}_API_KEY", other.to_ascii_uppercase().replace('-', "_")),
     }
+}
+
+fn resolve_provider_api_key(
+    config: &Value,
+    provider_id: &str,
+    requested_api_key: Option<&str>,
+) -> anyhow::Result<String> {
+    if let Some(api_key) = requested_api_key
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return Ok(api_key.to_string());
+    }
+
+    if let Some(existing_api_key) = string_at_path(config, &["models", "providers", provider_id, "apiKey"])
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        return Ok(existing_api_key);
+    }
+
+    anyhow::bail!("缺少 API Key。首次配置时请先输入有效密钥。");
+}
+
+fn should_use_chat_completion_probe(provider_id: &str, api_url: &str) -> bool {
+    provider_id.contains("volcengine")
+        || provider_id.contains("xiaomi")
+        || api_url.contains("volces.com")
+        || api_url.contains("xiaomimimo.com")
+}
+
+fn model_id_for_provider_request(provider_id: &str, primary_model: &str) -> String {
+    let prefix = format!("{provider_id}/");
+    primary_model
+        .strip_prefix(&prefix)
+        .unwrap_or(primary_model)
+        .to_string()
+}
+
+fn extract_provider_test_error_detail(status_code: u16, body_text: &str) -> String {
+    if let Ok(json_body) = serde_json::from_str::<Value>(body_text) {
+        if let Some(message) = json_body
+            .get("error")
+            .and_then(|error| error.get("message"))
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
+            return message.to_string();
+        }
+
+        if let Some(message) = json_body
+            .get("message")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
+            return message.to_string();
+        }
+    }
+
+    let trimmed = body_text.trim();
+    if trimmed.is_empty() {
+        return format!("HTTP {}", status_code);
+    }
+
+    let shortened = if trimmed.chars().count() > 120 {
+        format!("{}...", trimmed.chars().take(120).collect::<String>())
+    } else {
+        trimmed.to_string()
+    };
+
+    format!("HTTP {}: {}", status_code, shortened)
 }
 
 fn first_model_id(provider_object: &serde_json::Map<String, Value>) -> String {

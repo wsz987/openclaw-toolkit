@@ -9,7 +9,8 @@ use crate::core::{
     },
     openclaw_config::{
         apply_feishu_channel_setup, apply_provider_setup, read_openclaw_status,
-        FeishuChannelSetupInput, FeishuChannelSetupResult, OpenClawStatusSummary,
+        test_provider_connection, FeishuChannelSetupInput, FeishuChannelSetupResult,
+        OpenClawStatusSummary, ProviderConnectionTestInput, ProviderConnectionTestResult,
         ProviderSetupInput, ProviderSetupResult,
     },
     plugins::{
@@ -85,6 +86,20 @@ pub async fn setup_openclaw_provider(
         rendered
     })?
     .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn test_openclaw_provider_connection(
+    input: ProviderConnectionTestInput,
+) -> Result<ProviderConnectionTestResult, String> {
+    tauri::async_runtime::spawn_blocking(move || test_provider_connection(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("test_openclaw_provider_connection join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
 }
 
 #[tauri::command]
