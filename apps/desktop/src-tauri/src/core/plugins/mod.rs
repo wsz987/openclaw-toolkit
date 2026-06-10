@@ -8,7 +8,10 @@ use semver::{Version, VersionReq};
 
 use crate::core::{
     artifact::verify_sha256,
-    background_process::background_command,
+    background_process::{
+        background_command, process_friendly_path, process_friendly_path_string,
+        render_command_output,
+    },
     manifest::{
         load_plugin_manifest,
         models::{InstalledManifest, InstalledPlugin, PluginArtifact},
@@ -212,12 +215,10 @@ fn install_plugin_package(
         anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
     }
 
-    let status = background_command("cmd")
+    let output = background_command(process_friendly_path(&npm_cmd))
+        .arg("install")
+        .arg(process_friendly_path_string(artifact_path))
         .args([
-            "/C",
-            npm_cmd.to_string_lossy().as_ref(),
-            "install",
-            artifact_path.to_string_lossy().as_ref(),
             "--omit=dev",
             "--ignore-scripts",
             "--no-audit",
@@ -225,13 +226,17 @@ fn install_plugin_package(
             "--registry",
             DEFAULT_NPM_REGISTRY_URL,
         ])
-        .current_dir(package_dir)
+        .current_dir(process_friendly_path(package_dir))
         .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
-        .status()
+        .output()
         .context("run npm install for offline plugin")?;
 
-    if !status.success() {
-        anyhow::bail!("插件 npm install 失败，退出状态 {}", status);
+    if !output.status.success() {
+        anyhow::bail!(
+            "插件 npm install 失败，退出状态 {}{}",
+            output.status,
+            render_command_output(&output)
+        );
     }
 
     Ok(())

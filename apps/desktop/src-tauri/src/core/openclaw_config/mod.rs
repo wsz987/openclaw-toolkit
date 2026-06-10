@@ -14,7 +14,10 @@ use serde_json::{json, Value};
 
 use crate::core::{
     artifact::{install_archive, verify_sha256},
-    background_process::background_command,
+    background_process::{
+        background_command, process_friendly_path, process_friendly_path_string,
+        render_command_output,
+    },
     manifest::{
         load_provider_catalog_from_config_path,
         models::{
@@ -1632,25 +1635,27 @@ fn install_openclaw_via_npm(
         anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
     }
 
-    let status = background_command("cmd")
+    let output = background_command(process_friendly_path(&npm_cmd))
+        .arg("install")
+        .arg(format!("openclaw@{}", version))
+        .arg("--prefix")
+        .arg(process_friendly_path_string(openclaw_dir))
         .args([
-            "/C",
-            npm_cmd.to_string_lossy().as_ref(),
-            "install",
-            &format!("openclaw@{}", version),
-            "--prefix",
-            &openclaw_dir.to_string_lossy(),
             "--no-audit",
             "--no-fund",
             "--registry",
             DEFAULT_NPM_REGISTRY_URL,
         ])
         .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
-        .status()
+        .output()
         .context("run npm install")?;
 
-    if !status.success() {
-        anyhow::bail!("npm install failed with status {}", status);
+    if !output.status.success() {
+        anyhow::bail!(
+            "npm install failed with status {}{}",
+            output.status,
+            render_command_output(&output)
+        );
     }
 
     Ok(())
@@ -1716,10 +1721,8 @@ fn install_openclaw_package_dependencies(
         "run npm install for extracted openclaw package",
         &node_exe,
         progress_callback,
-        "cmd",
+        &npm_cmd,
         &[
-            "/C",
-            npm_cmd.to_string_lossy().as_ref(),
             "install",
             "--omit=dev",
             "--ignore-scripts",
@@ -1744,13 +1747,14 @@ fn install_openclaw_package_dependencies(
         .join("postinstall-bundled-plugins.mjs");
     if postinstall_script.exists() {
         progress_callback.map(|callback| callback("正在执行 OpenClaw 内置插件补装脚本..."));
+        let postinstall_script_arg = process_friendly_path_string(&postinstall_script);
         let status = run_command_with_progress(
             package_dir,
             "run openclaw postinstall-bundled-plugins",
             &node_exe,
             progress_callback,
-            node_exe.to_string_lossy().as_ref(),
-            &[postinstall_script.to_string_lossy().as_ref()],
+            &node_exe,
+            &[postinstall_script_arg.as_str()],
             false,
         )?;
 
@@ -1770,14 +1774,14 @@ fn run_command_with_progress(
     context_message: &str,
     node_exe: &Path,
     progress_callback: Option<&(dyn Fn(&str) + Sync)>,
-    command: &str,
+    command: &Path,
     args: &[&str],
     ignore_scripts: bool,
 ) -> anyhow::Result<std::process::ExitStatus> {
-    let mut command_builder = background_command(command);
+    let mut command_builder = background_command(process_friendly_path(command));
     command_builder
         .args(args)
-        .current_dir(working_dir)
+        .current_dir(process_friendly_path(working_dir))
         .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
         .env("npm_config_audit", "false")
         .env("npm_config_fund", "false")
@@ -1885,7 +1889,7 @@ fn build_augmented_path_env(node_exe: &Path) -> String {
     let mut paths = Vec::new();
 
     if let Some(parent) = node_exe.parent() {
-        paths.push(parent.to_path_buf());
+        paths.push(process_friendly_path(parent));
     }
 
     if let Some(existing) = std::env::var_os("PATH") {
