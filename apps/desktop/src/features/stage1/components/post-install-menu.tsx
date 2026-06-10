@@ -16,6 +16,7 @@ type PostInstallMenuItem = {
   title: string;
   description: string;
   icon: MenuIconComponent;
+  className?: string;
   renderIndicator?: (state: Pick<PostInstallMenuProps, 'providerReady' | 'feishuEnabled'>) => ReactNode;
 };
 
@@ -71,7 +72,8 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
     tab: 'uninstall',
     title: '卸载清理',
     description: '移除受管环境',
-    icon: Trash2
+    icon: Trash2,
+    className: 'mt-auto'
   }
 ];
 
@@ -82,7 +84,7 @@ export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuE
         管理与配置
       </div>
       <div className="flex flex-col gap-2.5">
-        {postInstallMenuItems.map(({ tab, title, description, icon: Icon, renderIndicator }) => {
+        {postInstallMenuItems.map(({ tab, title, description, icon: Icon, renderIndicator, className }) => {
           const isActive = activeTab === tab;
 
           return (
@@ -90,7 +92,7 @@ export function PostInstallMenu({ activeTab, onTabSelect, providerReady, feishuE
               key={tab}
               type="button"
               onClick={() => onTabSelect(tab)}
-              className={`${menuButtonBaseClassName} ${isActive ? menuButtonActiveClassName : menuButtonIdleClassName}`}
+              className={`${menuButtonBaseClassName} ${isActive ? menuButtonActiveClassName : menuButtonIdleClassName} ${className || ''}`}
             >
               <div className="relative">
                 <Icon size={14} className={isActive ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-soft))]'} />

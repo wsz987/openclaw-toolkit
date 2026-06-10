@@ -20,7 +20,7 @@ export function Stage1Shell({
   return (
     <main className="app-shell flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] animate-fade-in [--stage1-sidebar-width:20rem]">
       <aside className="w-[var(--stage1-sidebar-width)] border-r border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-8 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
-        <div className="flex flex-col gap-8">{sidebar}</div>
+        <div className="flex flex-col gap-8 flex-1">{sidebar}</div>
         <div className="flex flex-col gap-4 pt-4 border-t border-[hsl(var(--hairline))]">
           {footer}
         </div>

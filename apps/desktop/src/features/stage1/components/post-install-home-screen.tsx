@@ -66,7 +66,7 @@ export function PostInstallHomeScreen({
               </h1>
             </div>
 
-            {controller.dashboard?.openclawVersion ? (
+            {/* {controller.dashboard?.openclawVersion ? (
               <div className="flex flex-col gap-1 bg-[hsl(var(--surface-cream-strong))] border border-[hsl(var(--hairline))] rounded-lg p-4 shadow-sm">
                 <div className="flex items-center gap-2">
                   <span className="badge-pill bg-[hsl(var(--surface-card))] text-[hsl(var(--ink))] text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full">
@@ -83,7 +83,7 @@ export function PostInstallHomeScreen({
                   Node {controller.dashboard.nodeVersion || 'v20.11.0'}
                 </span>
               </div>
-            ) : null}
+            ) : null} */}
           </header>
           <PostInstallMenu
             activeTab={activeTab}
