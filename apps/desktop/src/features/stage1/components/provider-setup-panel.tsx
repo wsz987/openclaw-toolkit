@@ -376,10 +376,7 @@ export function ProviderSetupPanel({
                       >
                         <div className="flex items-start justify-between">
                           <div
-                            className={`p-2 rounded-lg transition-transform group-hover:scale-105 border ${isSelected
-                              ? 'bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--primary))/0.25] shadow-2xs'
-                              : 'bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]'
-                              }`}
+                            className={`rounded-lg transition-transform group-hover:scale-105 `}
                           >
                             <ProviderBrandIcon providerId={provider.id} className="w-5 h-5" />
                           </div>

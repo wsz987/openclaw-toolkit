@@ -127,6 +127,35 @@ export function buildFeishuChannelSetupPayload(
   };
 }
 
+export function buildFeishuChannelSetupPayloadFromStatus(
+  configPath: string,
+  status: FeishuChannelStatus,
+  enabled: boolean
+): OpenClawFeishuChannelSetupPayload {
+  return {
+    configPath,
+    enabled,
+    domain: status.domain,
+    connectionMode: status.connectionMode,
+    defaultAccount: status.defaultAccount,
+    accountName: status.accountName ?? '',
+    appId: status.appId ?? '',
+    appSecret: '',
+    dmPolicy: status.dmPolicy,
+    allowFrom: status.allowFrom,
+    groupPolicy: status.groupPolicy,
+    groupAllowFrom: status.groupAllowFrom,
+    requireMention: status.requireMention,
+    streaming: status.streaming,
+    blockStreaming: status.blockStreaming,
+    typingIndicator: status.typingIndicator,
+    resolveSenderNames: status.resolveSenderNames,
+    webhookPath: status.webhookPath ?? undefined,
+    webhookHost: status.webhookHost ?? undefined,
+    webhookPort: status.webhookPort ?? undefined
+  };
+}
+
 export function findInstalledFeishuPlugin(plugins: InstalledPluginStatus[] | undefined) {
   return (
     plugins?.find((plugin) => {

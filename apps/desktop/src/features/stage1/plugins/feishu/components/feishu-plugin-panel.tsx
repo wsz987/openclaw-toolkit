@@ -18,13 +18,10 @@ import { Button } from '../../../../../components/ui/button';
 import { Input } from '../../../../../components/ui/input';
 import { ScrollArea } from '../../../../../components/ui/scroll-area';
 import { Select } from '../../../../../components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../../components/ui/card';
 import { createFeishuAuthQr, openExternalUrl } from '../../../api/stage1-api';
-import { PluginInstallDialog } from '../../shared/components/plugin-install-dialog';
 import { FeishuAuthQrDialog } from './feishu-auth-qr-dialog';
 import { FeishuDocLinksCard } from './feishu-doc-links-card';
 import { FeishuHelpDialog } from './feishu-help-dialog';
-import { useFeishuPluginInstall } from '../hooks/use-feishu-plugin-install';
 import { FEISHU_PERMISSION_TROUBLESHOOTING, getFeishuConsoleLinks } from '../model/feishu-docs';
 import type { FeishuAuthQrResult } from '../../../model/types';
 import type {
@@ -41,6 +38,11 @@ export type FeishuPluginPanelProps = {
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
+  hideInternalEnableToggle?: boolean;
+  forceEditing?: boolean;
+  onForceEditingHandled?: () => void;
+  forceEnabled?: boolean;
+  onForceEnabledHandled?: () => void;
 };
 
 function parseCsv(value: string): string[] {
@@ -105,7 +107,12 @@ export function FeishuPluginPanel({
   statusLoading,
   feishuSetupLoading,
   feishuSetupResult,
-  onFeishuChannelSetup
+  onFeishuChannelSetup,
+  hideInternalEnableToggle = false,
+  forceEditing = false,
+  onForceEditingHandled,
+  forceEnabled = false,
+  onForceEnabledHandled
 }: FeishuPluginPanelProps) {
   const feishu = status?.feishuChannel;
   const [isEditing, setIsEditing] = useState(!feishu?.configured);
@@ -139,7 +146,6 @@ export function FeishuPluginPanel({
   const [authQrLoading, setAuthQrLoading] = useState(false);
   const [authQrError, setAuthQrError] = useState<string | null>(null);
   const [authQrResult, setAuthQrResult] = useState<FeishuAuthQrResult | null>(null);
-  const feishuPluginInstall = useFeishuPluginInstall(result.configPath);
   const resolvedLinks = getFeishuConsoleLinks(appId, domain);
 
   function copyToClipboard(text: string) {
@@ -229,6 +235,24 @@ export function FeishuPluginPanel({
     }
   }, [feishu?.configured]);
 
+  useEffect(() => {
+    if (!forceEditing) {
+      return;
+    }
+
+    setIsEditing(true);
+    onForceEditingHandled?.();
+  }, [forceEditing, onForceEditingHandled]);
+
+  useEffect(() => {
+    if (!forceEnabled) {
+      return;
+    }
+
+    setEnabled(true);
+    onForceEnabledHandled?.();
+  }, [forceEnabled, onForceEnabledHandled]);
+
   function resetFormToCurrentStatus() {
     if (!feishu) return;
     setEnabled(feishu.enabled);
@@ -258,55 +282,12 @@ export function FeishuPluginPanel({
     setWebhookPort(feishu.webhookPort ? String(feishu.webhookPort) : '3000');
   }
 
-  async function handleEnableFeishuToggle(nextEnabled: boolean) {
-    if (!nextEnabled) {
-      setEnabled(false);
-      return;
-    }
-
-    const pluginReady = await feishuPluginInstall.ensureReady();
-    if (!pluginReady) {
-      return;
-    }
-
-    setEnabled(true);
-  }
-
-  const postInstallActionLoading = statusLoading || feishuSetupLoading || feishuPluginInstall.installing;
+  const postInstallActionLoading = statusLoading || feishuSetupLoading;
 
   return (
     <div className="flex flex-col h-full flex-1 min-h-0 relative animate-fade-in">
       <ScrollArea className="flex-1 pr-4 -mr-4">
         <div className="flex flex-col gap-6 pb-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[hsl(var(--hairline))] pb-5">
-            <div>
-              <h2 className="font-serif text-2xl font-normal tracking-tight text-[hsl(var(--ink))] flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-[hsl(var(--primary))]" />
-                通讯通道与客户端 (Channels)
-              </h2>
-              <p className="text-xs leading-relaxed text-[hsl(var(--muted))] mt-1.5">
-                支持配置内置的飞书/Lark渠道。开启后，支持将 OpenClaw 对接至飞书私聊或群聊会话中。
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${feishu?.enabled
-                  ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                  : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
-                  }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${feishu?.enabled ? 'bg-[hsl(var(--success))]' : 'bg-[hsl(var(--warning))]'}`}
-                />
-                {statusLoading ? '状态加载中' : feishu?.enabled ? 'Feishu 已启用' : 'Feishu 未启用'}
-              </span>
-              {feishu?.configured && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.2)]">
-                  已配置凭据
-                </span>
-              )}
-            </div>
-          </div>
 
           {!isEditing && feishu?.configured ? (
             <div className="flex flex-col gap-6">
@@ -556,29 +537,31 @@ export function FeishuPluginPanel({
                   <p className="text-[10px] text-[hsl(var(--muted))] mt-1">配置您的飞书自建应用对接参数以拉起核心通道连接</p>
                 </div>
                 <div className="flex flex-col gap-5 mt-2">
-                  <div className="bg-[hsl(var(--surface-soft))] p-4 rounded-xl border border-[hsl(var(--hairline))] flex items-center justify-between gap-4">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
-                      <span className="text-[10px] text-[hsl(var(--muted))] leading-normal">
-                        激活后写入对应配置文件，在启动 OpenClaw Runtime 时会自动加载飞书插件与长连接服务。
-                      </span>
-                    </div>
-                    <div
-                      onClick={() => {
-                        if (postInstallActionLoading) {
-                          return;
-                        }
-                        void handleEnableFeishuToggle(!enabled);
-                      }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-                        }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'
+                  {!hideInternalEnableToggle ? (
+                    <div className="bg-[hsl(var(--surface-soft))] p-4 rounded-xl border border-[hsl(var(--hairline))] flex items-center justify-between gap-4">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
+                        <span className="text-[10px] text-[hsl(var(--muted))] leading-normal">
+                          激活后写入对应配置文件，在启动 OpenClaw Runtime 时会自动加载飞书插件与长连接服务。
+                        </span>
+                      </div>
+                      <div
+                        onClick={() => {
+                          if (postInstallActionLoading) {
+                            return;
+                          }
+                          setEnabled(!enabled);
+                        }}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
                           }`}
-                      />
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -979,16 +962,6 @@ export function FeishuPluginPanel({
           </div>
         )}
       </div>
-
-      <PluginInstallDialog
-        open={feishuPluginInstall.open}
-        installing={feishuPluginInstall.installing}
-        progress={feishuPluginInstall.progress}
-        error={feishuPluginInstall.error}
-        {...feishuPluginInstall.dialog}
-        onCancel={feishuPluginInstall.close}
-      />
-
       <FeishuHelpDialog
         open={helpDialogOpen}
         copied={copiedText === FEISHU_PERMISSION_TROUBLESHOOTING.copyText}
