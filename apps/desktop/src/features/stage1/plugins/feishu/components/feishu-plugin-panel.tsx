@@ -65,17 +65,15 @@ function Switch({
 }) {
   return (
     <label
-      className={`group flex items-start justify-between gap-4 rounded-xl border p-4 transition-all duration-200 cursor-pointer select-none bg-[hsl(var(--canvas))] ${
-        checked
-          ? 'border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--surface-soft))] shadow-2xs'
-          : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))/0.2]'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`group flex items-start justify-between gap-4 rounded-xl border p-4 transition-all duration-200 cursor-pointer select-none bg-[hsl(var(--canvas))] ${checked
+        ? 'border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--surface-soft))] shadow-2xs'
+        : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] hover:bg-[hsl(var(--surface-soft))/0.2]'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <div className="flex flex-col gap-0.5 flex-1 pr-2">
         <span
-          className={`text-xs font-semibold text-[hsl(var(--body-strong))] transition-colors ${
-            checked ? 'text-[hsl(var(--primary))]' : 'group-hover:text-[hsl(var(--primary))]'
-          }`}
+          className={`text-xs font-semibold text-[hsl(var(--body-strong))] transition-colors ${checked ? 'text-[hsl(var(--primary))]' : 'group-hover:text-[hsl(var(--primary))]'
+            }`}
         >
           {label}
         </span>
@@ -89,14 +87,12 @@ function Switch({
           e.preventDefault();
           onChange(!checked);
         }}
-        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] focus:ring-offset-2 ${
-          checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-        }`}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] focus:ring-offset-2 ${checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+          }`}
       >
         <span
-          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-            checked ? 'translate-x-4' : 'translate-x-0'
-          }`}
+          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'
+            }`}
         />
       </div>
     </label>
@@ -294,11 +290,10 @@ export function FeishuPluginPanel({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${
-                  feishu?.enabled
-                    ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                    : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide border shadow-2xs ${feishu?.enabled
+                  ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
+                  : 'bg-[hsl(var(--warning)/0.08)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)]'
+                  }`}
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${feishu?.enabled ? 'bg-[hsl(var(--success))]' : 'bg-[hsl(var(--warning))]'}`}
@@ -315,88 +310,81 @@ export function FeishuPluginPanel({
 
           {!isEditing && feishu?.configured ? (
             <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] shadow-2xs text-[hsl(var(--primary))]">
-                      <Radio className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">服务通道类型</span>
-                      <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5 capitalize">
-                        {feishu?.domain || 'feishu'} ({feishu?.connectionMode || 'websocket'})
-                      </strong>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-[hsl(var(--hairline))] pb-5">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
+                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-[hsl(var(--primary))] shrink-0">
+                    <Radio className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">服务通道类型</span>
+                    <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5 capitalize">
+                      {feishu?.domain || 'feishu'} ({feishu?.connectionMode || 'websocket'})
+                    </strong>
+                  </div>
+                </div>
 
-                <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-                      <Hash className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">Bot App ID</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
-                          {feishu?.appId || '未配置'}
-                        </strong>
-                        {feishu?.appId && (
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(feishu.appId || '')}
-                            className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 rounded hover:bg-[hsl(var(--surface-soft))] transition-all"
-                            title="复制 App ID"
-                          >
-                            {copiedText === feishu.appId ? (
-                              <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-                      <Settings2 className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">账号与昵称</span>
-                      <strong className="text-sm font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
-                        {feishu?.accountName || '未命名'} ({feishu?.defaultAccount || 'default'})
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
+                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-blue-500 shrink-0">
+                    <Hash className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">Bot App ID</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
+                        {feishu?.appId || '未配置'}
                       </strong>
+                      {feishu?.appId && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(feishu.appId || '')}
+                          className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 rounded hover:bg-[hsl(var(--canvas))] transition-all"
+                          title="复制 App ID"
+                        >
+                          {copiedText === feishu.appId ? (
+                            <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
+                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-purple-500 shrink-0">
+                    <Settings2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">账号与昵称</span>
+                    <strong className="text-sm font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
+                      {feishu?.accountName || '未命名'} ({feishu?.defaultAccount || 'default'})
+                    </strong>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader className="p-5 pb-3">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-[hsl(var(--hairline))] pb-5">
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--body-strong))]">
                       <Shield className="w-4 h-4 text-[hsl(var(--primary))]" />
                       私聊安全策略 (DM Policy)
-                    </CardTitle>
-                    <CardDescription>控制单聊对话中机器人的安全响应机制</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-0 flex flex-col gap-3">
+                    </h4>
+                    <p className="text-[10px] text-[hsl(var(--muted))] mt-1">控制单聊对话中机器人的安全响应机制</p>
+                  </div>
+                  <div className="flex flex-col gap-3 bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] p-4 rounded-xl flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[hsl(var(--muted))] font-medium">当前策略:</span>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          feishu?.dmPolicy === 'open'
-                            ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                            : feishu?.dmPolicy === 'allowlist'
-                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                              : feishu?.dmPolicy === 'pairing'
-                                ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-900'
-                                : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
-                        }`}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${feishu?.dmPolicy === 'open'
+                          ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
+                          : feishu?.dmPolicy === 'allowlist'
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
+                            : feishu?.dmPolicy === 'pairing'
+                              ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-900'
+                              : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
+                          }`}
                       >
                         {feishu?.dmPolicy || 'disabled'}
                       </span>
@@ -407,7 +395,7 @@ export function FeishuPluginPanel({
                         {feishu.allowFrom.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {feishu.allowFrom.map((id) => (
-                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
+                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))]">
                                 {id}
                               </span>
                             ))}
@@ -417,28 +405,27 @@ export function FeishuPluginPanel({
                         )}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader className="p-5 pb-3">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--body-strong))]">
                       <Shield className="w-4 h-4 text-[hsl(var(--primary))]" />
                       群聊安全策略 (Group Policy)
-                    </CardTitle>
-                    <CardDescription>限制机器人在飞书群聊中的事件分发</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-0 flex flex-col gap-3">
+                    </h4>
+                    <p className="text-[10px] text-[hsl(var(--muted))] mt-1">限制机器人在飞书群聊中的事件分发</p>
+                  </div>
+                  <div className="flex flex-col gap-3 bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] p-4 rounded-xl flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[hsl(var(--muted))] font-medium">当前策略:</span>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          feishu?.groupPolicy === 'open'
-                            ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
-                            : feishu?.groupPolicy === 'allowlist'
-                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                              : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
-                        }`}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${feishu?.groupPolicy === 'open'
+                          ? 'bg-[hsl(var(--success)/0.08)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)]'
+                          : feishu?.groupPolicy === 'allowlist'
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900'
+                            : 'bg-gray-50 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-800'
+                          }`}
                       >
                         {feishu?.groupPolicy || 'disabled'}
                       </span>
@@ -449,7 +436,7 @@ export function FeishuPluginPanel({
                         {feishu.groupAllowFrom.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {feishu.groupAllowFrom.map((id) => (
-                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
+                              <span key={id} className="font-mono text-[9px] px-2 py-0.5 rounded bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))]">
                                 {id}
                               </span>
                             ))}
@@ -459,18 +446,16 @@ export function FeishuPluginPanel({
                         )}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
 
-              <Card>
-                <CardHeader className="p-5 pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-[hsl(var(--primary))]" />
-                    交互特性与细节状态
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 pt-0 flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--body-strong))] px-1">
+                  <BookOpen className="w-4 h-4 text-[hsl(var(--primary))]" />
+                  交互特性与细节状态
+                </h4>
+                <div className="bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] rounded-xl p-5 flex flex-col gap-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="flex flex-col gap-0.5 border-r border-[hsl(var(--hairline))] pr-4">
                       <span className="text-[9px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">群聊被提及 (@)</span>
@@ -544,8 +529,8 @@ export function FeishuPluginPanel({
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {feishu?.connectionMode === 'websocket' && (
                 <div className="rounded-xl border border-[hsl(var(--success)/0.18)] bg-[hsl(var(--success)/0.04)] p-4 text-[11px] leading-relaxed text-[hsl(var(--body))] flex items-start gap-3">
@@ -561,15 +546,16 @@ export function FeishuPluginPanel({
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              <Card>
-                <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+              {/* 1. 飞书通道开关与连接基本凭据 */}
+              <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
                     <Settings2 className="w-4 h-4" />
                     1. 飞书通道开关与连接基本凭据
-                  </CardTitle>
-                  <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
-                </CardHeader>
-                <CardContent className="p-5 pt-0 flex flex-col gap-5">
+                  </h3>
+                  <p className="text-[10px] text-[hsl(var(--muted))] mt-1">配置您的飞书自建应用对接参数以拉起核心通道连接</p>
+                </div>
+                <div className="flex flex-col gap-5 mt-2">
                   <div className="bg-[hsl(var(--surface-soft))] p-4 rounded-xl border border-[hsl(var(--hairline))] flex items-center justify-between gap-4">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
@@ -584,14 +570,12 @@ export function FeishuPluginPanel({
                         }
                         void handleEnableFeishuToggle(!enabled);
                       }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${
-                        enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+                        }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          enabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
                       />
                     </div>
                   </div>
@@ -636,11 +620,10 @@ export function FeishuPluginPanel({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div
                         onClick={() => setConnectionMode('websocket')}
-                        className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${
-                          connectionMode === 'websocket'
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
-                            : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
-                        }`}
+                        className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${connectionMode === 'websocket'
+                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
+                          : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold flex items-center gap-1.5 text-[hsl(var(--ink))]">
@@ -660,11 +643,10 @@ export function FeishuPluginPanel({
 
                       <div
                         onClick={() => setConnectionMode('webhook')}
-                        className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${
-                          connectionMode === 'webhook'
-                            ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
-                            : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
-                        }`}
+                        className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${connectionMode === 'webhook'
+                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
+                          : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
+                          }`}
                       >
                         <div className="flex items-center gap-1.5">
                           <Webhook className={`w-4 h-4 ${connectionMode === 'webhook' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'}`} />
@@ -687,18 +669,19 @@ export function FeishuPluginPanel({
                       <Input value={accountName} onChange={(event) => setAccountName(event.target.value)} placeholder="Primary bot" className="text-xs" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+              {/* 2. 消息接入控制与安全白名单策略 */}
+              <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
                     <Shield className="w-4 h-4" />
                     2. 消息接入控制与安全白名单策略
-                  </CardTitle>
-                  <CardDescription>限制与规范私聊及群聊的调用条件，防止意外交互或资源耗尽</CardDescription>
-                </CardHeader>
-                <CardContent className="p-5 pt-0 flex flex-col gap-4">
+                  </h3>
+                  <p className="text-[10px] text-[hsl(var(--muted))] mt-1">限制与规范私聊及群聊的调用条件，防止意外交互或资源耗尽</p>
+                </div>
+                <div className="flex flex-col gap-4 mt-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">私聊触发策略 (DM Policy)</label>
@@ -739,127 +722,149 @@ export function FeishuPluginPanel({
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--hairline))] mb-4">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+              {/* 3. 交互特性与高级呈现选项 */}
+              <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
                     <BookOpen className="w-4 h-4" />
                     3. 交互特性与高级呈现选项
-                  </CardTitle>
-                  <CardDescription>自定义机器人在会话交互中的回复呈现和卡片渲染参数</CardDescription>
-                </CardHeader>
-                <CardContent className="p-5 pt-0 flex flex-col gap-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  </h3>
+                  <p className="text-[10px] text-[hsl(var(--muted))] mt-1">自定义机器人在会话交互中的回复呈现和卡片渲染参数</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <Switch
+                    label="群聊限定提及 (@ Mention)"
+                    description="开启后在群中只有被显式 @ 的消息才会唤醒机器人。关闭后机器人可接收并解析群内所有公开消息。"
+                    checked={requireMention}
+                    onChange={setRequireMention}
+                  />
+                  <Switch
+                    label="流式内容输出 (Streaming)"
+                    description="支持飞书动态卡片增量刷新。机器人的响应结果将随着生成流渐进渲染，减低等待感。"
+                    checked={streaming}
+                    onChange={setStreaming}
+                  />
+                  {streaming && (
                     <Switch
-                      label="群聊限定提及 (@ Mention)"
-                      description="开启后在群中只有被显式 @ 的消息才会唤醒机器人。关闭后机器人可接收并解析群内所有公开消息。"
-                      checked={requireMention}
-                      onChange={setRequireMention}
+                      label="分块延迟提交 (Block Streaming)"
+                      description="当输出段落/列表完成时才向飞书卡片提交修改，可大幅度减缓飞书在流式长回答下的卡片闪烁。"
+                      checked={blockStreaming}
+                      onChange={setBlockStreaming}
                     />
-                    <Switch
-                      label="流式内容输出 (Streaming)"
-                      description="支持飞书动态卡片增量刷新。机器人的响应结果将随着生成流渐进渲染，减低等待感。"
-                      checked={streaming}
-                      onChange={setStreaming}
-                    />
-                    {streaming && (
-                      <Switch
-                        label="分块延迟提交 (Block Streaming)"
-                        description="当输出段落/列表完成时才向飞书卡片提交修改，可大幅度减缓飞书在流式长回答下的卡片闪烁。"
-                        checked={blockStreaming}
-                        onChange={setBlockStreaming}
-                      />
-                    )}
-                    <Switch
-                      label="正在输入指示 (Typing Indicator)"
-                      description="在处理大模型耗时请求的过程中，聊天窗口顶部将常驻“机器人在输入中”状态，提升会话动效反馈。"
-                      checked={typingIndicator}
-                      onChange={setTypingIndicator}
-                    />
-                    <Switch
-                      label="反解发送者实名 (Resolve Sender Names)"
-                      description="是否在日志与事件中将加密的 Open ID 解析为清晰的用户真实展示姓名，会额外进行一次飞书 API 查询。"
-                      checked={resolveSenderNames}
-                      onChange={setResolveSenderNames}
-                      disabled={postInstallActionLoading}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                  )}
+                  <Switch
+                    label="正在输入指示 (Typing Indicator)"
+                    description="在处理大模型耗时请求的过程中，聊天窗口顶部将常驻“机器人在输入中”状态，提升会话动效反馈。"
+                    checked={typingIndicator}
+                    onChange={setTypingIndicator}
+                  />
+                  <Switch
+                    label="反解发送者实名 (Resolve Sender Names)"
+                    description="是否在日志与事件中将加密的 Open ID 解析为清晰的用户真实展示姓名，会额外进行一次飞书 API 查询。"
+                    checked={resolveSenderNames}
+                    onChange={setResolveSenderNames}
+                    disabled={postInstallActionLoading}
+                  />
+                </div>
+              </div>
 
+              {/* 4. Webhook 模式附加网络回调配置 */}
               {connectionMode === 'webhook' && (
-                <Card className="border-[hsl(var(--warning)/0.25)] bg-[hsl(var(--warning)/0.02)]">
-                  <CardHeader className="p-5 pb-3 border-b border-[hsl(var(--warning)/0.15)] mb-4">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--warning))]">
+                <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--warning))]">
                       <Webhook className="w-4 h-4" />
                       4. Webhook 模式附加网络回调配置
-                    </CardTitle>
-                    <CardDescription className="text-[hsl(var(--warning)/0.8)]">
-                      请确保您的物理机器或网络拓扑中对应的回调 Host 与 Port 对外网暴露或可以通过网关映射
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-0 flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Verification Token</label>
-                        <div className="relative flex items-center">
-                          <Input
-                            type={showVerificationToken ? 'text' : 'password'}
-                            value={verificationToken}
-                            onChange={(event) => setVerificationToken(event.target.value)}
-                            placeholder={feishu?.verificationTokenConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 verification token'}
-                            className="pr-10 font-mono text-xs tracking-wider"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowVerificationToken(!showVerificationToken)}
-                            className="absolute right-3 text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 transition-colors"
-                          >
-                            {showVerificationToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Encrypt Key</label>
-                        <div className="relative flex items-center">
-                          <Input
-                            type={showEncryptKey ? 'text' : 'password'}
-                            value={encryptKey}
-                            onChange={(event) => setEncryptKey(event.target.value)}
-                            placeholder={feishu?.encryptKeyConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 encrypt key'}
-                            className="pr-10 font-mono text-xs tracking-wider"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowEncryptKey(!showEncryptKey)}
-                            className="absolute right-3 text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 transition-colors"
-                          >
-                            {showEncryptKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Path</label>
-                        <Input value={webhookPath} onChange={(event) => setWebhookPath(event.target.value)} className="font-mono text-xs" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Host</label>
-                        <Input value={webhookHost} onChange={(event) => setWebhookHost(event.target.value)} className="font-mono text-xs" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 md:col-span-2">
-                        <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Port</label>
-                        <Input value={webhookPort} onChange={(event) => setWebhookPort(event.target.value)} className="font-mono text-xs" />
+                    </h3>
+                    <p className="text-[10px] text-[hsl(var(--muted))] mt-1">请确保您的物理机器或网络拓扑中对应的回调 Host 与 Port 对外网暴露或可以通过网关映射</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Verification Token</label>
+                      <div className="relative flex items-center">
+                        <Input
+                          type={showVerificationToken ? 'text' : 'password'}
+                          value={verificationToken}
+                          onChange={(event) => setVerificationToken(event.target.value)}
+                          placeholder={feishu?.verificationTokenConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 verification token'}
+                          className="pr-10 font-mono text-xs tracking-wider"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowVerificationToken(!showVerificationToken)}
+                          className="absolute right-3 text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 transition-colors"
+                        >
+                          {showVerificationToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Encrypt Key</label>
+                      <div className="relative flex items-center">
+                        <Input
+                          type={showEncryptKey ? 'text' : 'password'}
+                          value={encryptKey}
+                          onChange={(event) => setEncryptKey(event.target.value)}
+                          placeholder={feishu?.encryptKeyConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 encrypt key'}
+                          className="pr-10 font-mono text-xs tracking-wider"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowEncryptKey(!showEncryptKey)}
+                          className="absolute right-3 text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 transition-colors"
+                        >
+                          {showEncryptKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Path</label>
+                      <Input value={webhookPath} onChange={(event) => setWebhookPath(event.target.value)} className="font-mono text-xs" />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Host</label>
+                      <Input value={webhookHost} onChange={(event) => setWebhookHost(event.target.value)} className="font-mono text-xs" />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Port</label>
+                      <Input value={webhookPort} onChange={(event) => setWebhookPort(event.target.value)} className="font-mono text-xs" />
+                    </div>
+                  </div>
+                </div>
               )}
+
+              {/* Guide block (as clean border-dashed block) */}
+              <div className="rounded-xl border border-dashed border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-5 flex flex-col gap-3">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--body-strong))]">
+                  <Shield className="h-4 w-4 text-[hsl(var(--primary))]" />
+                  飞书接入校验与环境要求
+                </span>
+                <div className="flex flex-col gap-2.5 text-[11px] leading-relaxed text-[hsl(var(--body))]">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[hsl(var(--primary))] mt-0.5 font-bold shrink-0">&rarr;</span>
+                    <span>在「飞书开放平台」创建自建应用，在<strong>凭证与基础信息</strong>中拷贝 <code>App ID</code> 和 <code>App Secret</code>。</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[hsl(var(--primary))] mt-0.5 font-bold shrink-0">&rarr;</span>
+                    <span>在<strong>应用功能 &rarr; 机器人</strong>中开启机器人选项（如果没有开启，客户端长连后无法以机器人身份对话）。</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[hsl(var(--primary))] mt-0.5 font-bold shrink-0">&rarr;</span>
+                    <span>在<strong>开发配置 &rarr; 事件订阅</strong>中开启事件订阅，订阅消息权限 <code>im.message.receive_v1</code> (接收消息)。如果使用 WebSocket 模式，须在上方选择<strong>「启用长连接」</strong>。</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[hsl(var(--primary))] mt-0.5 font-bold shrink-0">&rarr;</span>
+                    <span>确认在飞书平台对该应用进行「版本发布与上架申请」，通过后机器人在目标群聊或私聊中方可生效。</span>
+                  </div>
+                </div>
+              </div>
 
               <FeishuDocLinksCard
                 appId={appId}

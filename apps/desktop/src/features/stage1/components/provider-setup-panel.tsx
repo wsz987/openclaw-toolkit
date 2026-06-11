@@ -267,87 +267,77 @@ export function ProviderSetupPanel({
           {!isEditing && providerReady ? (
             <div className="flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs">
-                      <ProviderBrandIcon providerId={resolvedStatus?.providerId ?? providerId} className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">当前服务商</span>
-                      <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
-                        {findProviderById(resolvedStatus?.providerId)?.label ?? resolvedStatus?.providerId ?? '未配置'}
+                <div className="rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex items-center gap-4 transition-all duration-300 hover:border-[hsl(var(--muted-soft))/0.5]">
+                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs">
+                    <ProviderBrandIcon providerId={resolvedStatus?.providerId ?? providerId} className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">当前服务商</span>
+                    <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
+                      {findProviderById(resolvedStatus?.providerId)?.label ?? resolvedStatus?.providerId ?? '未配置'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex items-center gap-4 transition-all duration-300 hover:border-[hsl(var(--muted-soft))/0.5]">
+                  <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+                    <Cpu className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">运行主模型</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
+                        {resolvedStatus?.providerModel ?? primaryModel}
                       </strong>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-                      <Cpu className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">运行主模型</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <strong className="text-sm font-mono font-medium text-[hsl(var(--body-strong))] truncate">
-                          {resolvedStatus?.providerModel ?? primaryModel}
-                        </strong>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(resolvedStatus?.providerModel ?? primaryModel)}
-                          className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 rounded hover:bg-[hsl(var(--surface-soft))] transition-all"
-                          title="复制模型名称"
-                        >
-                          {copiedText === (resolvedStatus?.providerModel ?? primaryModel) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="md:col-span-2 hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5">
-                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">API 端点 (API URL)</span>
-                    <div className="flex items-center justify-between gap-4 mt-1.5 bg-[hsl(var(--canvas))] p-2.5 rounded-lg border border-[hsl(var(--hairline))]">
-                      <code className="text-xs font-mono font-medium text-[hsl(var(--body-strong))] break-all select-all">
-                        {resolvedStatus?.providerApiUrl ?? apiUrl}
-                      </code>
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(resolvedStatus?.providerApiUrl ?? apiUrl)}
-                        className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1.5 rounded hover:bg-[hsl(var(--surface-soft))] transition-all flex-shrink-0"
-                        title="复制终结点"
+                        onClick={() => copyToClipboard(resolvedStatus?.providerModel ?? primaryModel)}
+                        className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1 rounded hover:bg-[hsl(var(--surface-soft))] transition-all"
+                        title="复制模型名称"
                       >
-                        {copiedText === (resolvedStatus?.providerApiUrl ?? apiUrl) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedText === (resolvedStatus?.providerModel ?? primaryModel) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card className="md:col-span-2 hover:border-[hsl(var(--muted-soft))/0.5] transition-all duration-300">
-                  <CardContent className="p-5 flex items-center justify-between gap-4">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">授权密钥 (API Key)</span>
-                      <strong className="text-sm font-mono tracking-widest text-[hsl(var(--body-strong))] mt-1">
-                        ••••••••••••••••••••••••••••••••
-                      </strong>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] px-3 py-1.5 rounded-lg shadow-3xs select-none">
-                      <Lock className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
-                      <span>已写入加密配置</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="md:col-span-2 rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 transition-all duration-300 hover:border-[hsl(var(--muted-soft))/0.5]">
+                  <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">API 端点 (API URL)</span>
+                  <div className="flex items-center justify-between gap-4 mt-1.5 bg-[hsl(var(--canvas))] p-2.5 rounded-lg border border-[hsl(var(--hairline))]">
+                    <code className="text-xs font-mono font-medium text-[hsl(var(--body-strong))] break-all select-all">
+                      {resolvedStatus?.providerApiUrl ?? apiUrl}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(resolvedStatus?.providerApiUrl ?? apiUrl)}
+                      className="text-[hsl(var(--muted-soft))] hover:text-[hsl(var(--ink))] cursor-pointer p-1.5 rounded hover:bg-[hsl(var(--surface-soft))] transition-all flex-shrink-0"
+                      title="复制终结点"
+                    >
+                      {copiedText === (resolvedStatus?.providerApiUrl ?? apiUrl) ? <Check className="w-3.5 h-3.5 text-[hsl(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex items-center justify-between gap-4 transition-all duration-300 hover:border-[hsl(var(--muted-soft))/0.5]">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider">授权密钥 (API Key)</span>
+                    <strong className="text-sm font-mono tracking-widest text-[hsl(var(--body-strong))] mt-1">
+                      ••••••••••••••••••••••••••••••••
+                    </strong>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline-soft))] px-3 py-1.5 rounded-lg shadow-3xs select-none">
+                    <Lock className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
+                    <span>已写入加密配置</span>
+                  </div>
+                </div>
               </div>
 
-              <Card className="bg-[hsl(var(--surface-soft))] border-dashed border-[hsl(var(--hairline))]">
-                <CardHeader className="p-5 pb-0">
-                  <CardTitle className="text-sm font-semibold text-[hsl(var(--body-strong))] flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-[hsl(var(--primary))]" />
-                    已启用系统策略
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 flex flex-col gap-3.5">
+              <div className="rounded-xl border border-dashed border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-5 flex flex-col gap-3">
+                <span className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-[hsl(var(--primary))]" />
+                  已启用系统策略
+                </span>
+                <div className="flex flex-col gap-3.5">
                   <div className="flex items-start gap-3">
                     <div className="p-1 rounded-full bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] mt-0.5">
                       <Check className="w-3.5 h-3.5" />
@@ -359,9 +349,10 @@ export function ProviderSetupPanel({
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
+
           ) : (
             <div className="flex flex-col gap-6 animate-fade-in">
               <div className="flex flex-col gap-2.5">
