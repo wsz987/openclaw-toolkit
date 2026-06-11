@@ -12,7 +12,8 @@ import {
   Copy,
   Settings2,
   BookOpen,
-  Hash
+  Hash,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../../../../../components/ui/button';
 import { Input } from '../../../../../components/ui/input';
@@ -612,21 +613,41 @@ export function FeishuPluginPanel({
                       </div>
                     </div>
 
-                    <div className="md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] mt-1 animate-fade-in shadow-2xs">
-                      <div className="space-y-1">
+                    <div className="md:col-span-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] mt-1 animate-fade-in shadow-2xs">
+                      <div className="space-y-1.5 flex-1">
                         <strong className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
                           <Shield className="w-3.5 h-3.5 text-[hsl(var(--primary))]" />
-                          生成自建应用授权二维码
+                          飞书凭证与插件授权配置助手
                         </strong>
-                        <p className="text-[10px] text-[hsl(var(--muted))] leading-relaxed max-w-[450px]">
-                          出于飞书官方接口的安全限制，生成二维码需要临时输入 App Secret。扫码后，应用 Owner 即可为插件进行增量权限授权。
+                        <p className="text-[10px] text-[hsl(var(--muted))] leading-relaxed max-w-[500px]">
+                          在「飞书开放平台」自建应用的「凭证与基础信息」中获取 App ID 和 App Secret。为防止调用权限不足，请在填写完成后在此生成授权二维码进行增量授权。
                         </p>
+                        <div className="flex flex-wrap gap-2 pt-1.5">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-7 px-2.5 text-[10px] font-medium border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] hover:bg-[hsl(var(--surface-soft))]"
+                            onClick={() => void handleOpenUrl(resolvedLinks.credentials)}
+                          >
+                            <ExternalLink className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+                            直达飞书凭证配置页 ↗
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-7 px-2.5 text-[10px] font-medium border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] hover:bg-[hsl(var(--surface-soft))]"
+                            onClick={() => void handleOpenUrl(resolvedLinks.docs)}
+                          >
+                            <BookOpen className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+                            查看官方接入指引 📖
+                          </Button>
+                        </div>
                       </div>
                       <Button
                         type="button"
                         variant="default"
                         onClick={() => void handleGenerateAuthQr()}
-                        className="h-9 px-4 text-[11px] font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] shrink-0"
+                        className="w-full md:w-auto h-9 px-4 text-[11px] font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] shrink-0 self-stretch md:self-center flex items-center justify-center"
                       >
                         插件扫码授权
                       </Button>
