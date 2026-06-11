@@ -146,6 +146,7 @@ export function FeishuPluginPanel({
   const [authQrLoading, setAuthQrLoading] = useState(false);
   const [authQrError, setAuthQrError] = useState<string | null>(null);
   const [authQrResult, setAuthQrResult] = useState<FeishuAuthQrResult | null>(null);
+  const [activeStep, setActiveStep] = useState<'credentials' | 'bot' | 'event' | 'release' | null>(null);
   const resolvedLinks = getFeishuConsoleLinks(appId, domain);
 
   function copyToClipboard(text: string) {
@@ -566,7 +567,12 @@ export function FeishuPluginPanel({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">应用服务商 Domain</label>
-                      <Select value={domain} onChange={(e) => setDomain(e.target.value as 'feishu' | 'lark')}>
+                      <Select
+                        value={domain}
+                        onChange={(e) => setDomain(e.target.value as 'feishu' | 'lark')}
+                        onFocus={() => setActiveStep('credentials')}
+                        onBlur={() => setActiveStep(null)}
+                      >
                         <option value="feishu">Feishu (飞书 - 国内版)</option>
                         <option value="lark">Lark (国外版)</option>
                       </Select>
@@ -574,7 +580,14 @@ export function FeishuPluginPanel({
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">App ID</label>
-                      <Input value={appId} onChange={(event) => setAppId(event.target.value)} placeholder="cli_xxx" className="font-mono text-xs" />
+                      <Input
+                        value={appId}
+                        onChange={(event) => setAppId(event.target.value)}
+                        placeholder="cli_xxx"
+                        className="font-mono text-xs"
+                        onFocus={() => setActiveStep('credentials')}
+                        onBlur={() => setActiveStep(null)}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -586,6 +599,8 @@ export function FeishuPluginPanel({
                           onChange={(event) => setAppSecret(event.target.value)}
                           placeholder={feishu?.configured ? '•••••••••••••••••••• (留空表示维持上次的配置)' : '输入飞书 App Secret'}
                           className="pr-10 font-mono text-xs tracking-wider"
+                          onFocus={() => setActiveStep('credentials')}
+                          onBlur={() => setActiveStep(null)}
                         />
                         <button
                           type="button"
@@ -596,6 +611,26 @@ export function FeishuPluginPanel({
                         </button>
                       </div>
                     </div>
+
+                    <div className="md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] mt-1 animate-fade-in shadow-2xs">
+                      <div className="space-y-1">
+                        <strong className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-[hsl(var(--primary))]" />
+                          生成自建应用授权二维码
+                        </strong>
+                        <p className="text-[10px] text-[hsl(var(--muted))] leading-relaxed max-w-[450px]">
+                          出于飞书官方接口的安全限制，生成二维码需要临时输入 App Secret。扫码后，应用 Owner 即可为插件进行增量权限授权。
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="default"
+                        onClick={() => void handleGenerateAuthQr()}
+                        className="h-9 px-4 text-[11px] font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] shrink-0"
+                      >
+                        插件扫码授权
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2.5 mt-2">
@@ -603,6 +638,8 @@ export function FeishuPluginPanel({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div
                         onClick={() => setConnectionMode('websocket')}
+                        onMouseEnter={() => setActiveStep('event')}
+                        onMouseLeave={() => setActiveStep(null)}
                         className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${connectionMode === 'websocket'
                           ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
                           : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
@@ -626,6 +663,8 @@ export function FeishuPluginPanel({
 
                       <div
                         onClick={() => setConnectionMode('webhook')}
+                        onMouseEnter={() => setActiveStep('event')}
+                        onMouseLeave={() => setActiveStep(null)}
                         className={`group p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer flex flex-col gap-2 select-none ${connectionMode === 'webhook'
                           ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
                           : 'border-[hsl(var(--hairline))] hover:border-[hsl(var(--muted-soft))] bg-[hsl(var(--canvas))]'
@@ -656,7 +695,11 @@ export function FeishuPluginPanel({
               </div>
 
               {/* 2. 消息接入控制与安全白名单策略 */}
-              <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+              <div
+                className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6"
+                onMouseEnter={() => setActiveStep('release')}
+                onMouseLeave={() => setActiveStep(null)}
+              >
                 <div>
                   <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
                     <Shield className="w-4 h-4" />
@@ -668,7 +711,12 @@ export function FeishuPluginPanel({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">私聊触发策略 (DM Policy)</label>
-                      <Select value={dmPolicy} onChange={(e) => setDmPolicy(e.target.value as 'allowlist' | 'pairing' | 'open' | 'disabled')}>
+                      <Select
+                        value={dmPolicy}
+                        onChange={(e) => setDmPolicy(e.target.value as 'allowlist' | 'pairing' | 'open' | 'disabled')}
+                        onFocus={() => setActiveStep('release')}
+                        onBlur={() => setActiveStep(null)}
+                      >
                         <option value="allowlist">Allowlist (仅限白名单用户触发)</option>
                         <option value="pairing">Pairing (特定配对授权响应)</option>
                         <option value="open">Open (对所有私聊会话开放响应)</option>
@@ -678,7 +726,12 @@ export function FeishuPluginPanel({
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">群聊触发策略 (Group Policy)</label>
-                      <Select value={groupPolicy} onChange={(e) => setGroupPolicy(e.target.value as 'allowlist' | 'open' | 'disabled')}>
+                      <Select
+                        value={groupPolicy}
+                        onChange={(e) => setGroupPolicy(e.target.value as 'allowlist' | 'open' | 'disabled')}
+                        onFocus={() => setActiveStep('release')}
+                        onBlur={() => setActiveStep(null)}
+                      >
                         <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                         <option value="open">Open (支持在所有群中艾特响应)</option>
                         <option value="disabled">Disabled (群聊场景静默不响应)</option>
@@ -691,7 +744,14 @@ export function FeishuPluginPanel({
                           <span>私聊响应白名单 (DM Allowlist)</span>
                           <span className="text-[10px] text-[hsl(var(--muted))]">配置允许的用户 Open ID。支持用英文逗号或换行符分隔。</span>
                         </label>
-                        <Input value={allowFrom} onChange={(event) => setAllowFrom(event.target.value)} placeholder="ou_xxx, ou_yyy" className="font-mono text-xs" />
+                        <Input
+                          value={allowFrom}
+                          onChange={(event) => setAllowFrom(event.target.value)}
+                          placeholder="ou_xxx, ou_yyy"
+                          className="font-mono text-xs"
+                          onFocus={() => setActiveStep('release')}
+                          onBlur={() => setActiveStep(null)}
+                        />
                       </div>
                     )}
 
@@ -701,7 +761,14 @@ export function FeishuPluginPanel({
                           <span>群聊响应白名单 (Group Allowlist)</span>
                           <span className="text-[10px] text-[hsl(var(--muted))]">配置允许生效的 Chat ID。支持用英文逗号或换行符分隔。</span>
                         </label>
-                        <Input value={groupAllowFrom} onChange={(event) => setGroupAllowFrom(event.target.value)} placeholder="oc_xxx, oc_yyy" className="font-mono text-xs" />
+                        <Input
+                          value={groupAllowFrom}
+                          onChange={(event) => setGroupAllowFrom(event.target.value)}
+                          placeholder="oc_xxx, oc_yyy"
+                          className="font-mono text-xs"
+                          onFocus={() => setActiveStep('release')}
+                          onBlur={() => setActiveStep(null)}
+                        />
                       </div>
                     )}
                   </div>
@@ -709,7 +776,11 @@ export function FeishuPluginPanel({
               </div>
 
               {/* 3. 交互特性与高级呈现选项 */}
-              <div className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6">
+              <div
+                className="flex flex-col gap-4 border-b border-[hsl(var(--hairline))] pb-6"
+                onMouseEnter={() => setActiveStep('bot')}
+                onMouseLeave={() => setActiveStep(null)}
+              >
                 <div>
                   <h3 className="text-sm font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
                     <BookOpen className="w-4 h-4" />
@@ -774,6 +845,8 @@ export function FeishuPluginPanel({
                           onChange={(event) => setVerificationToken(event.target.value)}
                           placeholder={feishu?.verificationTokenConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 verification token'}
                           className="pr-10 font-mono text-xs tracking-wider"
+                          onFocus={() => setActiveStep('event')}
+                          onBlur={() => setActiveStep(null)}
                         />
                         <button
                           type="button"
@@ -794,6 +867,8 @@ export function FeishuPluginPanel({
                           onChange={(event) => setEncryptKey(event.target.value)}
                           placeholder={feishu?.encryptKeyConfigured ? '•••••••••••••••••••• (留空沿用)' : '输入 encrypt key'}
                           className="pr-10 font-mono text-xs tracking-wider"
+                          onFocus={() => setActiveStep('event')}
+                          onBlur={() => setActiveStep(null)}
                         />
                         <button
                           type="button"
@@ -807,17 +882,35 @@ export function FeishuPluginPanel({
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Path</label>
-                      <Input value={webhookPath} onChange={(event) => setWebhookPath(event.target.value)} className="font-mono text-xs" />
+                      <Input
+                        value={webhookPath}
+                        onChange={(event) => setWebhookPath(event.target.value)}
+                        className="font-mono text-xs"
+                        onFocus={() => setActiveStep('event')}
+                        onBlur={() => setActiveStep(null)}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Host</label>
-                      <Input value={webhookHost} onChange={(event) => setWebhookHost(event.target.value)} className="font-mono text-xs" />
+                      <Input
+                        value={webhookHost}
+                        onChange={(event) => setWebhookHost(event.target.value)}
+                        className="font-mono text-xs"
+                        onFocus={() => setActiveStep('event')}
+                        onBlur={() => setActiveStep(null)}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">Webhook Port</label>
-                      <Input value={webhookPort} onChange={(event) => setWebhookPort(event.target.value)} className="font-mono text-xs" />
+                      <Input
+                        value={webhookPort}
+                        onChange={(event) => setWebhookPort(event.target.value)}
+                        className="font-mono text-xs"
+                        onFocus={() => setActiveStep('event')}
+                        onBlur={() => setActiveStep(null)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -851,10 +944,20 @@ export function FeishuPluginPanel({
 
               <FeishuDocLinksCard
                 appId={appId}
+                appSecret={appSecret}
                 domain={domain}
+                connectionMode={connectionMode}
+                verificationToken={verificationToken}
+                encryptKey={encryptKey}
+                dmPolicy={dmPolicy}
+                groupPolicy={groupPolicy}
+                allowFrom={allowFrom}
+                groupAllowFrom={groupAllowFrom}
+                webhookHost={webhookHost}
+                webhookPort={webhookPort}
+                activeStep={activeStep}
                 onOpenUrl={handleOpenUrl}
                 onOpenFaq={() => setHelpDialogOpen(true)}
-                onOpenQr={() => void handleGenerateAuthQr()}
               />
             </div>
           )}
