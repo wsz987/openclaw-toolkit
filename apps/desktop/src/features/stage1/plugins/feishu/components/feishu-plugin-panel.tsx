@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   MessageSquare,
   Check,
@@ -15,11 +15,12 @@ import {
   Hash,
   ExternalLink
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../../../../../components/ui/button';
 import { Input } from '../../../../../components/ui/input';
 import { ScrollArea } from '../../../../../components/ui/scroll-area';
 import { Select } from '../../../../../components/ui/select';
-import { createFeishuAuthQr, openExternalUrl } from '../../../api/stage1-api';
+import { createFeishuAuthQr, inspectFeishuAuthQrStatus, openExternalUrl } from '../../../api/stage1-api';
 import { FeishuAuthQrDialog } from './feishu-auth-qr-dialog';
 import { FeishuDocLinksCard } from './feishu-doc-links-card';
 import { FeishuHelpDialog } from './feishu-help-dialog';
@@ -148,7 +149,10 @@ export function FeishuPluginPanel({
   const [authQrError, setAuthQrError] = useState<string | null>(null);
   const [authQrResult, setAuthQrResult] = useState<FeishuAuthQrResult | null>(null);
   const [activeStep, setActiveStep] = useState<'credentials' | 'bot' | 'event' | 'release' | null>(null);
+  const authQrPollingLockRef = useRef(false);
+  const authQrPollingFinishedRef = useRef(false);
   const resolvedLinks = getFeishuConsoleLinks(appId, domain);
+  const effectiveEnabled = hideInternalEnableToggle ? true : enabled;
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
@@ -183,6 +187,8 @@ export function FeishuPluginPanel({
     setAuthQrDialogOpen(true);
     setAuthQrLoading(true);
     setAuthQrError(null);
+    authQrPollingLockRef.current = false;
+    authQrPollingFinishedRef.current = false;
 
     try {
       const response = await createFeishuAuthQr({
@@ -230,6 +236,85 @@ export function FeishuPluginPanel({
     setWebhookHost(feishu.webhookHost ?? '127.0.0.1');
     setWebhookPort(feishu.webhookPort ? String(feishu.webhookPort) : '3000');
   }, [feishu]);
+
+  useEffect(() => {
+    if (!authQrDialogOpen || !authQrResult?.deviceCode) {
+      return;
+    }
+
+    const currentAppId = appId.trim() || feishu?.appId?.trim() || '';
+    const currentSecret = appSecret.trim();
+    if (!currentAppId || !currentSecret) {
+      return;
+    }
+
+    let disposed = false;
+    const intervalMs = Math.max((authQrResult.interval || 5) * 1000, 3000);
+
+    const poll = async () => {
+      if (disposed) {
+        return;
+      }
+
+      if (authQrPollingLockRef.current || authQrPollingFinishedRef.current) {
+        return;
+      }
+
+      authQrPollingLockRef.current = true;
+      try {
+        const status = await inspectFeishuAuthQrStatus({
+          appId: currentAppId,
+          appSecret: currentSecret,
+          domain,
+          deviceCode: authQrResult.deviceCode
+        });
+
+        if (disposed) {
+          return;
+        }
+
+        if (status.status === 'authorized') {
+          authQrPollingFinishedRef.current = true;
+          setAuthQrDialogOpen(false);
+          toast.success('飞书插件扫码授权已完成。');
+          return;
+        }
+
+        if (status.status === 'expired') {
+          authQrPollingFinishedRef.current = true;
+          return;
+        }
+      } finally {
+        authQrPollingLockRef.current = false;
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => {
+      void poll();
+    }, intervalMs);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      authQrPollingLockRef.current = false;
+    };
+  }, [
+    appId,
+    appSecret,
+    authQrDialogOpen,
+    authQrResult?.deviceCode,
+    authQrResult?.interval,
+    domain,
+    feishu?.appId
+  ]);
+
+  useEffect(() => {
+    if (!authQrDialogOpen) {
+      authQrPollingLockRef.current = false;
+      authQrPollingFinishedRef.current = false;
+    }
+  }, [authQrDialogOpen]);
 
   useEffect(() => {
     if (feishu) {
@@ -295,19 +380,19 @@ export function FeishuPluginPanel({
             <div className="flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-[hsl(var(--hairline))] pb-5">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
-                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-[hsl(var(--primary))] shrink-0">
+                  <div className="text-[hsl(var(--primary))] shrink-0">
                     <Radio className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">服务通道类型</span>
                     <strong className="text-base font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5 capitalize">
-                      {feishu?.domain || 'feishu'} ({feishu?.connectionMode || 'websocket'})
+                      {feishu?.connectionMode || 'websocket'}
                     </strong>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
-                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-blue-500 shrink-0">
+                  <div className="rounded-xl shadow-2xs text-blue-500 shrink-0">
                     <Hash className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -335,7 +420,7 @@ export function FeishuPluginPanel({
                 </div>
 
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
-                  <div className="p-3 rounded-xl bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] shadow-2xs text-purple-500 shrink-0">
+                  <div className="rounded-xl  shadow-2xs text-purple-500 shrink-0">
                     <Settings2 className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1006,7 +1091,7 @@ export function FeishuPluginPanel({
             className="w-full h-11 hover:bg-[hsl(var(--surface-cream-strong))] border-[hsl(var(--hairline))] cursor-pointer font-medium"
           >
             <Settings2 className="w-4 h-4 mr-2" />
-            修改通道接入配置
+            修改渠道接入配置
           </Button>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1041,11 +1126,11 @@ export function FeishuPluginPanel({
 
               <Button
                 variant="default"
-                disabled={postInstallActionLoading || (enabled && !appId.trim())}
+                disabled={postInstallActionLoading || (effectiveEnabled && !appId.trim())}
                 onClick={() =>
                   void onFeishuChannelSetup({
                     configPath: result.configPath,
-                    enabled,
+                    enabled: effectiveEnabled,
                     domain,
                     connectionMode,
                     defaultAccount,

@@ -315,12 +315,29 @@ export type FeishuAuthQrPayload = {
 };
 
 export type FeishuAuthQrResult = {
+  deviceCode: string;
   verificationUri: string;
   verificationUriComplete: string;
   userCode: string;
   expiresIn: number;
   interval: number;
   effectiveScope: string;
+};
+
+export type FeishuAuthQrStatusPayload = {
+  appId: string;
+  appSecret: string;
+  domain: 'feishu' | 'lark' | string;
+  deviceCode: string;
+};
+
+export type FeishuAuthQrStatusResult = {
+  status: 'pending' | 'authorized' | 'expired';
+  detail: string | null;
+  accessTokenGranted: boolean;
+  refreshTokenGranted: boolean;
+  scope: string | null;
+  expiresIn: number | null;
 };
 
 export type UninstallRuntimePlan = {

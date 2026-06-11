@@ -329,6 +329,13 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
     feishu: () => (
       <FeishuPluginPanel
         {...props}
+        onFeishuChannelSetup={async (input) => {
+          const response = await props.onFeishuChannelSetup(input);
+          if (response) {
+            setIsDrawerOpen(false);
+          }
+          return response;
+        }}
         hideInternalEnableToggle
         forceEditing={feishuControl.forceEditing}
         onForceEditingHandled={feishuControl.markForceEditingHandled}
@@ -476,7 +483,7 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
       {/* Slide-over Right Drawer (Sheet) */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent className="w-full sm:max-w-xl md:max-w-2xl bg-[hsl(var(--canvas))] border-l border-[hsl(var(--hairline))] p-6 h-full flex flex-col">
-          <SheetHeader className="flex-shrink-0 pb-4 border-b border-[hsl(var(--hairline))] mb-4">
+          <SheetHeader className="flex-shrink-0 pb-4 border-b border-[hsl(var(--hairline))]">
             <div className="flex items-center gap-3">
               <div className="shrink-0">
                 {getChannelIcon(activeChannel.iconName, 'w-8 h-8')}
@@ -492,9 +499,13 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
             </div>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 pr-4 -mr-4 overflow-y-auto">
-            {activePanelRenderer ? activePanelRenderer() : renderUpcomingDetails(activeChannel)}
-          </ScrollArea>
+          {activePanelRenderer ? (
+            activePanelRenderer()
+          ) : (
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+              {renderUpcomingDetails(activeChannel)}
+            </ScrollArea>
+          )}
         </SheetContent>
       </Sheet>
 

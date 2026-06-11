@@ -261,12 +261,8 @@ export function useStage1Installer(
     }
   }
 
-  async function refreshStatusViaFallback(configPath: string) {
+  async function refreshStatusSnapshot(configPath: string) {
     if (!configPath.trim()) {
-      return;
-    }
-
-    if (isOpenClawStatusEventAvailable(configPath)) {
       return;
     }
 
@@ -274,7 +270,7 @@ export function useStage1Installer(
   }
 
   async function finalizePostInstallMutation(configPath: string) {
-    await refreshStatusViaFallback(configPath);
+    await refreshStatusSnapshot(configPath);
     handleEnterPostInstallHome();
   }
 
@@ -569,7 +565,7 @@ export function useStage1Installer(
         return null;
       }
 
-      await refreshStatusViaFallback(configPath);
+      await refreshStatusSnapshot(configPath);
       return response;
     } catch (err) {
       if (!runtimeLaunchRequestGuard.isCurrent(requestId)) {
@@ -596,7 +592,7 @@ export function useStage1Installer(
         return null;
       }
 
-      await refreshStatusViaFallback(configPath);
+      await refreshStatusSnapshot(configPath);
 
       return response;
     } catch (err) {
@@ -624,7 +620,7 @@ export function useStage1Installer(
         return null;
       }
 
-      await refreshStatusViaFallback(configPath);
+      await refreshStatusSnapshot(configPath);
       return response;
     } catch (err) {
       if (!runtimeRestartRequestGuard.isCurrent(requestId)) {

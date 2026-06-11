@@ -4,7 +4,6 @@ import { Check, Copy, ExternalLink, QrCode, Loader2, RefreshCw } from 'lucide-re
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,

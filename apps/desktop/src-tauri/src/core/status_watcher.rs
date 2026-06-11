@@ -139,12 +139,16 @@ fn status_semantically_equal(left: &OpenClawStatusSummary, right: &OpenClawStatu
         && left.runtime_log_path == right.runtime_log_path
         && left.runtime_running == right.runtime_running
         && left.panel_reachable == right.panel_reachable
+        && left.runtime_action_required == right.runtime_action_required
+        && left.pending_config_changes == right.pending_config_changes
         && left.provider_initialized == right.provider_initialized
         && left.provider_id == right.provider_id
         && left.provider_model == right.provider_model
         && left.provider_api_url == right.provider_api_url
         && left.feishu_plugin_enabled == right.feishu_plugin_enabled
+        && left.feishu_channel == right.feishu_channel
         && left.skills_installed == right.skills_installed
         && left.plugins_enabled == right.plugins_enabled
+        && left.installed_plugins == right.installed_plugins
         && left.available_providers == right.available_providers
 }

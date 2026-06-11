@@ -5,6 +5,8 @@ import type {
   DirectoryPickerResponse,
   FeishuAuthQrPayload,
   FeishuAuthQrResult,
+  FeishuAuthQrStatusPayload,
+  FeishuAuthQrStatusResult,
   InstallMode,
   OpenClawLaunchResult,
   OpenClawFeishuChannelSetupPayload,
@@ -190,6 +192,10 @@ export async function openExternalUrl(input: OpenExternalUrlPayload): Promise<Op
 
 export async function createFeishuAuthQr(input: FeishuAuthQrPayload): Promise<FeishuAuthQrResult> {
   return invoke<FeishuAuthQrResult>('create_feishu_auth_qr_command', { input });
+}
+
+export async function inspectFeishuAuthQrStatus(input: FeishuAuthQrStatusPayload): Promise<FeishuAuthQrStatusResult> {
+  return invoke<FeishuAuthQrStatusResult>('inspect_feishu_auth_qr_status_command', { input });
 }
 
 export async function inspectUninstallPlan(installationId: string): Promise<UninstallPlan> {

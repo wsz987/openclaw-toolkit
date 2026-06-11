@@ -48,15 +48,36 @@ pub struct FeishuAuthQrInput {
     pub scope: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuAuthQrStatusInput {
+    pub app_id: String,
+    pub app_secret: String,
+    pub domain: String,
+    pub device_code: String,
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeishuAuthQrResult {
+    pub device_code: String,
     pub verification_uri: String,
     pub verification_uri_complete: String,
     pub user_code: String,
     pub expires_in: u64,
     pub interval: u64,
     pub effective_scope: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuAuthQrStatusResult {
+    pub status: String,
+    pub detail: Option<String>,
+    pub access_token_granted: bool,
+    pub refresh_token_granted: bool,
+    pub scope: Option<String>,
+    pub expires_in: Option<u64>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -217,6 +238,20 @@ pub async fn create_feishu_auth_qr_command(
         .map_err(|error| {
             let rendered = error.to_string();
             eprintln!("create_feishu_auth_qr_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn inspect_feishu_auth_qr_status_command(
+    input: FeishuAuthQrStatusInput,
+) -> Result<FeishuAuthQrStatusResult, String> {
+    tauri::async_runtime::spawn_blocking(move || inspect_feishu_auth_qr_status(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("inspect_feishu_auth_qr_status_command join failed:\n{}", rendered);
             rendered
         })?
         .map_err(render_error)
@@ -446,6 +481,16 @@ struct FeishuDeviceAuthorizationResponse {
     error_description: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct FeishuDeviceTokenResponse {
+    access_token: Option<String>,
+    refresh_token: Option<String>,
+    scope: Option<String>,
+    expires_in: Option<u64>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
 fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuthQrResult> {
     let app_id = input.app_id.trim();
     let app_secret = input.app_secret.trim();
@@ -494,9 +539,16 @@ fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuth
         .context("request Feishu device authorization")?;
 
     let status = response.status();
-    let payload: FeishuDeviceAuthorizationResponse = response
-        .json()
-        .with_context(|| format!("parse Feishu device authorization response: HTTP {}", status))?;
+    let body = response
+        .text()
+        .with_context(|| format!("read Feishu device authorization response: HTTP {}", status))?;
+    eprintln!(
+        "[Feishu Auth QR] device_authorization {} -> HTTP {} body: {}",
+        device_authorization_url, status, body
+    );
+    let payload: FeishuDeviceAuthorizationResponse = serde_json::from_str(&body).with_context(
+        || format!("parse Feishu device authorization response: HTTP {} body: {}", status, body),
+    )?;
 
     if let Some(error) = payload.error {
         let description = payload
@@ -513,14 +565,182 @@ fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuth
         .clone()
         .unwrap_or_else(|| verification_uri.clone());
     let user_code = payload.user_code.context("飞书未返回 user_code")?;
+    let device_code = payload.device_code.context("飞书未返回 device_code")?;
 
     Ok(FeishuAuthQrResult {
+        device_code,
         verification_uri,
         verification_uri_complete,
         user_code,
         expires_in: payload.expires_in.unwrap_or(240),
         interval: payload.interval.unwrap_or(5),
         effective_scope: scope,
+    })
+}
+
+fn inspect_feishu_auth_qr_status(
+    input: &FeishuAuthQrStatusInput,
+) -> anyhow::Result<FeishuAuthQrStatusResult> {
+    let app_id = input.app_id.trim();
+    let app_secret = input.app_secret.trim();
+    let device_code = input.device_code.trim();
+    if app_id.is_empty() {
+        anyhow::bail!("请先填写 App ID");
+    }
+    if app_secret.is_empty() {
+        anyhow::bail!("请先填写 App Secret");
+    }
+    if device_code.is_empty() {
+        anyhow::bail!("二维码状态缺少 device code");
+    }
+
+    let brand = if input.domain.eq_ignore_ascii_case("lark") {
+        "lark"
+    } else {
+        "feishu"
+    };
+
+    let token_urls = if brand == "lark" {
+        [
+            "https://accounts.larksuite.com/oauth/v1/token",
+            "https://open.larksuite.com/open-apis/authen/v2/oauth/token",
+        ]
+    } else {
+        [
+            "https://accounts.feishu.cn/oauth/v1/token",
+            "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
+        ]
+    };
+
+    let basic_auth = {
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        STANDARD.encode(format!("{app_id}:{app_secret}"))
+    };
+
+    let client = reqwest::blocking::Client::builder()
+        .use_rustls_tls()
+        .build()?;
+
+    let attempts = [
+        vec![
+            (
+                "grant_type",
+                "urn:ietf:params:oauth:grant-type:device_code".to_string(),
+            ),
+            ("device_code", device_code.to_string()),
+            ("client_id", app_id.to_string()),
+        ],
+        vec![
+            ("grant_type", "device_code".to_string()),
+            ("device_code", device_code.to_string()),
+            ("client_id", app_id.to_string()),
+        ],
+        vec![
+            (
+                "grant_type",
+                "urn:ietf:params:oauth:grant-type:device_code".to_string(),
+            ),
+            ("device_code", device_code.to_string()),
+        ],
+        vec![
+            ("grant_type", "device_code".to_string()),
+            ("device_code", device_code.to_string()),
+        ],
+    ];
+
+    let mut last_pending: Option<FeishuAuthQrStatusResult> = None;
+    let mut last_error: Option<anyhow::Error> = None;
+
+    for token_url in token_urls {
+        for form in &attempts {
+            match post_feishu_device_token_request(&client, token_url, &basic_auth, form) {
+                Ok(result) => return Ok(result),
+                Err(error) => {
+                    let rendered = error.to_string();
+                    eprintln!(
+                        "[Feishu Auth QR] poll failed via {} with form {:?}: {}",
+                        token_url, form, rendered
+                    );
+                    if rendered.contains("authorization_pending")
+                        || rendered.contains("slow_down")
+                    {
+                        last_pending = Some(FeishuAuthQrStatusResult {
+                            status: "pending".to_string(),
+                            detail: Some(rendered),
+                            access_token_granted: false,
+                            refresh_token_granted: false,
+                            scope: None,
+                            expires_in: None,
+                        });
+                        continue;
+                    }
+
+                    if rendered.contains("expired_token")
+                        || rendered.contains("expired device_code")
+                        || rendered.contains("invalid_grant")
+                    {
+                        return Ok(FeishuAuthQrStatusResult {
+                            status: "expired".to_string(),
+                            detail: Some(rendered),
+                            access_token_granted: false,
+                            refresh_token_granted: false,
+                            scope: None,
+                            expires_in: None,
+                        });
+                    }
+
+                    last_error = Some(error);
+                }
+            }
+        }
+    }
+
+    if let Some(pending) = last_pending {
+        return Ok(pending);
+    }
+
+    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("查询二维码授权状态失败")))
+}
+
+fn post_feishu_device_token_request(
+    client: &reqwest::blocking::Client,
+    token_url: &str,
+    basic_auth: &str,
+    form: &Vec<(&str, String)>,
+) -> anyhow::Result<FeishuAuthQrStatusResult> {
+    let response = client
+        .post(token_url)
+        .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(reqwest::header::AUTHORIZATION, format!("Basic {basic_auth}"))
+        .form(form)
+        .send()
+        .context("request Feishu device token")?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .with_context(|| format!("read Feishu device token response: HTTP {}", status))?;
+    eprintln!(
+        "[Feishu Auth QR] token poll {} with form {:?} -> HTTP {} body: {}",
+        token_url, form, status, body
+    );
+    let payload: FeishuDeviceTokenResponse = serde_json::from_str(&body)
+        .with_context(|| format!("parse Feishu device token response: HTTP {} body: {}", status, body))?;
+
+    if let Some(error) = payload.error {
+        let description = payload
+            .error_description
+            .unwrap_or_else(|| "飞书未返回详细错误".to_string());
+        anyhow::bail!("{}: {}", error, description);
+    }
+
+    Ok(FeishuAuthQrStatusResult {
+        status: "authorized".to_string(),
+        detail: Some("扫码授权已完成".to_string()),
+        access_token_granted: payload.access_token.is_some(),
+        refresh_token_granted: payload.refresh_token.is_some(),
+        scope: payload.scope,
+        expires_in: payload.expires_in,
     })
 }
 
