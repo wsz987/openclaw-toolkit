@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../components/ui/alert-dialog';
-import { Button } from '../../../components/ui/button';
+} from '../../../../../components/ui/alert-dialog';
+import { Button } from '../../../../../components/ui/button';
 import { FEISHU_PERMISSION_TROUBLESHOOTING } from '../model/feishu-docs';
 
 type FeishuHelpDialogProps = {

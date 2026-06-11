@@ -9,9 +9,9 @@ import {
   Shield,
   Webhook
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { getFeishuPlatformLabel } from '../model/feishu-channel';
-import type { FeishuChannelStatus } from '../model/types';
+import type { FeishuChannelStatus } from '../../../model/types';
 
 type FeishuChannelReadonlyViewProps = {
   feishu: FeishuChannelStatus;

@@ -5,10 +5,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../components/ui/alert-dialog';
-import { Button } from '../../../components/ui/button';
-import { Progress } from '../../../components/ui/progress';
-import type { PluginInstallProgress } from '../model/types';
+} from '../../../../../components/ui/alert-dialog';
+import { Button } from '../../../../../components/ui/button';
+import { Progress } from '../../../../../components/ui/progress';
+import type { PluginInstallProgress } from '../../../model/types';
 
 type PluginInstallDialogProps = {
   open: boolean;

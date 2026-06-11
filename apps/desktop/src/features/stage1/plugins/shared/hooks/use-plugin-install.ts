@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import type { PluginInstallProgress } from '../model/types';
+import type { PluginInstallProgress } from '../../../model/types';
 
 export type PluginInstallDialogCopy = {
   title: string;

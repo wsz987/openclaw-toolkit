@@ -1,6 +1,6 @@
-import { inspectOpenClawStatus, installOpenClawPlugin } from '../api/stage1-api';
+import { inspectOpenClawStatus, installOpenClawPlugin } from '../../../api/stage1-api';
 import { findInstalledFeishuPlugin } from '../model/feishu-channel';
-import { usePluginInstall } from './use-plugin-install';
+import { usePluginInstall } from '../../shared/hooks/use-plugin-install';
 
 export function useFeishuPluginInstall(configPath: string) {
   return usePluginInstall({

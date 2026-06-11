@@ -7,7 +7,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../components/ui/alert-dialog';
+} from '../../../../../components/ui/alert-dialog';
 import { FEISHU_PLUGIN_PACKAGE } from '../model/feishu-channel';
 
 type FeishuPluginInstallDialogProps = {

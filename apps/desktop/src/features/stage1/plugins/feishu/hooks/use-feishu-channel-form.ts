@@ -4,8 +4,7 @@ import {
   createFeishuChannelFormState,
   type FeishuChannelFormState
 } from '../model/feishu-channel';
-import type { FeishuChannelStatus } from '../model/types';
-
+import type { FeishuChannelStatus } from '../../../model/types';
 type FeishuChannelFormKey = keyof FeishuChannelFormState;
 
 export function useFeishuChannelForm(status?: FeishuChannelStatus | null) {

@@ -9,13 +9,13 @@ import {
   Shield,
   Webhook
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
-import { Select } from '../../../components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import { Input } from '../../../../../components/ui/input';
+import { Select } from '../../../../../components/ui/select';
+import { ChannelToggleCard } from '../../../components/channels-panel-shared';
 import { getFeishuPlatformLabel } from '../model/feishu-channel';
-import { ChannelToggleCard } from './channels-panel-shared';
 import type { FeishuChannelFormState } from '../model/feishu-channel';
-import type { FeishuChannelStatus } from '../model/types';
+import type { FeishuChannelStatus } from '../../../model/types';
 
 type FeishuChannelFormProps = {
   form: FeishuChannelFormState;
