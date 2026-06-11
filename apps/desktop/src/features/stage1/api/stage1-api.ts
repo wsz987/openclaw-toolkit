@@ -3,6 +3,8 @@ import { isInstallStep } from '../model/graph';
 import type {
   AppBootstrapState,
   DirectoryPickerResponse,
+  FeishuAuthQrPayload,
+  FeishuAuthQrResult,
   InstallMode,
   OpenClawLaunchResult,
   OpenClawFeishuChannelSetupPayload,
@@ -11,6 +13,7 @@ import type {
   OpenClawPluginInstallResult,
   OpenClawSkillTogglePayload,
   OpenClawSkillToggleResult,
+  OpenExternalUrlPayload,
   OpenClawStopResult,
   OpenPathResult,
   OpenClawPostInstallStatus,
@@ -179,6 +182,14 @@ export async function openInstallationDirectory(path: string): Promise<OpenPathR
 
 export async function openLogsDirectory(configPath: string): Promise<OpenPathResult> {
   return invoke<OpenPathResult>('open_logs_directory_command', { configPath });
+}
+
+export async function openExternalUrl(input: OpenExternalUrlPayload): Promise<OpenPathResult> {
+  return invoke<OpenPathResult>('open_external_url_command', { input });
+}
+
+export async function createFeishuAuthQr(input: FeishuAuthQrPayload): Promise<FeishuAuthQrResult> {
+  return invoke<FeishuAuthQrResult>('create_feishu_auth_qr_command', { input });
 }
 
 export async function inspectUninstallPlan(installationId: string): Promise<UninstallPlan> {

@@ -1,18 +1,18 @@
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
   MessageSquare,
   Check,
   RefreshCw,
+  AlertTriangle,
   Shield,
   Radio,
   Webhook,
-  AlertTriangle,
   Eye,
   EyeOff,
   Copy,
   Settings2,
   BookOpen,
-  ArrowRight,
   Hash
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
@@ -20,7 +20,13 @@ import { Input } from '../../../components/ui/input';
 import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Select } from '../../../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { createFeishuAuthQr, openExternalUrl } from '../api/stage1-api';
 import { useFeishuPluginInstall } from '../hooks/use-feishu-plugin-install';
+import { FEISHU_PERMISSION_TROUBLESHOOTING, getFeishuConsoleLinks } from '../model/feishu-docs';
+import type { FeishuAuthQrResult } from '../model/types';
+import { FeishuAuthQrDialog } from './feishu-auth-qr-dialog';
+import { FeishuDocLinksCard } from './feishu-doc-links-card';
+import { FeishuHelpDialog } from './feishu-help-dialog';
 import { PluginInstallDialog } from './plugin-install-dialog';
 import type {
   OpenClawFeishuChannelSetupPayload,
@@ -133,12 +139,61 @@ export function ChannelsPanel({
   const [showVerificationToken, setShowVerificationToken] = useState(false);
   const [showEncryptKey, setShowEncryptKey] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [authQrDialogOpen, setAuthQrDialogOpen] = useState(false);
+  const [authQrLoading, setAuthQrLoading] = useState(false);
+  const [authQrError, setAuthQrError] = useState<string | null>(null);
+  const [authQrResult, setAuthQrResult] = useState<FeishuAuthQrResult | null>(null);
   const feishuPluginInstall = useFeishuPluginInstall(result.configPath);
+  const resolvedLinks = getFeishuConsoleLinks(appId, domain);
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
     setCopiedText(text);
     setTimeout(() => setCopiedText(null), 2000);
+  }
+
+  async function handleOpenUrl(url: string) {
+    try {
+      await openExternalUrl({ url });
+    } catch (error) {
+      console.error('[飞书文档] 打开链接失败', error);
+    }
+  }
+
+  async function handleGenerateAuthQr() {
+    const currentAppId = appId.trim() || feishu?.appId?.trim() || '';
+    const currentSecret = appSecret.trim();
+
+    if (!currentAppId) {
+      setAuthQrError('请先填写或保存 App ID，再生成二维码。');
+      setAuthQrDialogOpen(true);
+      return;
+    }
+
+    if (!currentSecret) {
+      setAuthQrError('出于安全原因，生成二维码时需要本次输入 App Secret。请先在表单中填写 App Secret。');
+      setAuthQrDialogOpen(true);
+      return;
+    }
+
+    setAuthQrDialogOpen(true);
+    setAuthQrLoading(true);
+    setAuthQrError(null);
+
+    try {
+      const response = await createFeishuAuthQr({
+        appId: currentAppId,
+        appSecret: currentSecret,
+        domain
+      });
+      setAuthQrResult(response);
+    } catch (error) {
+      setAuthQrResult(null);
+      setAuthQrError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setAuthQrLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -807,39 +862,13 @@ export function ChannelsPanel({
                 </Card>
               )}
 
-              <Card className="bg-[hsl(var(--surface-soft))] border-dashed border-[hsl(var(--hairline))]">
-                <CardHeader className="p-5 pb-0">
-                  <CardTitle className="text-xs font-bold text-[hsl(var(--body-strong))] flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-[hsl(var(--primary))]" />
-                    飞书接入校验与环境要求
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 flex flex-col gap-2.5 text-[11px] leading-relaxed text-[hsl(var(--body))]">
-                  <div className="flex items-start gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
-                    <span>
-                      在「飞书开放平台」创建自建应用，在<strong>凭证与基础信息</strong>中拷贝 <code>App ID</code> 和 <code>App Secret</code>。
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
-                    <span>
-                      在<strong>应用功能 &rarr; 机器人</strong>中开启机器人选项（如果没有开启，客户端长连后无法以机器人身份对话）。
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
-                    <span>
-                      在<strong>开发配置 &rarr; 事件订阅</strong>中开启事件订阅，订阅消息权限 <code>im.message.receive_v1</code> (接收消息)。如果使用 WebSocket 模式，须在上方选择
-                      <strong>「启用长连接」</strong>。
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
-                    <span>确认在飞书平台对该应用进行「版本发布与上架申请」，通过后机器人在目标群聊或私聊中方可生效。</span>
-                  </div>
-                </CardContent>
-              </Card>
+              <FeishuDocLinksCard
+                appId={appId}
+                domain={domain}
+                onOpenUrl={handleOpenUrl}
+                onOpenFaq={() => setHelpDialogOpen(true)}
+                onOpenQr={() => void handleGenerateAuthQr()}
+              />
             </div>
           )}
 
@@ -954,6 +983,26 @@ export function ChannelsPanel({
         error={feishuPluginInstall.error}
         {...feishuPluginInstall.dialog}
         onCancel={feishuPluginInstall.close}
+      />
+
+      <FeishuHelpDialog
+        open={helpDialogOpen}
+        copied={copiedText === FEISHU_PERMISSION_TROUBLESHOOTING.copyText}
+        onOpenChange={setHelpDialogOpen}
+        onCopy={() => copyToClipboard(FEISHU_PERMISSION_TROUBLESHOOTING.copyText)}
+        onOpenPermissions={() => void handleOpenUrl(resolvedLinks.permissions)}
+      />
+
+      <FeishuAuthQrDialog
+        open={authQrDialogOpen}
+        loading={authQrLoading}
+        error={authQrError}
+        result={authQrResult}
+        copiedValue={copiedText}
+        onOpenChange={setAuthQrDialogOpen}
+        onGenerate={() => void handleGenerateAuthQr()}
+        onCopy={copyToClipboard}
+        onOpenLink={(url) => void handleOpenUrl(url)}
       />
     </div>
   );

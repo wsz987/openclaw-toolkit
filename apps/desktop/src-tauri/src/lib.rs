@@ -72,6 +72,8 @@ pub fn run() {
             commands::post_install::test_openclaw_provider_connection,
             commands::post_install::setup_openclaw_feishu_channel,
             commands::post_install::install_openclaw_plugin,
+            commands::post_install::open_external_url_command,
+            commands::post_install::create_feishu_auth_qr_command,
             commands::post_install::inspect_openclaw_skill_catalog,
             commands::post_install::set_openclaw_skill_enabled,
             commands::post_install::launch_openclaw_runtime,

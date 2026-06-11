@@ -303,6 +303,26 @@ export type OpenClawStopResult = {
 
 export type OpenPathResult = string;
 
+export type OpenExternalUrlPayload = {
+  url: string;
+};
+
+export type FeishuAuthQrPayload = {
+  appId: string;
+  appSecret: string;
+  domain: 'feishu' | 'lark' | string;
+  scope?: string;
+};
+
+export type FeishuAuthQrResult = {
+  verificationUri: string;
+  verificationUriComplete: string;
+  userCode: string;
+  expiresIn: number;
+  interval: number;
+  effectiveScope: string;
+};
+
 export type UninstallRuntimePlan = {
   running: boolean;
   pid: number | null;

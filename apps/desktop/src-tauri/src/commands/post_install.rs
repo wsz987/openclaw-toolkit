@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use tauri::Emitter;
+use tauri_plugin_shell::ShellExt;
 
 use crate::core::{
     app_state::{
@@ -30,6 +32,32 @@ use crate::core::{
 };
 
 const FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-install-progress";
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenExternalUrlInput {
+    pub url: String,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuAuthQrInput {
+    pub app_id: String,
+    pub app_secret: String,
+    pub domain: String,
+    pub scope: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuAuthQrResult {
+    pub verification_uri: String,
+    pub verification_uri_complete: String,
+    pub user_code: String,
+    pub expires_in: u64,
+    pub interval: u64,
+    pub effective_scope: String,
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -161,6 +189,37 @@ pub async fn install_openclaw_plugin(
         rendered
     })?
     .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn open_external_url_command(
+    app: tauri::AppHandle,
+    input: OpenExternalUrlInput,
+) -> Result<String, String> {
+    let url = input.url.trim();
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("仅支持打开 http/https 链接".to_string());
+    }
+
+    app.shell()
+        .open(url, None)
+        .map_err(|error| error.to_string())?;
+
+    Ok(url.to_string())
+}
+
+#[tauri::command]
+pub async fn create_feishu_auth_qr_command(
+    input: FeishuAuthQrInput,
+) -> Result<FeishuAuthQrResult, String> {
+    tauri::async_runtime::spawn_blocking(move || create_feishu_auth_qr(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("create_feishu_auth_qr_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
 }
 
 #[tauri::command]
@@ -373,6 +432,96 @@ fn map_stop_response(result: ManagedOpenClawStopResult) -> ManagedStopResponse {
     ManagedStopResponse {
         stopped: result.stopped,
     }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct FeishuDeviceAuthorizationResponse {
+    device_code: Option<String>,
+    user_code: Option<String>,
+    verification_uri: Option<String>,
+    verification_uri_complete: Option<String>,
+    expires_in: Option<u64>,
+    interval: Option<u64>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
+fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuthQrResult> {
+    let app_id = input.app_id.trim();
+    let app_secret = input.app_secret.trim();
+    if app_id.is_empty() {
+        anyhow::bail!("请先填写 App ID");
+    }
+    if app_secret.is_empty() {
+        anyhow::bail!("请先填写 App Secret");
+    }
+
+    let brand = if input.domain.eq_ignore_ascii_case("lark") {
+        "lark"
+    } else {
+        "feishu"
+    };
+
+    let device_authorization_url = if brand == "lark" {
+        "https://accounts.larksuite.com/oauth/v1/device_authorization"
+    } else {
+        "https://accounts.feishu.cn/oauth/v1/device_authorization"
+    };
+
+    let mut scope = input.scope.clone().unwrap_or_default().trim().to_string();
+    if !scope.split_whitespace().any(|item| item == "offline_access") {
+        scope = if scope.is_empty() {
+            "offline_access".to_string()
+        } else {
+            format!("{scope} offline_access")
+        };
+    }
+
+    let basic_auth = {
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        STANDARD.encode(format!("{app_id}:{app_secret}"))
+    };
+
+    let client = reqwest::blocking::Client::builder()
+        .use_rustls_tls()
+        .build()?;
+    let response = client
+        .post(device_authorization_url)
+        .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .header(reqwest::header::AUTHORIZATION, format!("Basic {basic_auth}"))
+        .form(&[("client_id", app_id), ("scope", scope.as_str())])
+        .send()
+        .context("request Feishu device authorization")?;
+
+    let status = response.status();
+    let payload: FeishuDeviceAuthorizationResponse = response
+        .json()
+        .with_context(|| format!("parse Feishu device authorization response: HTTP {}", status))?;
+
+    if let Some(error) = payload.error {
+        let description = payload
+            .error_description
+            .unwrap_or_else(|| "飞书未返回详细错误".to_string());
+        anyhow::bail!("{}: {}", error, description);
+    }
+
+    let verification_uri = payload
+        .verification_uri
+        .context("飞书未返回 verification_uri")?;
+    let verification_uri_complete = payload
+        .verification_uri_complete
+        .clone()
+        .unwrap_or_else(|| verification_uri.clone());
+    let user_code = payload.user_code.context("飞书未返回 user_code")?;
+
+    Ok(FeishuAuthQrResult {
+        verification_uri,
+        verification_uri_complete,
+        user_code,
+        expires_in: payload.expires_in.unwrap_or(240),
+        interval: payload.interval.unwrap_or(5),
+        effective_scope: scope,
+    })
 }
 
 fn render_error(error: anyhow::Error) -> String {
