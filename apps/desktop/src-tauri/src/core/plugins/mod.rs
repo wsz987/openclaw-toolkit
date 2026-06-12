@@ -8,18 +8,16 @@ use semver::{Version, VersionReq};
 
 use crate::core::{
     artifact::verify_sha256,
-    background_process::{
-        background_command, process_friendly_path, process_friendly_path_string,
-        render_command_output,
-    },
     manifest::{
         load_plugin_manifest,
         models::{InstalledManifest, InstalledPlugin, PluginArtifact},
     },
-    node_runtime::{node_runtime_executable, node_runtime_npm_command, parse_node_version},
+    node_runtime::parse_node_version,
+    openclaw_cli::{
+        inspect_plugin, install_plugin_from_npm_pack, list_installed_plugins,
+        refresh_plugin_registry, OpenClawCliContext,
+    },
 };
-
-const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,16 +110,31 @@ pub fn install_plugin_from_manifest(
         false,
         false,
     );
-    install_plugin_package(&package_dir, &installed_manifest.node_dir, &artifact_path)?;
+    let cli_context = OpenClawCliContext {
+        openclaw_dir: openclaw_dir.to_path_buf(),
+        config_path: config_path.to_path_buf(),
+        node_dir: PathBuf::from(&installed_manifest.node_dir),
+    };
+    install_plugin_from_npm_pack(&cli_context, &artifact_path)?;
     emit_plugin_install_progress(
         progress_callback,
         "recording",
         88,
-        "正在写入安装记录...",
+        "正在核验 OpenClaw 插件注册状态...",
         false,
         false,
     );
-    update_installed_manifest(&installed_manifest_path, &installed_manifest, &plugin)?;
+    inspect_plugin(&cli_context, &plugin.plugin_entry_id)
+        .or_else(|_| inspect_plugin(&cli_context, &plugin.id))
+        .with_context(|| format!("OpenClaw 未发现刚安装的插件 {}", plugin.plugin_entry_id))?;
+    let _ = refresh_plugin_registry(&cli_context);
+    let discovered_plugins = list_installed_plugins(&cli_context)?;
+    update_installed_manifest(
+        &installed_manifest_path,
+        &installed_manifest,
+        &plugin,
+        &discovered_plugins,
+    )?;
     emit_plugin_install_progress(
         progress_callback,
         "ready",
@@ -199,61 +212,30 @@ fn parse_semver_like(value: &str) -> anyhow::Result<Version> {
     Version::parse(value).with_context(|| format!("解析版本失败：{}", value))
 }
 
-fn install_plugin_package(
-    package_dir: &Path,
-    node_dir: &str,
-    artifact_path: &Path,
-) -> anyhow::Result<()> {
-    let node_dir = PathBuf::from(node_dir);
-    let node_exe = node_runtime_executable(&node_dir);
-    if !node_exe.exists() {
-        anyhow::bail!("node.exe not found: {}", node_exe.display());
-    }
-
-    let npm_cmd = node_runtime_npm_command(&node_dir);
-    if !npm_cmd.exists() {
-        anyhow::bail!("npm.cmd not found: {}", npm_cmd.display());
-    }
-
-    let output = background_command(process_friendly_path(&npm_cmd))
-        .arg("install")
-        .arg(process_friendly_path_string(artifact_path))
-        .args([
-            "--omit=dev",
-            "--ignore-scripts",
-            "--no-audit",
-            "--no-fund",
-            "--registry",
-            DEFAULT_NPM_REGISTRY_URL,
-        ])
-        .current_dir(process_friendly_path(package_dir))
-        .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
-        .output()
-        .context("run npm install for offline plugin")?;
-
-    if !output.status.success() {
-        anyhow::bail!(
-            "插件 npm install 失败，退出状态 {}{}",
-            output.status,
-            render_command_output(&output)
-        );
-    }
-
-    Ok(())
-}
-
 fn update_installed_manifest(
     manifest_path: &Path,
     installed_manifest: &InstalledManifest,
     plugin: &PluginArtifact,
+    discovered_plugins: &[InstalledPlugin],
 ) -> anyhow::Result<()> {
     let mut updated = installed_manifest.clone();
-    updated.plugins.retain(|item| item.id != plugin.id);
-    updated.plugins.push(InstalledPlugin {
-        id: plugin.id.clone(),
+    updated.plugins.retain(|item| {
+        item.id != plugin.id
+            && item.id != plugin.plugin_entry_id
+            && item.package.as_deref() != Some(plugin.package.as_str())
+    });
+
+    let discovered = discovered_plugins.iter().find(|item| {
+        item.id.eq_ignore_ascii_case(&plugin.id)
+            || item.id.eq_ignore_ascii_case(&plugin.plugin_entry_id)
+            || item.package.as_deref() == Some(plugin.package.as_str())
+    });
+
+    updated.plugins.push(discovered.cloned().unwrap_or_else(|| InstalledPlugin {
+        id: plugin.plugin_entry_id.clone(),
         version: plugin.version.clone(),
         package: Some(plugin.package.clone()),
-    });
+    }));
     updated
         .plugins
         .sort_by(|left, right| left.id.cmp(&right.id));

@@ -26,6 +26,7 @@ use crate::core::{
         },
     },
     node_runtime::{node_runtime_executable, node_runtime_npm_command},
+    openclaw_cli::{read_plugin_discovery, OpenClawCliContext},
     remote::download_remote_file,
 };
 
@@ -192,7 +193,7 @@ pub struct FeishuChannelSetupResult {
 const DEFAULT_GATEWAY_PORT: u16 = 18789;
 const DEFAULT_GATEWAY_BIND: &str = "loopback";
 const DEFAULT_GATEWAY_MODE: &str = "local";
-const DEFAULT_FEISHU_PLUGIN_ID: &str = "feishu";
+const LEGACY_FEISHU_PLUGIN_ID: &str = "feishu";
 const DEFAULT_FEISHU_PLUGIN_ENTRY_ID: &str = "openclaw-lark";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
@@ -336,9 +337,6 @@ pub fn write_openclaw_config(
             "entries": {
                 DEFAULT_BROWSER_PLUGIN_ID: {
                     "enabled": true
-                },
-                DEFAULT_FEISHU_PLUGIN_ID: {
-                    "enabled": false
                 }
             }
         }
@@ -392,6 +390,40 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .unwrap_or(false);
     let available_providers = merge_provider_catalog(&manifest_catalog, &config);
     let feishu_channel = read_feishu_channel_summary(&config);
+    let plugin_discovery = read_openclaw_discovered_plugins(openclaw_dir, config_path)
+        .or_else(|_| {
+            Ok::<crate::core::openclaw_cli::OpenClawPluginDiscovery, anyhow::Error>(
+                crate::core::openclaw_cli::OpenClawPluginDiscovery {
+                    installed_plugins: installed_manifest
+                        .as_ref()
+                        .map(|manifest| manifest.plugins.clone())
+                        .unwrap_or_default(),
+                    enabled_plugin_ids: enabled_plugin_ids(&config),
+                },
+            )
+        })?;
+    let feishu_plugin_enabled = plugin_discovery
+        .enabled_plugin_ids
+        .iter()
+        .any(|plugin_id| {
+            plugin_id.eq_ignore_ascii_case(DEFAULT_FEISHU_PLUGIN_ENTRY_ID)
+                || plugin_id.eq_ignore_ascii_case(LEGACY_FEISHU_PLUGIN_ID)
+        })
+        || bool_at_path(
+            &config,
+            &[
+                "plugins",
+                "entries",
+                DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
+                "enabled",
+            ],
+        )
+        .unwrap_or(false)
+        || bool_at_path(
+            &config,
+            &["plugins", "entries", LEGACY_FEISHU_PLUGIN_ID, "enabled"],
+        )
+        .unwrap_or(false);
 
     Ok(OpenClawStatusSummary {
         openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
@@ -416,28 +448,11 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         provider_model: string_at_path(&config, &["agents", "defaults", "model", "primary"]),
         provider_api_url,
         available_providers,
-        feishu_plugin_enabled: bool_at_path(
-            &config,
-            &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
-        )
-        .or_else(|| {
-            bool_at_path(
-                &config,
-                &[
-                    "plugins",
-                    "entries",
-                    DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
-                    "enabled",
-                ],
-            )
-        })
-        .unwrap_or(false),
+        feishu_plugin_enabled,
         feishu_channel,
         skills_installed: enabled_skill_ids(&config),
-        plugins_enabled: enabled_plugin_ids(&config),
-        installed_plugins: installed_manifest
-            .map(|manifest| manifest.plugins)
-            .unwrap_or_default(),
+        plugins_enabled: plugin_discovery.enabled_plugin_ids,
+        installed_plugins: plugin_discovery.installed_plugins,
     })
 }
 
@@ -744,11 +759,6 @@ pub fn apply_feishu_channel_setup(
 
     set_value_at_path(
         &mut config,
-        &["plugins", "entries", DEFAULT_FEISHU_PLUGIN_ID, "enabled"],
-        Value::Bool(input.enabled),
-    );
-    set_value_at_path(
-        &mut config,
         &[
             "plugins",
             "entries",
@@ -756,6 +766,10 @@ pub fn apply_feishu_channel_setup(
             "enabled",
         ],
         Value::Bool(input.enabled),
+    );
+    remove_value_at_path(
+        &mut config,
+        &["plugins", "entries", LEGACY_FEISHU_PLUGIN_ID],
     );
     set_value_at_path(
         &mut config,
@@ -952,6 +966,19 @@ fn write_config_value(config_path: &Path, config: &Value) -> anyhow::Result<()> 
     Ok(())
 }
 
+fn read_openclaw_discovered_plugins(
+    openclaw_dir: &Path,
+    config_path: &Path,
+) -> anyhow::Result<crate::core::openclaw_cli::OpenClawPluginDiscovery> {
+    let installed_manifest = read_installed_manifest_from_openclaw_dir(openclaw_dir)?;
+    let context = OpenClawCliContext {
+        openclaw_dir: openclaw_dir.to_path_buf(),
+        config_path: config_path.to_path_buf(),
+        node_dir: PathBuf::from(installed_manifest.node_dir),
+    };
+    read_plugin_discovery(&context)
+}
+
 fn string_at_path(value: &Value, path: &[&str]) -> Option<String> {
     value_at_path(value, path)
         .and_then(Value::as_str)
@@ -972,6 +999,24 @@ fn value_at_path<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
         current = current.get(*segment)?;
     }
     Some(current)
+}
+
+fn remove_value_at_path(value: &mut Value, path: &[&str]) {
+    if path.is_empty() {
+        return;
+    }
+
+    let mut current = value;
+    for segment in &path[..path.len().saturating_sub(1)] {
+        let Some(next) = current.get_mut(*segment) else {
+            return;
+        };
+        current = next;
+    }
+
+    if let Some(object) = current.as_object_mut() {
+        object.remove(path[path.len() - 1]);
+    }
 }
 
 fn string_array_at_path(value: &Value, path: &[&str]) -> Vec<String> {
@@ -1234,11 +1279,13 @@ fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
     let app_id = account
         .and_then(|entry| entry.get("appId"))
         .and_then(Value::as_str)
-        .map(ToString::to_string);
+        .map(ToString::to_string)
+        .or_else(|| string_at_path(config, &["channels", "feishu", "appId"]));
     let app_secret = account
         .and_then(|entry| entry.get("appSecret"))
         .and_then(Value::as_str)
-        .map(ToString::to_string);
+        .map(ToString::to_string)
+        .or_else(|| string_at_path(config, &["channels", "feishu", "appSecret"]));
 
     FeishuChannelSummary {
         enabled: bool_at_path(config, &["channels", "feishu", "enabled"]).unwrap_or(false),

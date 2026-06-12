@@ -412,7 +412,7 @@ export function UninstallPanel({
                 <div className="flex flex-col gap-1.5 text-[11px]">
                   <label className="font-semibold text-[hsl(var(--ink))] flex items-center justify-between">
                     <span>请输入安全确认码：</span>
-                    <span className="font-mono font-bold text-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] rounded px-1.5 py-0.5 select-none">
+                    <span className="font-mono font-bold text-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] rounded px-1.5 py-0.5">
                       {plan.confirmationText}
                     </span>
                   </label>

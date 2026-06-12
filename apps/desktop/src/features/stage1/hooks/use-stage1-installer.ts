@@ -118,6 +118,7 @@ export function useStage1Installer(
   const [showPostInstallHome, setShowPostInstallHome] = useState(initialShowPostInstallHome);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const installPollingInFlightRef = useRef(false);
   const dashboardRequestGuard = useLatestRequestGuard();
   const versionCatalogRequestGuard = useLatestRequestGuard();
   const postInstallStatusRequestGuard = useLatestRequestGuard();
@@ -833,12 +834,32 @@ export function useStage1Installer(
       return;
     }
 
+    const pollInstallProgress = async () => {
+      if (installPollingInFlightRef.current) {
+        return;
+      }
+
+      installPollingInFlightRef.current = true;
+      try {
+        await Promise.all([
+          loadDashboard(payload),
+          loadInstallLog(payload.baseDir)
+        ]);
+      } finally {
+        installPollingInFlightRef.current = false;
+      }
+    };
+
+    void pollInstallProgress();
+
     const timer = window.setInterval(() => {
-      void loadDashboard(payload);
-      void loadInstallLog(payload.baseDir);
+      void pollInstallProgress();
     }, 800);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      installPollingInFlightRef.current = false;
+    };
   }, [loading, payload]);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ pub mod install_log;
 pub mod license;
 pub mod manifest;
 pub mod node_runtime;
+pub mod openclaw_cli;
 pub mod openclaw_config;
 pub mod permissions;
 pub mod plugins;
