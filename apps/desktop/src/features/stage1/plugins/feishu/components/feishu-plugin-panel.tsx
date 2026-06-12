@@ -173,7 +173,7 @@ export function FeishuPluginPanel({
     const currentSecret = appSecret.trim();
 
     if (!currentAppId) {
-      setAuthQrError('请先填写或保存 App ID，再生成二维码。');
+      setAuthQrError('请先填写 App ID 和 App Secret，再生成二维码。');
       setAuthQrDialogOpen(true);
       return;
     }
@@ -216,7 +216,7 @@ export function FeishuPluginPanel({
     setDefaultAccount(feishu.defaultAccount || 'default');
     setAccountName(feishu.accountName ?? '');
     setAppId(feishu.appId ?? '');
-    setAppSecret('');
+    setAppSecret(feishu.appSecret ?? '');
     setDmPolicy(
       feishu.dmPolicy === 'pairing' || feishu.dmPolicy === 'open' || feishu.dmPolicy === 'disabled'
         ? feishu.dmPolicy
@@ -348,7 +348,7 @@ export function FeishuPluginPanel({
     setDefaultAccount(feishu.defaultAccount || 'default');
     setAccountName(feishu.accountName ?? '');
     setAppId(feishu.appId ?? '');
-    setAppSecret('');
+    setAppSecret(feishu.appSecret ?? '');
     setDmPolicy(
       feishu.dmPolicy === 'pairing' || feishu.dmPolicy === 'open' || feishu.dmPolicy === 'disabled'
         ? feishu.dmPolicy

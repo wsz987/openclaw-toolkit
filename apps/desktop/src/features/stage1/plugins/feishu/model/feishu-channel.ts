@@ -76,7 +76,7 @@ export function createFeishuChannelFormState(status?: FeishuChannelStatus | null
     defaultAccount: status.defaultAccount || 'default',
     accountName: status.accountName ?? '',
     appId: status.appId ?? '',
-    appSecret: '',
+    appSecret: status.appSecret ?? '',
     dmPolicy:
       status.dmPolicy === 'pairing' || status.dmPolicy === 'open' || status.dmPolicy === 'disabled'
         ? status.dmPolicy

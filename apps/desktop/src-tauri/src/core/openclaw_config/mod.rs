@@ -134,6 +134,7 @@ pub struct FeishuChannelSummary {
     pub account_id: String,
     pub account_name: Option<String>,
     pub app_id: Option<String>,
+    pub app_secret: Option<String>,
     pub dm_policy: String,
     pub allow_from: Vec<String>,
     pub group_policy: String,
@@ -1260,6 +1261,7 @@ fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
             .and_then(Value::as_str)
             .map(ToString::to_string),
         app_id,
+        app_secret,
         dm_policy: string_at_path(config, &["channels", "feishu", "dmPolicy"])
             .unwrap_or_else(|| "allowlist".to_string()),
         allow_from: string_array_at_path(config, &["channels", "feishu", "allowFrom"]),

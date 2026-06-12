@@ -124,6 +124,7 @@ export type FeishuChannelStatus = {
   accountId: string;
   accountName: string | null;
   appId: string | null;
+  appSecret: string | null;
   dmPolicy: 'pairing' | 'allowlist' | 'open' | 'disabled' | string;
   allowFrom: string[];
   groupPolicy: 'open' | 'allowlist' | 'disabled' | string;
