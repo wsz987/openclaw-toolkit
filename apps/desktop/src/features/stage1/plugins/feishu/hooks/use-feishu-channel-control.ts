@@ -8,27 +8,21 @@ import { useChannelActivation } from '../../shared/hooks/use-channel-activation'
 
 type UseFeishuChannelControlResult = {
   controller: ReturnType<typeof createFeishuChannelController>;
-  forceEditing: boolean;
   forceEnabled: boolean;
   pluginInstall: ReturnType<typeof useFeishuPluginInstall>;
   pluginUninstall: ReturnType<typeof useFeishuPluginUninstall>;
-  openConfiguration: (forceEditing?: boolean, forceEnabled?: boolean) => void;
+  openConfiguration: (forceEnabled?: boolean) => void;
   handleControllerToggle: (channelName: string, nextEnabled: boolean) => Promise<void>;
   handlePluginUninstall: (channelName: string) => Promise<boolean>;
-  markForceEditingHandled: () => void;
   markForceEnabledHandled: () => void;
 };
 
 export function useFeishuChannelControl(props: FeishuPluginPanelProps): UseFeishuChannelControlResult {
-  const [forceEditing, setForceEditing] = useState(false);
   const [forceEnabled, setForceEnabled] = useState(false);
   const pluginInstall = useFeishuPluginInstall(props.result.configPath);
   const pluginUninstall = useFeishuPluginUninstall(props.result.configPath);
 
-  const openConfiguration = useCallback((nextForceEditing = false, nextForceEnabled = false) => {
-    if (nextForceEditing) {
-      setForceEditing(true);
-    }
+  const openConfiguration = useCallback((nextForceEnabled = false) => {
     if (nextForceEnabled) {
       setForceEnabled(true);
     }
@@ -46,7 +40,7 @@ export function useFeishuChannelControl(props: FeishuPluginPanelProps): UseFeish
       pluginUninstall.checking,
     ensureReady: pluginInstall.ensureReady,
     onFeishuChannelSetup: props.onFeishuChannelSetup,
-    openConfiguration: () => openConfiguration(true, true)
+    openConfiguration: () => openConfiguration(true)
   });
 
   const activation = useChannelActivation({
@@ -87,14 +81,12 @@ export function useFeishuChannelControl(props: FeishuPluginPanelProps): UseFeish
 
   return {
     controller,
-    forceEditing,
     forceEnabled,
     pluginInstall,
     pluginUninstall,
     openConfiguration,
     handleControllerToggle,
     handlePluginUninstall,
-    markForceEditingHandled: () => setForceEditing(false),
     markForceEnabledHandled: () => setForceEnabled(false)
   };
 }

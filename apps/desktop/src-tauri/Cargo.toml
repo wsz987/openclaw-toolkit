@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "OpenClaw Toolkit Desktop"
 authors = ["OpenClaw Toolkit"]
 edition = "2021"
+default-run = "openclaw-toolkit-desktop"
 
 [lib]
 name = "openclaw_toolkit_desktop_lib"

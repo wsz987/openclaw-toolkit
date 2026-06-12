@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::{
     app_state::{load_install_registry, unregister_installation, InstallationRecord},
     openclaw_config::read_openclaw_status,
-    process::stop_managed_openclaw,
+    runtime_host::stop_openclaw_runtime,
 };
 
 const CONFIRMATION_TEXT: &str = "DELETE OPENCLAW";
@@ -120,12 +120,20 @@ pub fn execute_uninstall(input: ExecuteUninstallInput) -> anyhow::Result<Uninsta
     );
 
     if plan.runtime.running {
-        if let Some(pid) = plan.runtime.pid {
-            eprintln!("[卸载] 检测到运行中的 OpenClaw，准备停止进程: pid={}", pid);
-            stop_managed_openclaw(pid)
-                .with_context(|| format!("停止 OpenClaw 运行进程 {}", pid))?;
-            eprintln!("[卸载] OpenClaw 运行进程已停止: pid={}", pid);
-        }
+        eprintln!(
+            "[卸载] 检测到运行中的 OpenClaw，准备停止运行实例: config_path={}",
+            record.config_path
+        );
+        stop_openclaw_runtime(
+            Some(&record.runtime_host_kind),
+            &record.config_path,
+            plan.runtime.pid,
+        )
+        .with_context(|| format!("停止 OpenClaw 运行实例 {}", record.config_path))?;
+        eprintln!(
+            "[卸载] OpenClaw 运行实例已停止: config_path={}",
+            record.config_path
+        );
     } else {
         eprintln!("[卸载] 当前未检测到运行中的 OpenClaw 进程");
     }
@@ -807,6 +815,7 @@ mod tests {
             pending_config_changes: Vec::new(),
             runtime_pid: None,
             runtime_log_path: None,
+            runtime_host_kind: "direct-process".to_string(),
             installed_at: "2026-06-10T00:00:00Z".to_string(),
             last_validated_at: None,
             last_launched_at: None,

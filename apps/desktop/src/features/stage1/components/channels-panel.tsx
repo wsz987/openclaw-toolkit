@@ -193,13 +193,13 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   };
 
   useEffect(() => {
-    if (!feishuControl.forceEditing && !feishuControl.forceEnabled) {
+    if (!feishuControl.forceEnabled) {
       return;
     }
 
     setActiveChannelId('feishu');
     setIsDrawerOpen(true);
-  }, [feishuControl.forceEditing, feishuControl.forceEnabled]);
+  }, [feishuControl.forceEnabled]);
 
   useEffect(() => {
     if (feishuControl.pluginUninstall.installing) {
@@ -398,8 +398,6 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           return response;
         }}
         hideInternalEnableToggle
-        forceEditing={feishuControl.forceEditing}
-        onForceEditingHandled={feishuControl.markForceEditingHandled}
         forceEnabled={feishuControl.forceEnabled}
         onForceEnabledHandled={feishuControl.markForceEnabledHandled}
       />

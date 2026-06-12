@@ -307,10 +307,12 @@ export type PluginInstallLogEntry = {
 export type OpenClawLaunchResult = {
   pid: number;
   logPath: string;
+  runtimeHostKind?: string;
 };
 
 export type OpenClawStopResult = {
   stopped: boolean;
+  runtimeHostKind?: string;
 };
 
 export type OpenPathResult = string;
@@ -449,6 +451,7 @@ export type InstallationRecord = {
   pendingConfigChanges: string[];
   runtimePid?: number | null;
   runtimeLogPath?: string | null;
+  runtimeHostKind?: string | null;
   installedAt: string;
   lastValidatedAt: string | null;
   lastLaunchedAt: string | null;

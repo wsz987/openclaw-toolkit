@@ -163,7 +163,10 @@ export async function launchOpenClawRuntime(configPath: string): Promise<OpenCla
   return invoke<OpenClawLaunchResult>('launch_openclaw_runtime', { configPath });
 }
 
-export async function stopOpenClawRuntime(configPath: string, pid: number): Promise<OpenClawStopResult> {
+export async function stopOpenClawRuntime(
+  configPath: string,
+  pid?: number | null
+): Promise<OpenClawStopResult> {
   return invoke<OpenClawStopResult>('stop_openclaw_runtime', { configPath, pid });
 }
 

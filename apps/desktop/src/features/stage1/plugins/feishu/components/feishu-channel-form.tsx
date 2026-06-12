@@ -1,14 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  Eye,
-  EyeOff,
-  Radio,
-  Settings2,
-  Shield,
-  Webhook
-} from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Radio, Settings2, Shield, Webhook } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { Input } from '../../../../../components/ui/input';
 import { Select } from '../../../../../components/ui/select';
@@ -21,6 +12,7 @@ type FeishuChannelFormProps = {
   form: FeishuChannelFormState;
   status?: FeishuChannelStatus | null;
   loading: boolean;
+  hideEnableToggle?: boolean;
   secretVisibility: {
     appSecret: boolean;
     verificationToken: boolean;
@@ -34,6 +26,7 @@ export function FeishuChannelForm({
   form,
   status,
   loading,
+  hideEnableToggle = false,
   secretVisibility,
   onFieldChange,
   onToggleSecret
@@ -42,13 +35,14 @@ export function FeishuChannelForm({
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader className="mb-4 border-b border-[hsl(var(--hairline))] p-5 pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
-            <Settings2 className="h-4 w-4" />
-            1. 飞书通道开关与连接基本凭据
-          </CardTitle>
-          <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5 p-5 pt-0">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
+          <Settings2 className="h-4 w-4" />
+          1. 飞书通道开关与连接基本凭据
+        </CardTitle>
+        <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5 p-5 pt-0">
+        {!hideEnableToggle ? (
           <div className="flex items-center justify-between gap-4 rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
@@ -69,6 +63,7 @@ export function FeishuChannelForm({
               />
             </div>
           </div>
+        ) : null}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -286,28 +281,6 @@ export function FeishuChannelForm({
           </CardContent>
         </Card>
       ) : null}
-
-      <Card className="border-dashed border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))]">
-        <CardHeader className="p-5 pb-0">
-          <CardTitle className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--body-strong))]">
-            <Shield className="h-4 w-4 text-[hsl(var(--primary))]" />
-            飞书接入校验与环境要求
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2.5 p-5 text-[11px] leading-relaxed text-[hsl(var(--body))]">
-          <GuideItem>
-            在「飞书开放平台」创建自建应用，在<strong>凭证与基础信息</strong>中拷贝 <code>App ID</code> 和 <code>App Secret</code>。
-          </GuideItem>
-          <GuideItem>
-            在<strong>应用功能 &rarr; 机器人</strong>中开启机器人选项（如果没有开启，客户端长连后无法以机器人身份对话）。
-          </GuideItem>
-          <GuideItem>
-            在<strong>开发配置 &rarr; 事件订阅</strong>中开启事件订阅，订阅消息权限 <code>im.message.receive_v1</code> (接收消息)。如果使用
-            WebSocket 模式，须在上方选择<strong>「启用长连接」</strong>。
-          </GuideItem>
-          <GuideItem>确认在飞书平台对该应用进行「版本发布与上架申请」，通过后机器人在目标群聊或私聊中方可生效。</GuideItem>
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -435,15 +408,6 @@ function WhitelistInput({
         <span className="text-[10px] text-[hsl(var(--muted))]">{description}</span>
       </label>
       <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="font-mono text-xs" />
-    </div>
-  );
-}
-
-function GuideItem({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-start gap-2">
-      <ArrowRight className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[hsl(var(--primary))]" />
-      <span>{children}</span>
     </div>
   );
 }

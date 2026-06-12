@@ -15,6 +15,7 @@ pub mod plugins;
 pub mod process;
 pub mod remote;
 pub mod runtime;
+pub mod runtime_host;
 pub mod skills;
 pub mod status_events;
 pub mod status_watcher;
