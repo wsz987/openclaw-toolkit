@@ -41,7 +41,9 @@ export function useFeishuChannelControl(props: FeishuPluginPanelProps): UseFeish
       props.statusLoading ||
       props.feishuSetupLoading ||
       pluginInstall.installing ||
-      pluginUninstall.installing,
+      pluginUninstall.installing ||
+      pluginInstall.checking ||
+      pluginUninstall.checking,
     ensureReady: pluginInstall.ensureReady,
     onFeishuChannelSetup: props.onFeishuChannelSetup,
     openConfiguration: () => openConfiguration(true, true)

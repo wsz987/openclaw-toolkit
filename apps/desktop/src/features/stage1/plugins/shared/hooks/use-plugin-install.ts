@@ -24,6 +24,7 @@ type UsePluginInstallOptions = {
 type UsePluginInstallResult = {
   open: boolean;
   installing: boolean;
+  checking: boolean;
   error: string | null;
   progress: PluginInstallProgress | null;
   dialog: PluginInstallDialogCopy;
@@ -44,6 +45,7 @@ export function usePluginInstall({
   const progressUnlistenRef = useRef<UnlistenFn | null>(null);
   const [open, setOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<PluginInstallProgress | null>(null);
 
@@ -59,32 +61,42 @@ export function usePluginInstall({
   async function ensureReady() {
     setError(null);
     setProgress(null);
-
-    const installed = await inspectInstalled();
-    if (installed) {
-      return true;
-    }
-
-    setOpen(true);
-    setInstalling(true);
-    setProgress(initialProgress);
-
-    if (!progressUnlistenRef.current) {
-      progressUnlistenRef.current = await listen<PluginInstallProgress>(eventName, (event) => {
-        setProgress(event.payload);
-      });
-    }
+    setChecking(true);
 
     try {
-      await install();
-      setInstalling(false);
-      if (closeOnSuccess) {
-        setOpen(false);
+      const installed = await inspectInstalled();
+      if (installed) {
+        setChecking(false);
+        return true;
       }
-      return true;
-    } catch (installError) {
-      setInstalling(false);
-      setError(installError instanceof Error ? installError.message : String(installError));
+
+      setOpen(true);
+      setInstalling(true);
+      setProgress(initialProgress);
+
+      if (!progressUnlistenRef.current) {
+        progressUnlistenRef.current = await listen<PluginInstallProgress>(eventName, (event) => {
+          setProgress(event.payload);
+        });
+      }
+
+      try {
+        await install();
+        setInstalling(false);
+        setChecking(false);
+        if (closeOnSuccess) {
+          setOpen(false);
+        }
+        return true;
+      } catch (installError) {
+        setInstalling(false);
+        setChecking(false);
+        setError(installError instanceof Error ? installError.message : String(installError));
+        return false;
+      }
+    } catch (inspectError) {
+      setChecking(false);
+      setError(inspectError instanceof Error ? inspectError.message : String(inspectError));
       return false;
     }
   }
@@ -100,6 +112,7 @@ export function usePluginInstall({
   return {
     open,
     installing,
+    checking,
     error,
     progress,
     dialog,

@@ -14,7 +14,8 @@ import {
   X,
   ChevronRight,
   Settings,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '../../../components/ui/input';
@@ -122,10 +123,12 @@ const CHANNELS_LIST: ChannelItem[] = [
 function ChannelListSwitch({
   checked,
   disabled,
+  loading,
   onChange
 }: {
   checked: boolean;
   disabled?: boolean;
+  loading?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
@@ -133,21 +136,27 @@ function ChannelListSwitch({
       type="button"
       aria-pressed={checked}
       aria-label={checked ? '关闭飞书通道' : '启用飞书通道'}
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={(event) => {
         event.stopPropagation();
-        if (disabled) {
+        if (disabled || loading) {
           return;
         }
         onChange(!checked);
       }}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-        } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+        checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+      } ${(disabled || loading) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
-      />
+        className={`pointer-events-none flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      >
+        {loading && (
+          <Loader2 className="w-3 h-3 animate-spin text-[hsl(var(--primary))]" />
+        )}
+      </span>
     </button>
   );
 }
@@ -210,7 +219,8 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
     if (
       uninstallDialogState === 'loading' &&
       !feishuControl.pluginUninstall.installing &&
-      !feishuControl.pluginUninstall.error
+      !feishuControl.pluginUninstall.error &&
+      feishuControl.pluginUninstall.progress !== null
     ) {
       setUninstallDialogState('success');
     }
@@ -406,14 +416,14 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   }
 
   async function handleChannelCardClick(channel: ChannelItem, controller: ChannelController | undefined) {
+    if (controller?.loading) {
+      return;
+    }
+
     setActiveChannelId(channel.id);
 
     if (!controller) {
       setIsDrawerOpen(true);
-      return;
-    }
-
-    if (controller.loading) {
       return;
     }
 
@@ -489,9 +499,14 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
                 <div
                   key={channel.id}
                   onClick={() => {
+                    if (resolvedController?.loading) return;
                     void handleChannelCardClick(channel, resolvedController ?? undefined);
                   }}
-                  className="group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer relative overflow-hidden"
+                  className={`group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden ${
+                    resolvedController?.loading
+                      ? 'animate-pulse opacity-80 border-[hsl(var(--primary)/0.25)]'
+                      : 'hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer'
+                  }`}
                 >
                   {/* Top Bar: Icon & Status */}
                   <div className="flex items-start justify-between gap-4">
@@ -499,26 +514,11 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
                       {getChannelIcon(channel.iconName, 'w-6 h-6')}
                     </div>
                     <div className="flex items-center gap-2">
-                      {actionState?.pluginInstalled && actionState.onPluginUninstall ? (
-                        <button
-                          type="button"
-                          aria-label={`卸载 ${channel.name} 插件`}
-                          title={`卸载 ${channel.name} 插件`}
-                          disabled={actionState.pluginInstalling || actionState.pluginUninstalling}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setUninstallDialogChannelId(channel.id);
-                            setUninstallDialogState('confirm');
-                          }}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))/0.8] text-[hsl(var(--muted))] transition-colors duration-200 hover:border-[hsl(var(--error)/0.25)] hover:bg-[hsl(var(--error)/0.06)] hover:text-[hsl(var(--error))] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      ) : null}
                       {resolvedController ? (
                         <ChannelListSwitch
                           checked={Boolean(resolvedController.enabled)}
                           disabled={resolvedController.loading}
+                          loading={resolvedController.loading}
                           onChange={(checked) => {
                             void handleControlledChannelToggle(channel, resolvedController, checked);
                           }}
@@ -545,19 +545,45 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
                   </div>
 
                   {/* Actions / Info Row */}
-                  <div className="flex items-center justify-between border-t border-[hsl(var(--hairline-soft))]/50 pt-3 mt-auto">
+                  <div className="flex items-center justify-between border-t border-[hsl(var(--muted-soft))]/50 pt-3 mt-auto">
                     {resolvedController ? (
-                      <span className="text-[10px] text-[hsl(var(--primary))] font-semibold flex items-center gap-0.5">
-                        <Settings className="w-3.5 h-3.5" />
-                        配置通道
-                      </span>
+                      resolvedController.loading ? (
+                        <span className="text-[10px] text-[hsl(var(--primary))] font-semibold flex items-center gap-1">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          正在检测...
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[hsl(var(--primary))] font-semibold flex items-center gap-0.5">
+                          <Settings className="w-3.5 h-3.5" />
+                          配置通道
+                        </span>
+                      )
                     ) : (
                       <span className="text-[10px] text-[hsl(var(--muted-soft))] font-medium flex items-center gap-1">
                         <ThumbsUp className="w-3 h-3 text-[hsl(var(--primary))]" />
                         支持投票 ({votes[channel.id]} 票)
                       </span>
                     )}
-                    <ChevronRight className="w-3.5 h-3.5 text-[hsl(var(--muted-soft))] group-hover:text-[hsl(var(--primary))] transition-colors group-hover:translate-x-0.5 duration-200" />
+                    <div className="flex items-center">
+                      {actionState?.pluginInstalled && actionState.onPluginUninstall ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`卸载 ${channel.name} 插件`}
+                          title={`卸载 ${channel.name} 插件`}
+                          disabled={actionState.pluginInstalling || actionState.pluginUninstalling || resolvedController?.loading}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setUninstallDialogChannelId(channel.id);
+                            setUninstallDialogState('confirm');
+                          }}
+                          className="h-7 w-7 text-[hsl(var(--muted))] hover:text-[hsl(var(--error))] hover:bg-[hsl(var(--error)/0.06)] transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                      <ChevronRight className="w-3.5 h-3.5 text-[hsl(var(--muted-soft))] group-hover:text-[hsl(var(--primary))] transition-colors group-hover:translate-x-0.5 duration-200" />
+                    </div>
                   </div>
                 </div>
               );
@@ -629,9 +655,13 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           }
         }}
         onClose={() => {
+          const wasSuccess = uninstallDialogState === 'success';
           setUninstallDialogChannelId(null);
           setUninstallDialogState('confirm');
           feishuControl.pluginUninstall.close();
+          if (wasSuccess) {
+            setIsDrawerOpen(false);
+          }
         }}
       />
     </div>
