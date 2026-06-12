@@ -715,7 +715,7 @@ export function FeishuPluginPanel({
                             onClick={() => void handleOpenUrl(resolvedLinks.credentials)}
                           >
                             <ExternalLink className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
-                            直达飞书凭证配置页 ↗
+                            直达飞书凭证配置页
                           </Button>
                           <Button
                             type="button"
@@ -724,7 +724,7 @@ export function FeishuPluginPanel({
                             onClick={() => void handleOpenUrl(resolvedLinks.docs)}
                           >
                             <BookOpen className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
-                            查看官方接入指引 📖
+                            查看官方接入指引
                           </Button>
                         </div>
                       </div>

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use tauri::Emitter;
-use tauri_plugin_shell::ShellExt;
 
 use crate::core::{
     app_state::{
@@ -214,7 +213,6 @@ pub async fn install_openclaw_plugin(
 
 #[tauri::command]
 pub async fn open_external_url_command(
-    app: tauri::AppHandle,
     input: OpenExternalUrlInput,
 ) -> Result<String, String> {
     let url = input.url.trim();
@@ -222,8 +220,7 @@ pub async fn open_external_url_command(
         return Err("仅支持打开 http/https 链接".to_string());
     }
 
-    app.shell()
-        .open(url, None)
+    tauri_plugin_opener::open_url(url, None::<&str>)
         .map_err(|error| error.to_string())?;
 
     Ok(url.to_string())
