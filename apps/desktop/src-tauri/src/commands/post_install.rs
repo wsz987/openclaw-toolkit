@@ -15,8 +15,8 @@ use crate::core::{
         ProviderSetupInput, ProviderSetupResult,
     },
     plugins::{
-        install_plugin_from_manifest, PluginInstallInput, PluginInstallProgress,
-        PluginInstallResult,
+        install_plugin_from_manifest, uninstall_plugin_from_manifest, PluginInstallInput,
+        PluginInstallProgress, PluginInstallResult, PluginUninstallInput, PluginUninstallResult,
     },
     process::{
         launch_managed_openclaw, stop_managed_openclaw, ManagedOpenClawLaunchResult,
@@ -31,6 +31,7 @@ use crate::core::{
 };
 
 const FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-install-progress";
+const FEISHU_PLUGIN_UNINSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-uninstall-progress";
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -206,6 +207,38 @@ pub async fn install_openclaw_plugin(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("install_openclaw_plugin join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn uninstall_openclaw_plugin(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: PluginUninstallInput,
+) -> Result<PluginUninstallResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = uninstall_plugin_from_manifest(
+            &PathBuf::from(&input.config_path),
+            &input.plugin_id,
+            Some(&|progress: &PluginInstallProgress| {
+                let _ = app.emit(FEISHU_PLUGIN_UNINSTALL_PROGRESS_EVENT, progress);
+            }),
+        )?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            &format!("plugins.{}", result.plugin_entry_id),
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<PluginUninstallResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("uninstall_openclaw_plugin join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

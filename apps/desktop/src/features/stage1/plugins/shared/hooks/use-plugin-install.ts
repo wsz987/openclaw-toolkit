@@ -18,6 +18,7 @@ type UsePluginInstallOptions = {
   install: () => Promise<unknown>;
   initialProgress: PluginInstallProgress;
   dialog: PluginInstallDialogCopy;
+  closeOnSuccess?: boolean;
 };
 
 type UsePluginInstallResult = {
@@ -30,13 +31,16 @@ type UsePluginInstallResult = {
   close: () => void;
 };
 
+export type UsePluginOperationResult = UsePluginInstallResult;
+
 export function usePluginInstall({
   eventName,
   inspectInstalled,
   install,
   initialProgress,
-  dialog
-}: UsePluginInstallOptions): UsePluginInstallResult {
+  dialog,
+  closeOnSuccess = true
+}: UsePluginInstallOptions): UsePluginOperationResult {
   const progressUnlistenRef = useRef<UnlistenFn | null>(null);
   const [open, setOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -74,7 +78,9 @@ export function usePluginInstall({
     try {
       await install();
       setInstalling(false);
-      setOpen(false);
+      if (closeOnSuccess) {
+        setOpen(false);
+      }
       return true;
     } catch (installError) {
       setInstalling(false);

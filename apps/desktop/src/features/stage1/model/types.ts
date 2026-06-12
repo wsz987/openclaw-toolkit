@@ -120,7 +120,6 @@ export type FeishuChannelStatus = {
   configured: boolean;
   domain: string;
   connectionMode: 'websocket' | 'webhook' | string;
-  defaultAccount: string;
   accountId: string;
   accountName: string | null;
   appId: string | null;
@@ -200,7 +199,6 @@ export type OpenClawFeishuChannelSetupPayload = {
   enabled: boolean;
   domain?: string;
   connectionMode?: 'websocket' | 'webhook' | string;
-  defaultAccount?: string;
   accountName?: string;
   appId?: string;
   appSecret?: string;
@@ -225,7 +223,6 @@ export type OpenClawFeishuChannelSetupResult = {
   enabled: boolean;
   configured: boolean;
   connectionMode: string;
-  defaultAccount: string;
   appId: string | null;
 };
 
@@ -248,7 +245,21 @@ export type OpenClawPluginInstallResult = {
   pluginEntryId: string;
   package: string;
   version: string;
-  artifactPath: string;
+  installType: string;
+  installCommandSummary: string;
+};
+
+export type OpenClawPluginUninstallPayload = {
+  configPath: string;
+  pluginId: string;
+};
+
+export type OpenClawPluginUninstallResult = {
+  configPath: string;
+  pluginId: string;
+  pluginEntryId: string;
+  package: string;
+  uninstallCommandSummary: string;
 };
 
 export type ManagedSkillStatus = {

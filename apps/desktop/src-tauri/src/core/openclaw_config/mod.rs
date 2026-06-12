@@ -3,7 +3,7 @@ use std::{
     io::{BufRead, BufReader},
     net::{TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
-    process::Stdio,
+    process::{Command, Stdio},
     thread,
     time::Duration,
 };
@@ -25,7 +25,7 @@ use crate::core::{
             ReleaseSkill,
         },
     },
-    node_runtime::{node_runtime_executable, node_runtime_npm_command},
+    node_runtime::{node_runtime_executable, node_runtime_npm_command, node_runtime_npmrc_path},
     openclaw_cli::{read_plugin_discovery, OpenClawCliContext},
     remote::download_remote_file,
 };
@@ -131,7 +131,6 @@ pub struct FeishuChannelSummary {
     pub configured: bool,
     pub domain: String,
     pub connection_mode: String,
-    pub default_account: String,
     pub account_id: String,
     pub account_name: Option<String>,
     pub app_id: Option<String>,
@@ -159,7 +158,6 @@ pub struct FeishuChannelSetupInput {
     pub enabled: bool,
     pub domain: Option<String>,
     pub connection_mode: Option<String>,
-    pub default_account: Option<String>,
     pub account_name: Option<String>,
     pub app_id: Option<String>,
     pub app_secret: Option<String>,
@@ -186,7 +184,6 @@ pub struct FeishuChannelSetupResult {
     pub enabled: bool,
     pub configured: bool,
     pub connection_mode: String,
-    pub default_account: String,
     pub app_id: Option<String>,
 }
 
@@ -197,8 +194,6 @@ const LEGACY_FEISHU_PLUGIN_ID: &str = "feishu";
 const DEFAULT_FEISHU_PLUGIN_ENTRY_ID: &str = "openclaw-lark";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
-const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
-const DEFAULT_NODE_DIST_MIRROR_URL: &str = "https://npmmirror.com/mirrors/node";
 const DEFAULT_AGENT_SKILLS: [&str; 2] = ["browser-control", "local-filesystem"];
 
 pub fn openclaw_dir(base_dir: &Path, release: &ReleaseArtifact) -> PathBuf {
@@ -692,37 +687,34 @@ pub fn apply_feishu_channel_setup(
     let config_path = PathBuf::from(&input.config_path);
     let mut config = read_openclaw_config_value(&config_path)?;
 
-    let default_account = normalize_non_empty(
-        input.default_account.as_deref(),
-        Some("default".to_string()),
-    );
+    let account_id = "default";
     let domain = normalize_non_empty(input.domain.as_deref(), Some("feishu".to_string()));
     let connection_mode = normalize_non_empty(
         input.connection_mode.as_deref(),
         Some("websocket".to_string()),
     );
-    let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("allowlist".to_string()));
+    let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("open".to_string()));
     let group_policy =
-        normalize_non_empty(input.group_policy.as_deref(), Some("allowlist".to_string()));
-    let existing_account = value_at_path(
-        &config,
-        &["channels", "feishu", "accounts", default_account.as_str()],
-    );
-
+        normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
+    let allow_from = if dm_policy == "open" && input.allow_from.is_empty() {
+        vec!["*".to_string()]
+    } else {
+        input.allow_from.clone()
+    };
     let app_id = normalize_optional_non_empty(
         input.app_id.as_deref(),
-        existing_account.and_then(|entry| {
-            entry
-                .get("appId")
+        string_at_path(&config, &["channels", "feishu", "appId"]).or_else(|| {
+            value_at_path(&config, &["channels", "feishu", "accounts", account_id])
+                .and_then(|entry| entry.get("appId"))
                 .and_then(Value::as_str)
                 .map(ToString::to_string)
         }),
     );
     let app_secret = normalize_optional_non_empty(
         input.app_secret.as_deref(),
-        existing_account.and_then(|entry| {
-            entry
-                .get("appSecret")
+        string_at_path(&config, &["channels", "feishu", "appSecret"]).or_else(|| {
+            value_at_path(&config, &["channels", "feishu", "accounts", account_id])
+                .and_then(|entry| entry.get("appSecret"))
                 .and_then(Value::as_str)
                 .map(ToString::to_string)
         }),
@@ -749,12 +741,10 @@ pub fn apply_feishu_channel_setup(
     });
     let account_name = normalize_optional_non_empty(
         input.account_name.as_deref(),
-        existing_account.and_then(|entry| {
-            entry
-                .get("name")
-                .and_then(Value::as_str)
-                .map(ToString::to_string)
-        }),
+        value_at_path(&config, &["channels", "feishu", "accounts", account_id])
+            .and_then(|entry| entry.get("name"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string),
     );
 
     set_value_at_path(
@@ -788,18 +778,13 @@ pub fn apply_feishu_channel_setup(
     );
     set_value_at_path(
         &mut config,
-        &["channels", "feishu", "defaultAccount"],
-        Value::String(default_account.clone()),
-    );
-    set_value_at_path(
-        &mut config,
         &["channels", "feishu", "dmPolicy"],
         Value::String(dm_policy),
     );
     set_value_at_path(
         &mut config,
         &["channels", "feishu", "allowFrom"],
-        string_vec_to_value(&input.allow_from),
+        string_vec_to_value(&allow_from),
     );
     set_value_at_path(
         &mut config,
@@ -836,17 +821,6 @@ pub fn apply_feishu_channel_setup(
         &["channels", "feishu", "resolveSenderNames"],
         Value::Bool(input.resolve_sender_names),
     );
-    set_value_at_path(
-        &mut config,
-        &[
-            "channels",
-            "feishu",
-            "accounts",
-            default_account.as_str(),
-            "domain",
-        ],
-        Value::String(domain),
-    );
 
     if let Some(account_name) = account_name {
         set_value_at_path(
@@ -855,7 +829,7 @@ pub fn apply_feishu_channel_setup(
                 "channels",
                 "feishu",
                 "accounts",
-                default_account.as_str(),
+                account_id,
                 "name",
             ],
             Value::String(account_name),
@@ -865,30 +839,24 @@ pub fn apply_feishu_channel_setup(
     if let Some(app_id) = app_id.clone() {
         set_value_at_path(
             &mut config,
-            &[
-                "channels",
-                "feishu",
-                "accounts",
-                default_account.as_str(),
-                "appId",
-            ],
+            &["channels", "feishu", "appId"],
             Value::String(app_id),
         );
+    } else {
+        remove_value_at_path(&mut config, &["channels", "feishu", "appId"]);
     }
 
     if let Some(app_secret) = app_secret.clone() {
         set_value_at_path(
             &mut config,
-            &[
-                "channels",
-                "feishu",
-                "accounts",
-                default_account.as_str(),
-                "appSecret",
-            ],
+            &["channels", "feishu", "appSecret"],
             Value::String(app_secret),
         );
+    } else {
+        remove_value_at_path(&mut config, &["channels", "feishu", "appSecret"]);
     }
+
+    remove_value_at_path(&mut config, &["channels", "feishu", "accounts"]);
 
     if connection_mode == "webhook" {
         if let Some(verification_token) = verification_token {
@@ -940,7 +908,6 @@ pub fn apply_feishu_channel_setup(
         enabled: summary.enabled,
         configured: summary.configured,
         connection_mode: summary.connection_mode,
-        default_account: summary.default_account,
         app_id: summary.app_id,
     })
 }
@@ -1269,23 +1236,20 @@ fn normalize_optional_non_empty(value: Option<&str>, fallback: Option<String>) -
 }
 
 fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
-    let default_account = string_at_path(config, &["channels", "feishu", "defaultAccount"])
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| "default".to_string());
-    let account = value_at_path(
-        config,
-        &["channels", "feishu", "accounts", default_account.as_str()],
-    );
-    let app_id = account
-        .and_then(|entry| entry.get("appId"))
-        .and_then(Value::as_str)
-        .map(ToString::to_string)
-        .or_else(|| string_at_path(config, &["channels", "feishu", "appId"]));
-    let app_secret = account
-        .and_then(|entry| entry.get("appSecret"))
-        .and_then(Value::as_str)
-        .map(ToString::to_string)
-        .or_else(|| string_at_path(config, &["channels", "feishu", "appSecret"]));
+    let account_id = "default".to_string();
+    let account = value_at_path(config, &["channels", "feishu", "accounts", account_id.as_str()]);
+    let app_id = string_at_path(config, &["channels", "feishu", "appId"]).or_else(|| {
+        account
+            .and_then(|entry| entry.get("appId"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string)
+    });
+    let app_secret = string_at_path(config, &["channels", "feishu", "appSecret"]).or_else(|| {
+        account
+            .and_then(|entry| entry.get("appSecret"))
+            .and_then(Value::as_str)
+            .map(ToString::to_string)
+    });
 
     FeishuChannelSummary {
         enabled: bool_at_path(config, &["channels", "feishu", "enabled"]).unwrap_or(false),
@@ -1301,8 +1265,7 @@ fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
             .unwrap_or_else(|| "feishu".to_string()),
         connection_mode: string_at_path(config, &["channels", "feishu", "connectionMode"])
             .unwrap_or_else(|| "websocket".to_string()),
-        default_account: default_account.clone(),
-        account_id: default_account,
+        account_id,
         account_name: account
             .and_then(|entry| entry.get("name"))
             .and_then(Value::as_str)
@@ -1310,10 +1273,17 @@ fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
         app_id,
         app_secret,
         dm_policy: string_at_path(config, &["channels", "feishu", "dmPolicy"])
-            .unwrap_or_else(|| "allowlist".to_string()),
-        allow_from: string_array_at_path(config, &["channels", "feishu", "allowFrom"]),
+            .unwrap_or_else(|| "open".to_string()),
+        allow_from: {
+            let allow_from = string_array_at_path(config, &["channels", "feishu", "allowFrom"]);
+            if allow_from.is_empty() {
+                vec!["*".to_string()]
+            } else {
+                allow_from
+            }
+        },
         group_policy: string_at_path(config, &["channels", "feishu", "groupPolicy"])
-            .unwrap_or_else(|| "allowlist".to_string()),
+            .unwrap_or_else(|| "open".to_string()),
         group_allow_from: string_array_at_path(config, &["channels", "feishu", "groupAllowFrom"]),
         require_mention: bool_at_path(config, &["channels", "feishu", "requireMention"])
             .unwrap_or(true),
@@ -1689,13 +1659,9 @@ fn install_openclaw_via_npm(
         .arg(format!("openclaw@{}", version))
         .arg("--prefix")
         .arg(process_friendly_path_string(openclaw_dir))
-        .args([
-            "--no-audit",
-            "--no-fund",
-            "--registry",
-            DEFAULT_NPM_REGISTRY_URL,
-        ])
-        .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
+        .args(["--no-audit", "--no-fund"])
+        .env("NPM_CONFIG_USERCONFIG", node_runtime_npmrc_path(node_dir))
+        .env("npm_config_userconfig", node_runtime_npmrc_path(node_dir))
         .output()
         .context("run npm install")?;
 
@@ -1777,8 +1743,6 @@ fn install_openclaw_package_dependencies(
             "--ignore-scripts",
             "--no-audit",
             "--no-fund",
-            "--registry",
-            DEFAULT_NPM_REGISTRY_URL,
             "--verbose",
         ],
         true,
@@ -1828,25 +1792,16 @@ fn run_command_with_progress(
     ignore_scripts: bool,
 ) -> anyhow::Result<std::process::ExitStatus> {
     let mut command_builder = background_command(process_friendly_path(command));
-    command_builder
-        .args(args)
-        .current_dir(process_friendly_path(working_dir))
-        .env("npm_config_registry", DEFAULT_NPM_REGISTRY_URL)
-        .env("npm_config_audit", "false")
-        .env("npm_config_fund", "false")
-        .env("npm_config_disturl", DEFAULT_NODE_DIST_MIRROR_URL)
-        .env("npm_config_runtime_mirror", DEFAULT_NODE_DIST_MIRROR_URL)
-        .env("NODEJS_ORG_MIRROR", DEFAULT_NODE_DIST_MIRROR_URL)
-        .env("NVM_NODEJS_ORG_MIRROR", DEFAULT_NODE_DIST_MIRROR_URL)
-        .env("ELECTRON_MIRROR", "https://npmmirror.com/mirrors/electron/")
-        .env(
-            "PLAYWRIGHT_DOWNLOAD_HOST",
-            "https://npmmirror.com/mirrors/playwright",
-        )
-        .env("npm_config_python", "python")
-        .env("PATH", build_augmented_path_env(node_exe))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    command_builder.args(args);
+    apply_managed_node_command_env(
+        &mut command_builder,
+        working_dir,
+        node_exe,
+        true,
+        true,
+        Some(Stdio::piped()),
+        Some(Stdio::piped()),
+    );
 
     if ignore_scripts {
         command_builder.env("npm_config_ignore_scripts", "true");
@@ -1881,6 +1836,45 @@ fn run_command_with_progress(
     })?;
 
     Ok(status)
+}
+
+pub fn apply_managed_node_command_env(
+    command: &mut Command,
+    working_dir: &Path,
+    node_exe: &Path,
+    include_mirror_env: bool,
+    augment_path: bool,
+    stdout: Option<Stdio>,
+    stderr: Option<Stdio>,
+) {
+    command.current_dir(process_friendly_path(working_dir));
+
+    if include_mirror_env {
+        let npmrc_path = node_runtime_npmrc_path(
+            node_exe
+                .parent()
+                .and_then(Path::parent)
+                .unwrap_or_else(|| node_exe.parent().unwrap_or(node_exe)),
+        );
+        command
+            .env("NPM_CONFIG_USERCONFIG", &npmrc_path)
+            .env("npm_config_userconfig", &npmrc_path)
+            .env("npm_config_audit", "false")
+            .env("npm_config_fund", "false")
+            .env("npm_config_python", "python");
+    }
+
+    if augment_path {
+        command.env("PATH", build_augmented_path_env(node_exe));
+    }
+
+    if let Some(stdout) = stdout {
+        command.stdout(stdout);
+    }
+
+    if let Some(stderr) = stderr {
+        command.stderr(stderr);
+    }
 }
 
 fn stream_lines(

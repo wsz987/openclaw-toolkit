@@ -122,15 +122,7 @@ export function FeishuChannelForm({
           </div>
 
           <div className="grid grid-cols-1 gap-4 border-t border-[hsl(var(--hairline))] pt-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认通道账户标识 (Default Account)</label>
-              <Input
-                value={form.defaultAccount}
-                onChange={(event) => onFieldChange('defaultAccount', event.target.value)}
-                className="font-mono text-xs"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 md:col-span-2">
               <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">账户昵称 (Account Name)</label>
               <Input
                 value={form.accountName}
@@ -161,9 +153,9 @@ export function FeishuChannelForm({
                   onFieldChange('dmPolicy', event.target.value as 'allowlist' | 'pairing' | 'open' | 'disabled')
                 }
               >
+                <option value="open">Open (对所有私聊会话开放响应)</option>
                 <option value="allowlist">Allowlist (仅限白名单用户触发)</option>
                 <option value="pairing">Pairing (特定配对授权响应)</option>
-                <option value="open">Open (对所有私聊会话开放响应)</option>
                 <option value="disabled">Disabled (禁用单聊响应)</option>
               </Select>
             </div>
@@ -174,8 +166,8 @@ export function FeishuChannelForm({
                 value={form.groupPolicy}
                 onChange={(event) => onFieldChange('groupPolicy', event.target.value as 'allowlist' | 'open' | 'disabled')}
               >
-                <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                 <option value="open">Open (支持在所有群中艾特响应)</option>
+                <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                 <option value="disabled">Disabled (群聊场景静默不响应)</option>
               </Select>
             </div>

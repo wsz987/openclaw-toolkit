@@ -29,15 +29,23 @@ artifacts/openclaw/openclaw-<version>.tgz
   -> 启动 package/openclaw.mjs
 ```
 
-Stage 2 插件扩展（例如飞书插件）应复用同一原则：
+Stage 2 插件扩展（例如飞书通道插件）目前不再走内置 `tgz`：
 
-- 优先消费官方 npm tgz 制品
-- 由受管 Node Runtime 在 `openclaw/package` 内执行本地 tgz 安装
-- 依赖补齐继续使用国内 npm 镜像源
+- 插件安装规范统一由 `artifacts/plugins.json` 描述
+- 优先执行 OpenClaw 官方 `plugins install` / channel install 链路
+- 安装命令运行在受管 Node Runtime 环境中
+- 依赖下载继续使用国内 npm 镜像源
+
+补充说明：
+
+- 对于 `@larksuite/openclaw-lark` 这类插件包，不再直接调用其自带 `install` onboarding 命令
+- 桌面端安装阶段只负责插件包注册，避免卡在交互式“新建机器人 / 关联已有机器人”
+- 后续 channel 配置、授权与机器人绑定由独立配置步骤处理
 
 关键约束：
 
-- `artifacts/manifest.json` 应指向 `.tgz` 制品
+- `artifacts/manifest.json` 仍用于主 OpenClaw 安装制品
+- `artifacts/plugins.json` 用于 channel / plugin 安装规范
 - 安装器在 `package/node_modules` 缺失时自动执行依赖安装
 - npm registry 使用国内镜像源
 

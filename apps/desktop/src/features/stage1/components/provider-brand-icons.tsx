@@ -84,18 +84,14 @@ function ZhipuIcon(props: SVGProps<SVGSVGElement>) {
 function OpenAIIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      <circle cx="12" cy="12" r="9" fill="#111827" />
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="#111827" />
       <path
-        d="M8.7 9.6c.12-1.53 1.7-2.5 3.08-1.82l.78.38.18-.84c.33-1.5 2.13-2.14 3.32-1.18l.68.55.45-.75c.79-1.32 2.84-1.3 3.6.04.48.86.33 1.93-.38 2.6l-.63.6.83.24c1.47.43 2.02 2.26 1 3.4a2.2 2.2 0 0 1-2.62.5l-.79-.38-.17.85c-.32 1.5-2.12 2.15-3.31 1.2l-.69-.55-.44.75c-.78 1.33-2.83 1.32-3.59-.03a2.2 2.2 0 0 1 .38-2.6l.63-.6-.83-.24A2.2 2.2 0 0 1 8.7 9.6Z"
-        stroke="#F8FAFC"
-        strokeWidth="1.15"
-        strokeLinejoin="round"
+        d="M8.2 12a3.8 3.8 0 1 1 7.6 0 3.8 3.8 0 0 1-7.6 0Zm1.9 0a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 0 0-3.8 0Z"
+        fill="#F8FAFC"
       />
       <path
-        d="m11.8 8.2 2.25 1.3v2.6l-2.25 1.3-2.25-1.3V9.5l2.25-1.3Z"
-        stroke="#F8FAFC"
-        strokeWidth="1.15"
-        strokeLinejoin="round"
+        d="M16.55 15.7 14.7 9.1h1.63l.28 1.12h1.92l.28-1.12h1.63l-1.86 6.6h-2.03Zm1-2.56h1.15l-.57-2.3-.58 2.3Z"
+        fill="#F8FAFC"
       />
     </svg>
   );

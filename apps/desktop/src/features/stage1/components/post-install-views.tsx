@@ -2,6 +2,7 @@ import { AlertIcon } from '../../../components/icons';
 import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   OpenClawSkillTogglePayload,
   PostInstallTab,
@@ -26,6 +27,7 @@ type PostInstallHomeViewProps = {
   providerSetupLoading: boolean;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
+  pluginInstallResult: OpenClawPluginInstallResult | null;
   skillCatalog: ManagedSkillCatalog | null;
   skillCatalogLoading: boolean;
   skillToggleLoadingIds: string[];
@@ -73,6 +75,7 @@ export function PostInstallHomeView({
   providerSetupLoading,
   feishuSetupLoading,
   feishuSetupResult,
+  pluginInstallResult,
   skillCatalog,
   skillCatalogLoading,
   skillToggleLoadingIds,
@@ -177,6 +180,7 @@ export function PostInstallHomeView({
             statusLoading={statusLoading}
             feishuSetupLoading={feishuSetupLoading}
             feishuSetupResult={feishuSetupResult}
+            pluginInstallResult={pluginInstallResult}
             onFeishuChannelSetup={onFeishuChannelSetup}
           />
         ) : activeTab === 'skills' ? (

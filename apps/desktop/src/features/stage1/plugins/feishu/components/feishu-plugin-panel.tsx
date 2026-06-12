@@ -29,6 +29,7 @@ import type { FeishuAuthQrResult } from '../../../model/types';
 import type {
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   Stage1InstallResult
 } from '../../../model/types';
@@ -39,6 +40,7 @@ export type FeishuPluginPanelProps = {
   statusLoading: boolean;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
+  pluginInstallResult?: OpenClawPluginInstallResult | null;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
   hideInternalEnableToggle?: boolean;
   forceEditing?: boolean;
@@ -109,6 +111,7 @@ export function FeishuPluginPanel({
   statusLoading,
   feishuSetupLoading,
   feishuSetupResult,
+  pluginInstallResult = null,
   onFeishuChannelSetup,
   hideInternalEnableToggle = false,
   forceEditing = false,
@@ -121,13 +124,12 @@ export function FeishuPluginPanel({
   const [enabled, setEnabled] = useState(false);
   const [domain, setDomain] = useState<'feishu' | 'lark'>('feishu');
   const [connectionMode, setConnectionMode] = useState<'websocket' | 'webhook'>('websocket');
-  const [defaultAccount, setDefaultAccount] = useState('default');
   const [accountName, setAccountName] = useState('');
   const [appId, setAppId] = useState('');
   const [appSecret, setAppSecret] = useState('');
-  const [dmPolicy, setDmPolicy] = useState<'allowlist' | 'pairing' | 'open' | 'disabled'>('allowlist');
-  const [allowFrom, setAllowFrom] = useState('');
-  const [groupPolicy, setGroupPolicy] = useState<'allowlist' | 'open' | 'disabled'>('allowlist');
+  const [dmPolicy, setDmPolicy] = useState<'allowlist' | 'pairing' | 'open' | 'disabled'>('open');
+  const [allowFrom, setAllowFrom] = useState('*');
+  const [groupPolicy, setGroupPolicy] = useState<'allowlist' | 'open' | 'disabled'>('open');
   const [groupAllowFrom, setGroupAllowFrom] = useState('');
   const [requireMention, setRequireMention] = useState(true);
   const [streaming, setStreaming] = useState(true);
@@ -153,6 +155,11 @@ export function FeishuPluginPanel({
   const authQrPollingFinishedRef = useRef(false);
   const resolvedLinks = getFeishuConsoleLinks(appId, domain);
   const effectiveEnabled = hideInternalEnableToggle ? true : enabled;
+  const showPostInstallGuide = Boolean(
+    pluginInstallResult &&
+      pluginInstallResult.pluginId === 'feishu' &&
+      !feishu?.configured
+  );
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
@@ -213,17 +220,16 @@ export function FeishuPluginPanel({
     setEnabled(feishu.enabled);
     setDomain(feishu.domain === 'lark' ? 'lark' : 'feishu');
     setConnectionMode(feishu.connectionMode === 'webhook' ? 'webhook' : 'websocket');
-    setDefaultAccount(feishu.defaultAccount || 'default');
     setAccountName(feishu.accountName ?? '');
     setAppId(feishu.appId ?? '');
     setAppSecret(feishu.appSecret ?? '');
     setDmPolicy(
       feishu.dmPolicy === 'pairing' || feishu.dmPolicy === 'open' || feishu.dmPolicy === 'disabled'
         ? feishu.dmPolicy
-        : 'allowlist'
+        : 'open'
     );
-    setAllowFrom(feishu.allowFrom.join(', '));
-    setGroupPolicy(feishu.groupPolicy === 'open' || feishu.groupPolicy === 'disabled' ? feishu.groupPolicy : 'allowlist');
+    setAllowFrom(feishu.allowFrom.length > 0 ? feishu.allowFrom.join(', ') : '*');
+    setGroupPolicy(feishu.groupPolicy === 'allowlist' || feishu.groupPolicy === 'disabled' ? feishu.groupPolicy : 'open');
     setGroupAllowFrom(feishu.groupAllowFrom.join(', '));
     setRequireMention(feishu.requireMention);
     setStreaming(feishu.streaming);
@@ -345,17 +351,16 @@ export function FeishuPluginPanel({
     setEnabled(feishu.enabled);
     setDomain(feishu.domain === 'lark' ? 'lark' : 'feishu');
     setConnectionMode(feishu.connectionMode === 'webhook' ? 'webhook' : 'websocket');
-    setDefaultAccount(feishu.defaultAccount || 'default');
     setAccountName(feishu.accountName ?? '');
     setAppId(feishu.appId ?? '');
     setAppSecret(feishu.appSecret ?? '');
     setDmPolicy(
       feishu.dmPolicy === 'pairing' || feishu.dmPolicy === 'open' || feishu.dmPolicy === 'disabled'
         ? feishu.dmPolicy
-        : 'allowlist'
+        : 'open'
     );
-    setAllowFrom(feishu.allowFrom.join(', '));
-    setGroupPolicy(feishu.groupPolicy === 'open' || feishu.groupPolicy === 'disabled' ? feishu.groupPolicy : 'allowlist');
+    setAllowFrom(feishu.allowFrom.length > 0 ? feishu.allowFrom.join(', ') : '*');
+    setGroupPolicy(feishu.groupPolicy === 'allowlist' || feishu.groupPolicy === 'disabled' ? feishu.groupPolicy : 'open');
     setGroupAllowFrom(feishu.groupAllowFrom.join(', '));
     setRequireMention(feishu.requireMention);
     setStreaming(feishu.streaming);
@@ -375,6 +380,24 @@ export function FeishuPluginPanel({
     <div className="flex flex-col h-full flex-1 min-h-0 relative animate-fade-in">
       <ScrollArea className="flex-1 pr-4 -mr-4">
         <div className="flex flex-col gap-6 pb-6">
+          {showPostInstallGuide ? (
+            <div className="rounded-xl border border-[hsl(var(--primary)/0.2)] bg-[hsl(var(--primary)/0.06)] px-5 py-4 text-xs leading-relaxed text-[hsl(var(--body-strong))] animate-fade-in shadow-2xs">
+              <div className="flex items-start gap-3">
+                <Check className="w-4 h-4 mt-0.5 text-[hsl(var(--primary))] flex-shrink-0" />
+                <div className="flex flex-col gap-2">
+                  <strong>飞书插件已经注册完成，下一步配置机器人接入信息。</strong>
+                  <span>
+                    当前安装阶段只负责把 `{pluginInstallResult?.pluginEntryId}` 注册到 OpenClaw，不再执行交互式 onboarding。
+                  </span>
+                  <div className="grid gap-1 text-[11px] text-[hsl(var(--body))]">
+                    <span>1. 在下方填写飞书自建应用的 `App ID` 和 `App Secret`。</span>
+                    <span>2. 按需选择 `WebSocket` 或 `Webhook` 连接方式并保存配置。</span>
+                    <span>3. 使用“生成授权二维码”完成应用 owner 的增量授权。</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {!isEditing && feishu?.configured ? (
             <div className="flex flex-col gap-6">
@@ -426,7 +449,7 @@ export function FeishuPluginPanel({
                   <div className="flex-1 min-w-0">
                     <span className="text-[10px] font-bold text-[hsl(var(--muted))] uppercase tracking-wider block">账号与昵称</span>
                     <strong className="text-sm font-medium text-[hsl(var(--body-strong))] truncate block mt-0.5">
-                      {feishu?.accountName || '未命名'} ({feishu?.defaultAccount || 'default'})
+                      {feishu?.accountName || '未命名'}
                     </strong>
                   </div>
                 </div>
@@ -788,11 +811,7 @@ export function FeishuPluginPanel({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[hsl(var(--hairline))] pt-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">默认通道账户标识 (Default Account)</label>
-                      <Input value={defaultAccount} onChange={(event) => setDefaultAccount(event.target.value)} className="text-xs font-mono" />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">账户昵称 (Account Name)</label>
                       <Input value={accountName} onChange={(event) => setAccountName(event.target.value)} placeholder="Primary bot" className="text-xs" />
                     </div>
@@ -823,9 +842,9 @@ export function FeishuPluginPanel({
                         onFocus={() => setActiveStep('release')}
                         onBlur={() => setActiveStep(null)}
                       >
+                        <option value="open">Open (对所有私聊会话开放响应)</option>
                         <option value="allowlist">Allowlist (仅限白名单用户触发)</option>
                         <option value="pairing">Pairing (特定配对授权响应)</option>
-                        <option value="open">Open (对所有私聊会话开放响应)</option>
                         <option value="disabled">Disabled (禁用单聊响应)</option>
                       </Select>
                     </div>
@@ -838,8 +857,8 @@ export function FeishuPluginPanel({
                         onFocus={() => setActiveStep('release')}
                         onBlur={() => setActiveStep(null)}
                       >
-                        <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                         <option value="open">Open (支持在所有群中艾特响应)</option>
+                        <option value="allowlist">Allowlist (仅限白名单群聊生效)</option>
                         <option value="disabled">Disabled (群聊场景静默不响应)</option>
                       </Select>
                     </div>
@@ -1074,7 +1093,7 @@ export function FeishuPluginPanel({
               <div>
                 <strong>Feishu 通道配置写入成功！</strong>
                 <span>
-                  当前服务账号为 `{feishuSetupResult.defaultAccount}`，模式 `{feishuSetupResult.connectionMode}`。您可以在运行控制中心重启 OpenClaw 服务以更新底层通道进程。
+                  当前模式 `{feishuSetupResult.connectionMode}` 已写入。您可以在运行控制中心重启 OpenClaw 服务以更新底层通道进程。
                 </span>
               </div>
             </div>
@@ -1133,7 +1152,6 @@ export function FeishuPluginPanel({
                     enabled: effectiveEnabled,
                     domain,
                     connectionMode,
-                    defaultAccount,
                     accountName,
                     appId,
                     appSecret,

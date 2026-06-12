@@ -107,6 +107,7 @@ export function PostInstallHomeScreen({
           providerSetupLoading={controller.providerSetupLoading}
           feishuSetupLoading={controller.feishuSetupLoading}
           feishuSetupResult={controller.feishuSetupResult}
+          pluginInstallResult={controller.pluginInstallResult}
           skillCatalog={controller.skillCatalog}
           skillCatalogLoading={controller.skillCatalogLoading}
           skillToggleLoadingIds={controller.skillToggleLoadingIds}

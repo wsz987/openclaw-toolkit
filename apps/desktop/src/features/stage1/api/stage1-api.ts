@@ -13,6 +13,8 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
+  OpenClawPluginUninstallPayload,
+  OpenClawPluginUninstallResult,
   OpenClawSkillTogglePayload,
   OpenClawSkillToggleResult,
   OpenExternalUrlPayload,
@@ -131,6 +133,14 @@ export async function setupOpenClawFeishuChannel(
 
 export async function installOpenClawPlugin(input: OpenClawPluginInstallPayload): Promise<OpenClawPluginInstallResult> {
   return invoke<OpenClawPluginInstallResult>('install_openclaw_plugin', {
+    input
+  });
+}
+
+export async function uninstallOpenClawPlugin(
+  input: OpenClawPluginUninstallPayload
+): Promise<OpenClawPluginUninstallResult> {
+  return invoke<OpenClawPluginUninstallResult>('uninstall_openclaw_plugin', {
     input
   });
 }

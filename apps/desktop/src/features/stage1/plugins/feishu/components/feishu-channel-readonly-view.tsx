@@ -87,7 +87,7 @@ export function FeishuChannelReadonlyView({ feishu }: FeishuChannelReadonlyViewP
                 账号与昵称
               </span>
               <strong className="mt-0.5 block truncate text-sm font-medium text-[hsl(var(--body-strong))]">
-                {feishu.accountName || '未命名'} ({feishu.defaultAccount || 'default'})
+                {feishu.accountName || '未命名'}
               </strong>
             </div>
           </CardContent>

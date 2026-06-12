@@ -11,7 +11,6 @@ export type FeishuChannelFormState = {
   enabled: boolean;
   domain: 'feishu' | 'lark';
   connectionMode: 'websocket' | 'webhook';
-  defaultAccount: string;
   accountName: string;
   appId: string;
   appSecret: string;
@@ -43,13 +42,12 @@ export function createDefaultFeishuChannelFormState(): FeishuChannelFormState {
     enabled: false,
     domain: 'feishu',
     connectionMode: 'websocket',
-    defaultAccount: 'default',
     accountName: '',
     appId: '',
     appSecret: '',
-    dmPolicy: 'allowlist',
-    allowFrom: '',
-    groupPolicy: 'allowlist',
+    dmPolicy: 'open',
+    allowFrom: '*',
+    groupPolicy: 'open',
     groupAllowFrom: '',
     requireMention: true,
     streaming: true,
@@ -73,16 +71,15 @@ export function createFeishuChannelFormState(status?: FeishuChannelStatus | null
     enabled: status.enabled,
     domain: status.domain === 'lark' ? 'lark' : 'feishu',
     connectionMode: status.connectionMode === 'webhook' ? 'webhook' : 'websocket',
-    defaultAccount: status.defaultAccount || 'default',
     accountName: status.accountName ?? '',
     appId: status.appId ?? '',
     appSecret: status.appSecret ?? '',
     dmPolicy:
       status.dmPolicy === 'pairing' || status.dmPolicy === 'open' || status.dmPolicy === 'disabled'
         ? status.dmPolicy
-        : 'allowlist',
-    allowFrom: status.allowFrom.join(', '),
-    groupPolicy: status.groupPolicy === 'open' || status.groupPolicy === 'disabled' ? status.groupPolicy : 'allowlist',
+        : 'open',
+    allowFrom: status.allowFrom.length > 0 ? status.allowFrom.join(', ') : '*',
+    groupPolicy: status.groupPolicy === 'allowlist' || status.groupPolicy === 'disabled' ? status.groupPolicy : 'open',
     groupAllowFrom: status.groupAllowFrom.join(', '),
     requireMention: status.requireMention,
     streaming: status.streaming,
@@ -106,7 +103,6 @@ export function buildFeishuChannelSetupPayload(
     enabled: state.enabled,
     domain: state.domain,
     connectionMode: state.connectionMode,
-    defaultAccount: state.defaultAccount,
     accountName: state.accountName,
     appId: state.appId,
     appSecret: state.appSecret,
@@ -137,7 +133,6 @@ export function buildFeishuChannelSetupPayloadFromStatus(
     enabled,
     domain: status.domain,
     connectionMode: status.connectionMode,
-    defaultAccount: status.defaultAccount,
     accountName: status.accountName ?? '',
     appId: status.appId ?? '',
     appSecret: '',

@@ -97,6 +97,11 @@ pub fn inspect_plugin(context: &OpenClawCliContext, plugin_id: &str) -> anyhow::
     Ok(())
 }
 
+pub fn uninstall_plugin(context: &OpenClawCliContext, plugin_id: &str) -> anyhow::Result<()> {
+    run_openclaw_cli(context, &["plugins", "uninstall", plugin_id, "--force"])?;
+    Ok(())
+}
+
 pub fn refresh_plugin_registry(context: &OpenClawCliContext) -> anyhow::Result<()> {
     run_openclaw_cli(context, &["plugins", "registry", "--refresh"])?;
     Ok(())
@@ -128,11 +133,13 @@ fn run_openclaw_cli(context: &OpenClawCliContext, args: &[&str]) -> anyhow::Resu
         .with_context(|| format!("执行 openclaw CLI 失败: {}", args.join(" ")))?;
 
     if !output.status.success() {
-        anyhow::bail!(
-            "OpenClaw CLI 执行失败，退出状态 {}{}",
+        eprintln!(
+            "[OpenClaw CLI] 执行失败: args=`{}` status={}{}",
+            args.join(" "),
             output.status,
             render_command_output(&output)
         );
+        anyhow::bail!("OpenClaw CLI 执行失败，请查看控制台日志。");
     }
 
     Ok(output)

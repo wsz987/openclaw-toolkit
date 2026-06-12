@@ -41,6 +41,7 @@ pub fn load_plugin_manifest(project_root: &Path) -> anyhow::Result<PluginManifes
     if !path.exists() {
         return Ok(PluginManifest {
             plugins: Vec::new(),
+            channels: Vec::new(),
         });
     }
 

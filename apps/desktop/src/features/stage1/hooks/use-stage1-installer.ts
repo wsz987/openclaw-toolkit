@@ -523,7 +523,7 @@ export function useStage1Installer(
     setPluginInstallLoading(true);
     setPluginInstallResult(null);
     setError(null);
-    appendPluginInstallLog('info', `开始安装插件 ${input.pluginId}，将使用离线压缩包和国内 npm 镜像补齐依赖。`);
+    appendPluginInstallLog('info', `开始安装插件 ${input.pluginId}。`);
 
     try {
       const response = await installOpenClawPlugin(input);

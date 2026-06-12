@@ -13,6 +13,11 @@ use crate::core::{
     remote::download_remote_file,
 };
 
+const DEFAULT_NPM_REGISTRY_URL: &str = "https://registry.npmmirror.com";
+const DEFAULT_NODE_DIST_MIRROR_URL: &str = "https://npmmirror.com/mirrors/node";
+const DEFAULT_ELECTRON_MIRROR_URL: &str = "https://npmmirror.com/mirrors/electron/";
+const DEFAULT_PLAYWRIGHT_DOWNLOAD_HOST: &str = "https://npmmirror.com/mirrors/playwright";
+
 pub fn node_runtime_dir(base_dir: &Path, node: &RequiredNodeRuntime) -> PathBuf {
     base_dir
         .join("runtimes")
@@ -28,6 +33,18 @@ pub fn node_runtime_npm_command(node_dir: &Path) -> PathBuf {
     node_runtime_file(node_dir, "npm.cmd")
 }
 
+pub fn node_runtime_npx_command(node_dir: &Path) -> PathBuf {
+    node_runtime_file(node_dir, "npx.cmd")
+}
+
+pub fn node_runtime_npmrc_path(node_dir: &Path) -> PathBuf {
+    let node_exe = node_runtime_executable(node_dir);
+    node_exe
+        .parent()
+        .unwrap_or(node_dir)
+        .join(".npmrc")
+}
+
 pub fn ensure_node_runtime(
     project_root: &Path,
     base_dir: &Path,
@@ -41,6 +58,7 @@ pub fn ensure_node_runtime(
 
     if initial_node_exe.exists() && validate_node_executable(&initial_node_exe, &node.range).is_ok()
     {
+        ensure_node_runtime_mirror_config(&dir)?;
         return Ok(dir);
     }
 
@@ -80,7 +98,32 @@ pub fn ensure_node_runtime(
     validate_node_executable(&node_exe, &node.range)
         .with_context(|| format!("校验 Node Runtime 失败：{}", node_exe.display()))?;
 
+    ensure_node_runtime_mirror_config(&dir)?;
+
     Ok(dir)
+}
+
+pub fn ensure_node_runtime_mirror_config(node_dir: &Path) -> anyhow::Result<PathBuf> {
+    let npmrc_path = node_runtime_npmrc_path(node_dir);
+    let content = format!(
+        concat!(
+            "registry={registry}\n",
+            "disturl={disturl}\n",
+            "runtime_mirror={disturl}\n",
+            "audit=false\n",
+            "fund=false\n",
+            "python=python\n",
+            "electron_mirror={electron}\n",
+            "playwright_download_host={playwright}\n"
+        ),
+        registry = DEFAULT_NPM_REGISTRY_URL,
+        disturl = DEFAULT_NODE_DIST_MIRROR_URL,
+        electron = DEFAULT_ELECTRON_MIRROR_URL,
+        playwright = DEFAULT_PLAYWRIGHT_DOWNLOAD_HOST,
+    );
+    fs::write(&npmrc_path, content)
+        .with_context(|| format!("write node runtime npmrc {}", npmrc_path.display()))?;
+    Ok(npmrc_path)
 }
 
 pub fn detect_system_node() -> SystemNodeDetection {

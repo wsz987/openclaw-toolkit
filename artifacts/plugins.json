@@ -2,17 +2,65 @@
   "plugins": [
     {
       "id": "feishu",
+      "channelId": "feishu",
       "package": "@larksuite/openclaw-lark",
       "version": "2026.5.20",
-      "artifact": "larksuite-openclaw-lark-2026.5.20.tgz",
-      "sha256": "c9f96032b66b2e2af94bb7e3747b6bda78977a73968f93d8066813a7a7359554",
-      "signature": null,
       "pluginEntryId": "openclaw-lark",
       "aliases": [
-        "openclaw-lark"
+        "openclaw-lark",
+        "lark"
       ],
       "openclawVersionRange": ">=2026.5.4",
-      "nodeVersionRange": ">=22"
+      "nodeVersionRange": ">=22",
+      "installType": "official-command",
+      "installCommand": {
+        "executable": "openclaw",
+        "args": [
+          "plugins",
+          "install",
+          "npm:@larksuite/openclaw-lark"
+        ],
+        "env": [],
+        "usesManagedNodePath": true,
+        "usesOpenClawCliContext": true
+      }
+    }
+  ],
+  "channels": [
+    {
+      "id": "feishu",
+      "name": "Feishu / Lark",
+      "status": "active",
+      "pluginId": "feishu",
+      "package": "@larksuite/openclaw-lark",
+      "pluginEntryId": "openclaw-lark",
+      "aliases": [
+        "lark"
+      ],
+      "notes": "官方 channel install 链路，默认通过 OpenClaw plugins install 执行并继承国内 npm 镜像源。"
+    },
+    {
+      "id": "wechat",
+      "name": "WeChat Claw",
+      "status": "reserved",
+      "pluginId": "wechat",
+      "pluginEntryId": "wechat-claw",
+      "aliases": [
+        "wechat-claw",
+        "wecom-claw"
+      ],
+      "notes": "预留 OpenClaw channels 规范接入位，待官方 wechat claw 包名与安装命令确定后补全。"
+    },
+    {
+      "id": "dingtalk",
+      "name": "DingTalk Claw",
+      "status": "reserved",
+      "pluginId": "dingtalk",
+      "pluginEntryId": "dingtalk-claw",
+      "aliases": [
+        "dingtalk-claw"
+      ],
+      "notes": "预留 OpenClaw channels 规范接入位，待官方 dingtalk claw 包名与安装命令确定后补全。"
     }
   ]
 }

@@ -14,7 +14,7 @@ import {
   X,
   ChevronRight,
   Settings,
-  Plus
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '../../../components/ui/input';
@@ -22,8 +22,10 @@ import { ScrollArea } from '../../../components/ui/scroll-area';
 import { Button } from '../../../components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../components/ui/sheet';
 import { PluginInstallDialog } from '../plugins/shared/components/plugin-install-dialog';
+import { PluginUninstallDialog, type PluginUninstallDialogState } from '../plugins/shared/components/plugin-uninstall-dialog';
 import { useFeishuChannelControl } from '../plugins/feishu/hooks/use-feishu-channel-control';
 import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../plugins/feishu/components/feishu-plugin-panel';
+import { findInstalledFeishuPlugin } from '../plugins/feishu/model/feishu-channel';
 import type { ChannelController } from '../plugins/shared/model/channel-controller';
 import { getChannelIcon } from './channels-panel-icons';
 
@@ -41,11 +43,18 @@ type ChannelItem = {
   badgeText: string;
 };
 
+type ChannelActionState = {
+  pluginInstalled: boolean;
+  pluginInstalling: boolean;
+  pluginUninstalling: boolean;
+  onPluginUninstall?: () => Promise<void>;
+};
+
 const CHANNELS_LIST: ChannelItem[] = [
   {
     id: 'feishu',
     name: '飞书 / Lark',
-    type: '内置官方通道',
+    type: '官方通道',
     iconName: 'feishu',
     description: '支持对接飞书自建应用，包含私聊和群聊。支持 WebSocket 和 Webhook 模式。',
     isUpcoming: false,
@@ -67,7 +76,7 @@ const CHANNELS_LIST: ChannelItem[] = [
   {
     id: 'dingtalk',
     name: '钉钉 (DingTalk)',
-    type: '内置通道 (规划中)',
+    type: '官方通道 (规划中)',
     iconName: 'dingtalk',
     description: '对接钉钉单聊及群聊机器人，支持流式交互卡片 and 快捷菜单。',
     isUpcoming: true,
@@ -148,6 +157,8 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'all' | 'configured' | 'upcoming'>('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [uninstallDialogChannelId, setUninstallDialogChannelId] = useState<string | null>(null);
+  const [uninstallDialogState, setUninstallDialogState] = useState<PluginUninstallDialogState>('confirm');
   const [votes, setVotes] = useState<Record<string, number>>({
     telegram: 42,
     slack: 28,
@@ -161,6 +172,16 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   const channelControllers: Partial<Record<ChannelItem['id'], ChannelController>> = {
     feishu: feishuController
   };
+  const channelActionStates: Partial<Record<ChannelItem['id'], ChannelActionState>> = {
+    feishu: {
+      pluginInstalled: Boolean(findInstalledFeishuPlugin(props.status?.installedPlugins)),
+      pluginInstalling: feishuControl.pluginInstall.installing,
+      pluginUninstalling: feishuControl.pluginUninstall.installing,
+      onPluginUninstall: async () => {
+        await feishuControl.handlePluginUninstall('飞书 / Lark');
+      }
+    }
+  };
 
   useEffect(() => {
     if (!feishuControl.forceEditing && !feishuControl.forceEnabled) {
@@ -170,6 +191,35 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
     setActiveChannelId('feishu');
     setIsDrawerOpen(true);
   }, [feishuControl.forceEditing, feishuControl.forceEnabled]);
+
+  useEffect(() => {
+    if (feishuControl.pluginUninstall.installing) {
+      setUninstallDialogState('loading');
+      return;
+    }
+
+    if (uninstallDialogChannelId !== 'feishu') {
+      return;
+    }
+
+    if (feishuControl.pluginUninstall.error) {
+      setUninstallDialogState('error');
+      return;
+    }
+
+    if (
+      uninstallDialogState === 'loading' &&
+      !feishuControl.pluginUninstall.installing &&
+      !feishuControl.pluginUninstall.error
+    ) {
+      setUninstallDialogState('success');
+    }
+  }, [
+    feishuControl.pluginUninstall.error,
+    feishuControl.pluginUninstall.installing,
+    uninstallDialogChannelId,
+    uninstallDialogState
+  ]);
 
   const handleVote = (channelId: string) => {
     if (hasVoted[channelId]) {
@@ -329,6 +379,7 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
     feishu: () => (
       <FeishuPluginPanel
         {...props}
+        pluginInstallResult={props.pluginInstallResult}
         onFeishuChannelSetup={async (input) => {
           const response = await props.onFeishuChannelSetup(input);
           if (response) {
@@ -352,6 +403,28 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
       return;
     }
     await feishuControl.handleControllerToggle(channel.name, nextEnabled);
+  }
+
+  async function handleChannelCardClick(channel: ChannelItem, controller: ChannelController | undefined) {
+    setActiveChannelId(channel.id);
+
+    if (!controller) {
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    if (controller.loading) {
+      return;
+    }
+
+    if (controller.ensureReady) {
+      const ready = await controller.ensureReady();
+      if (!ready) {
+        return;
+      }
+    }
+
+    setIsDrawerOpen(true);
   }
 
   const filterTabs = [
@@ -411,12 +484,12 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
             filteredChannels.map((channel) => {
               const controller = channelControllers[channel.id];
               const resolvedController = controller ?? null;
+              const actionState = channelActionStates[channel.id];
               return (
                 <div
                   key={channel.id}
                   onClick={() => {
-                    setActiveChannelId(channel.id);
-                    setIsDrawerOpen(true);
+                    void handleChannelCardClick(channel, resolvedController ?? undefined);
                   }}
                   className="group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer relative overflow-hidden"
                 >
@@ -425,19 +498,37 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
                     <div className="shrink-0 transition-transform group-hover:scale-105">
                       {getChannelIcon(channel.iconName, 'w-6 h-6')}
                     </div>
-                    {resolvedController ? (
-                      <ChannelListSwitch
-                        checked={Boolean(resolvedController.enabled)}
-                        disabled={resolvedController.loading}
-                        onChange={(checked) => {
-                          void handleControlledChannelToggle(channel, resolvedController, checked);
-                        }}
-                      />
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border leading-none tracking-wide bg-[hsl(var(--muted)/0.06)] text-[hsl(var(--muted))] border-[hsl(var(--hairline))]">
-                        规划中
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {actionState?.pluginInstalled && actionState.onPluginUninstall ? (
+                        <button
+                          type="button"
+                          aria-label={`卸载 ${channel.name} 插件`}
+                          title={`卸载 ${channel.name} 插件`}
+                          disabled={actionState.pluginInstalling || actionState.pluginUninstalling}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setUninstallDialogChannelId(channel.id);
+                            setUninstallDialogState('confirm');
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))/0.8] text-[hsl(var(--muted))] transition-colors duration-200 hover:border-[hsl(var(--error)/0.25)] hover:bg-[hsl(var(--error)/0.06)] hover:text-[hsl(var(--error))] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                      {resolvedController ? (
+                        <ChannelListSwitch
+                          checked={Boolean(resolvedController.enabled)}
+                          disabled={resolvedController.loading}
+                          onChange={(checked) => {
+                            void handleControlledChannelToggle(channel, resolvedController, checked);
+                          }}
+                        />
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border leading-none tracking-wide bg-[hsl(var(--muted)/0.06)] text-[hsl(var(--muted))] border-[hsl(var(--hairline))]">
+                          规划中
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Info Section */}
@@ -522,6 +613,26 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
         cancelLabel={feishuControl.pluginInstall.dialog.cancelLabel}
         closeLabel={feishuControl.pluginInstall.dialog.closeLabel}
         onCancel={feishuControl.pluginInstall.close}
+      />
+
+      <PluginUninstallDialog
+        open={uninstallDialogChannelId === 'feishu'}
+        state={uninstallDialogState}
+        progress={feishuControl.pluginUninstall.progress}
+        error={feishuControl.pluginUninstall.error}
+        pluginName="飞书 / Lark"
+        onConfirm={async () => {
+          setUninstallDialogState('loading');
+          const success = await feishuControl.handlePluginUninstall('飞书 / Lark');
+          if (success) {
+            setUninstallDialogState('success');
+          }
+        }}
+        onClose={() => {
+          setUninstallDialogChannelId(null);
+          setUninstallDialogState('confirm');
+          feishuControl.pluginUninstall.close();
+        }}
       />
     </div>
   );

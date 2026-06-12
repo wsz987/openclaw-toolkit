@@ -110,13 +110,35 @@ pub struct SkillManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PluginInstallCommandEnv {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstallCommand {
+    pub executable: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub env: Vec<PluginInstallCommandEnv>,
+    #[serde(default)]
+    pub uses_managed_node_path: bool,
+    #[serde(
+        default,
+        rename = "usesOpenClawCliContext",
+        alias = "usesOpenclawCliContext"
+    )]
+    pub uses_openclaw_cli_context: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PluginArtifact {
     pub id: String,
     pub package: String,
     pub version: String,
-    pub artifact: String,
-    pub sha256: String,
-    pub signature: Option<String>,
     pub plugin_entry_id: String,
     #[serde(default)]
     pub aliases: Vec<String>,
@@ -124,12 +146,38 @@ pub struct PluginArtifact {
     pub openclaw_version_range: Option<String>,
     #[serde(default)]
     pub node_version_range: Option<String>,
+    #[serde(default)]
+    pub channel_id: Option<String>,
+    #[serde(default)]
+    pub install_type: Option<String>,
+    #[serde(default)]
+    pub install_command: Option<PluginInstallCommand>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelArtifact {
+    pub id: String,
+    pub name: String,
+    pub status: String,
+    #[serde(default)]
+    pub plugin_id: Option<String>,
+    #[serde(default)]
+    pub package: Option<String>,
+    #[serde(default)]
+    pub plugin_entry_id: Option<String>,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {
     #[serde(default)]
     pub plugins: Vec<PluginArtifact>,
+    #[serde(default)]
+    pub channels: Vec<ChannelArtifact>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
