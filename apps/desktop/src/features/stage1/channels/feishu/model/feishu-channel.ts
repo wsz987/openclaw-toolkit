@@ -11,7 +11,6 @@ export type FeishuChannelFormState = {
   enabled: boolean;
   domain: 'feishu' | 'lark';
   connectionMode: 'websocket' | 'webhook';
-  accountName: string;
   appId: string;
   appSecret: string;
   dmPolicy: 'allowlist' | 'pairing' | 'open' | 'disabled';
@@ -42,7 +41,6 @@ export function createDefaultFeishuChannelFormState(): FeishuChannelFormState {
     enabled: false,
     domain: 'feishu',
     connectionMode: 'websocket',
-    accountName: '',
     appId: '',
     appSecret: '',
     dmPolicy: 'open',
@@ -71,7 +69,6 @@ export function createFeishuChannelFormState(status?: FeishuChannelStatus | null
     enabled: status.enabled,
     domain: status.domain === 'lark' ? 'lark' : 'feishu',
     connectionMode: status.connectionMode === 'webhook' ? 'webhook' : 'websocket',
-    accountName: status.accountName ?? '',
     appId: status.appId ?? '',
     appSecret: status.appSecret ?? '',
     dmPolicy:
@@ -103,7 +100,6 @@ export function buildFeishuChannelSetupPayload(
     enabled: state.enabled,
     domain: state.domain,
     connectionMode: state.connectionMode,
-    accountName: state.accountName,
     appId: state.appId,
     appSecret: state.appSecret,
     dmPolicy: state.dmPolicy,
@@ -133,7 +129,6 @@ export function buildFeishuChannelSetupPayloadFromStatus(
     enabled,
     domain: status.domain,
     connectionMode: status.connectionMode,
-    accountName: status.accountName ?? '',
     appId: status.appId ?? '',
     appSecret: '',
     dmPolicy: status.dmPolicy,

@@ -122,7 +122,6 @@ export type FeishuChannelStatus = {
   domain: string;
   connectionMode: 'websocket' | 'webhook' | string;
   accountId: string;
-  accountName: string | null;
   appId: string | null;
   appSecret: string | null;
   dmPolicy: 'pairing' | 'allowlist' | 'open' | 'disabled' | string;
@@ -210,7 +209,6 @@ export type OpenClawFeishuChannelSetupPayload = {
   enabled: boolean;
   domain?: string;
   connectionMode?: 'websocket' | 'webhook' | string;
-  accountName?: string;
   appId?: string;
   appSecret?: string;
   dmPolicy?: 'pairing' | 'allowlist' | 'open' | 'disabled' | string;

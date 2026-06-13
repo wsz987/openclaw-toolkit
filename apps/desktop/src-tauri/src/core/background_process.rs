@@ -9,6 +9,12 @@ use std::os::windows::process::CommandExt;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+#[cfg(target_os = "windows")]
+const DETACHED_PROCESS: u32 = 0x00000008;
+#[cfg(target_os = "windows")]
+const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+#[cfg(target_os = "windows")]
+const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x01000000;
 
 pub fn background_command(program: impl AsRef<OsStr>) -> Command {
     let mut command = Command::new(program);
@@ -19,6 +25,18 @@ pub fn background_command(program: impl AsRef<OsStr>) -> Command {
 pub fn suppress_console_window(command: &mut Command) -> &mut Command {
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
+
+    command
+}
+
+pub fn detach_from_parent_process(command: &mut Command) -> &mut Command {
+    #[cfg(target_os = "windows")]
+    command.creation_flags(
+        CREATE_NO_WINDOW
+            | DETACHED_PROCESS
+            | CREATE_NEW_PROCESS_GROUP
+            | CREATE_BREAKAWAY_FROM_JOB,
+    );
 
     command
 }

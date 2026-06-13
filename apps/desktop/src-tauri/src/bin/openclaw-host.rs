@@ -9,7 +9,9 @@ use std::{
 
 use anyhow::Context;
 use openclaw_toolkit_desktop_lib::core::{
-    background_process::{background_command, suppress_console_window},
+    background_process::{
+        background_command, detach_from_parent_process, suppress_console_window,
+    },
     openclaw_config::read_openclaw_status,
     process::{launch_managed_openclaw, stop_managed_openclaw},
     runtime_host::RUNTIME_HOST_KIND_EXTERNAL_HELPER,
@@ -21,6 +23,7 @@ const DAEMON_POLL_INTERVAL_MS: u64 = 800;
 const CLIENT_WAIT_TIMEOUT_MS: u64 = 20_000;
 const SPAWN_READY_TIMEOUT_MS: u64 = 4_000;
 const STALE_COMMAND_TIMEOUT_SECS: i64 = 30;
+const DAEMON_LAUNCH_SENTINEL: &str = "OPENCLAW_HOST_DAEMONIZED";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,6 +176,10 @@ fn run() -> anyhow::Result<()> {
             let config_path = parse_named_arg(remaining_args, "--config")?;
             run_daemon(PathBuf::from(config_path))?;
         }
+        "spawn-daemon" => {
+            let config_path = parse_named_arg(remaining_args, "--config")?;
+            spawn_detached_daemon(PathBuf::from(config_path))?;
+        }
         other => anyhow::bail!("unsupported command: {other}"),
     }
 
@@ -206,7 +213,7 @@ fn ensure_daemon_running(paths: &HostPaths) -> anyhow::Result<()> {
     let mut command = background_command(current_exe);
     suppress_console_window(&mut command);
     command
-        .arg("daemon")
+        .arg("spawn-daemon")
         .arg("--config")
         .arg(&paths.config_path)
         .stdin(Stdio::null())
@@ -233,6 +240,26 @@ fn ensure_daemon_running(paths: &HostPaths) -> anyhow::Result<()> {
         "openclaw host daemon did not become ready for {}",
         paths.config_path.display()
     )
+}
+
+fn spawn_detached_daemon(config_path: PathBuf) -> anyhow::Result<()> {
+    let current_exe = env::current_exe().context("resolve openclaw-host path")?;
+    let mut command = background_command(current_exe);
+    detach_from_parent_process(&mut command);
+    command
+        .arg("daemon")
+        .arg("--config")
+        .arg(&config_path)
+        .env(DAEMON_LAUNCH_SENTINEL, "1")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    command
+        .spawn()
+        .with_context(|| format!("spawn detached runtime host daemon for {}", config_path.display()))?;
+
+    Ok(())
 }
 
 fn submit_command_and_wait(
@@ -291,6 +318,13 @@ fn submit_command_and_wait(
 }
 
 fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
+    let launched_detached = env::var(DAEMON_LAUNCH_SENTINEL)
+        .map(|value| value == "1")
+        .unwrap_or(false);
+    if !launched_detached {
+        anyhow::bail!("daemon must be launched via spawn-daemon");
+    }
+
     let status = read_openclaw_status(&config_path)
         .with_context(|| format!("read openclaw status from {}", config_path.display()))?;
     let paths = host_paths_from_config(&config_path);

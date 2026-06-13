@@ -112,7 +112,7 @@ export function ChannelsPanelCard({
         </p>
       </div>
 
-      <div className="flex items-center justify-between border-t border-[hsl(var(--muted-soft))]/50 pt-1 mt-auto">
+      <div className="flex items-center justify-between border-t border-[hsl(var(--muted-soft))]/50 pt-1 mt-auto min-h-8">
         {resolvedController ? (
           resolvedController.loading ? (
             <span className="text-[10px] text-[hsl(var(--primary))] font-semibold flex items-center gap-1">

@@ -134,7 +134,6 @@ pub struct FeishuChannelSummary {
     pub domain: String,
     pub connection_mode: String,
     pub account_id: String,
-    pub account_name: Option<String>,
     pub app_id: Option<String>,
     pub app_secret: Option<String>,
     pub dm_policy: String,
@@ -160,7 +159,6 @@ pub struct FeishuChannelSetupInput {
     pub enabled: bool,
     pub domain: Option<String>,
     pub connection_mode: Option<String>,
-    pub account_name: Option<String>,
     pub app_id: Option<String>,
     pub app_secret: Option<String>,
     pub dm_policy: Option<String>,
@@ -850,14 +848,6 @@ pub fn apply_feishu_channel_setup(
         number_at_path(&config, &["channels", "feishu", "webhookPort"])
             .and_then(|value| u16::try_from(value).ok())
     });
-    let account_name = normalize_optional_non_empty(
-        input.account_name.as_deref(),
-        value_at_path(&config, &["channels", "feishu", "accounts", account_id])
-            .and_then(|entry| entry.get("name"))
-            .and_then(Value::as_str)
-            .map(ToString::to_string),
-    );
-
     set_value_at_path(
         &mut config,
         &[
@@ -932,20 +922,6 @@ pub fn apply_feishu_channel_setup(
         &["channels", "feishu", "resolveSenderNames"],
         Value::Bool(input.resolve_sender_names),
     );
-
-    if let Some(account_name) = account_name {
-        set_value_at_path(
-            &mut config,
-            &[
-                "channels",
-                "feishu",
-                "accounts",
-                account_id,
-                "name",
-            ],
-            Value::String(account_name),
-        );
-    }
 
     if let Some(app_id) = app_id.clone() {
         set_value_at_path(
@@ -1377,10 +1353,6 @@ fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
         connection_mode: string_at_path(config, &["channels", "feishu", "connectionMode"])
             .unwrap_or_else(|| "websocket".to_string()),
         account_id,
-        account_name: account
-            .and_then(|entry| entry.get("name"))
-            .and_then(Value::as_str)
-            .map(ToString::to_string),
         app_id,
         app_secret,
         dm_policy: string_at_path(config, &["channels", "feishu", "dmPolicy"])

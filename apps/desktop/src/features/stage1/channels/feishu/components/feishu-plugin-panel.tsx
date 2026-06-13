@@ -70,6 +70,50 @@ export function FeishuPluginPanel({
   const effectiveEnabled = hideInternalEnableToggle ? true : form.enabled;
   const postInstallActionLoading = statusLoading || feishuSetupLoading;
   const showPostInstallGuide = Boolean(pluginInstallResult && pluginInstallResult.pluginId === 'feishu' && !feishu?.configured);
+  const canSaveConfiguration = !effectiveEnabled || (form.appId.trim().length > 0 && form.appSecret.trim().length > 0);
+  const credentialAssistant = (
+    <div className="animate-fade-in rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] p-4 shadow-2xs">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1.5">
+          <strong className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--body-strong))]">
+            <Shield className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+            飞书凭证与插件授权配置助手
+          </strong>
+          <p className="max-w-[560px] text-[10px] leading-relaxed text-[hsl(var(--muted))]">
+            在「飞书开放平台」自建应用的「凭证与基础信息」中获取 App ID 和 App Secret。为防止调用权限不足，请在填写完成后在此生成授权二维码进行增量授权。
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
+              onClick={() => void handleOpenUrl(resolvedLinks.credentials)}
+            >
+              <ExternalLink className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+              直达飞书凭证配置页
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
+              onClick={() => void handleOpenUrl(resolvedLinks.docs)}
+            >
+              <BookOpen className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+              查看官方接入指引
+            </Button>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={() => void handleGenerateAuthQr()}
+          className="flex h-9 w-full shrink-0 items-center justify-center px-4 text-[11px] font-semibold md:w-auto"
+        >
+          插件扫码授权
+        </Button>
+      </div>
+    </div>
+  );
 
   async function handleOpenUrl(url: string) {
     try {
@@ -258,66 +302,15 @@ export function FeishuPluginPanel({
               status={feishu}
               loading={postInstallActionLoading}
               hideEnableToggle={hideInternalEnableToggle}
+              credentialAssistant={credentialAssistant}
               secretVisibility={secretVisibility}
               onFieldChange={handleFieldChange}
               onToggleSecret={handleToggleSecret}
             />
 
-            <div className="animate-fade-in rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] p-4 shadow-2xs">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1.5">
-                  <strong className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--body-strong))]">
-                    <Shield className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                    飞书凭证与插件授权配置助手
-                  </strong>
-                  <p className="max-w-[560px] text-[10px] leading-relaxed text-[hsl(var(--muted))]">
-                    在「飞书开放平台」自建应用的「凭证与基础信息」中获取 App ID 和 App Secret。为防止调用权限不足，请在填写完成后在此生成授权二维码进行增量授权。
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-1.5">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
-                      onClick={() => void handleOpenUrl(resolvedLinks.credentials)}
-                    >
-                      <ExternalLink className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
-                      直达飞书凭证配置页
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
-                      onClick={() => void handleOpenUrl(resolvedLinks.docs)}
-                    >
-                      <BookOpen className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
-                      查看官方接入指引
-                    </Button>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="default"
-                  onClick={() => void handleGenerateAuthQr()}
-                  className="flex h-9 w-full shrink-0 items-center justify-center px-4 text-[11px] font-semibold md:w-auto"
-                >
-                  插件扫码授权
-                </Button>
-              </div>
-            </div>
-
             <FeishuDocLinksCard
               appId={form.appId}
-              appSecret={form.appSecret}
               domain={form.domain}
-              connectionMode={form.connectionMode}
-              verificationToken={form.verificationToken}
-              encryptKey={form.encryptKey}
-              dmPolicy={form.dmPolicy}
-              groupPolicy={form.groupPolicy}
-              allowFrom={form.allowFrom}
-              groupAllowFrom={form.groupAllowFrom}
-              webhookHost={form.webhookHost}
-              webhookPort={form.webhookPort}
               activeStep={null}
               onOpenUrl={handleOpenUrl}
               onOpenFaq={() => setHelpDialogOpen(true)}
@@ -364,7 +357,7 @@ export function FeishuPluginPanel({
 
             <Button
               variant="default"
-              disabled={postInstallActionLoading || (effectiveEnabled && !form.appId.trim())}
+              disabled={postInstallActionLoading || !canSaveConfiguration}
               onClick={() =>
                 void onFeishuChannelSetup(
                   buildFeishuChannelSetupPayload(result.configPath, {

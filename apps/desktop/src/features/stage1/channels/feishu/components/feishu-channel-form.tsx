@@ -13,6 +13,7 @@ type FeishuChannelFormProps = {
   status?: FeishuChannelStatus | null;
   loading: boolean;
   hideEnableToggle?: boolean;
+  credentialAssistant?: ReactNode;
   secretVisibility: {
     appSecret: boolean;
     verificationToken: boolean;
@@ -27,43 +28,42 @@ export function FeishuChannelForm({
   status,
   loading,
   hideEnableToggle = false,
+  credentialAssistant,
   secretVisibility,
   onFieldChange,
   onToggleSecret
 }: FeishuChannelFormProps) {
   return (
     <div className="flex flex-col gap-6">
-      <Card>
+      <Card className='bg-[hsl(var(--surface-soft))]'>
         <CardHeader className="mb-4 border-b border-[hsl(var(--hairline))] p-5 pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
-          <Settings2 className="h-4 w-4" />
-          1. 飞书通道开关与连接基本凭据
-        </CardTitle>
-        <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5 p-5 pt-0">
-        {!hideEnableToggle ? (
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
-              <span className="text-[10px] leading-normal text-[hsl(var(--muted))]">
-                激活后写入对应配置文件，在启动 OpenClaw Runtime 时会自动加载飞书插件与长连接服务。
-              </span>
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
+            <Settings2 className="h-4 w-4" />
+            1. 飞书通道开关与连接基本凭据
+          </CardTitle>
+          <CardDescription>配置您的飞书自建应用对接参数以拉起核心通道连接</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5 p-5 pt-0">
+          {!hideEnableToggle ? (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold text-[hsl(var(--body-strong))]">启用飞书通道功能 (Enable Feishu)</span>
+                <span className="text-[10px] leading-normal text-[hsl(var(--muted))]">
+                  激活后写入对应配置文件，在启动 OpenClaw Runtime 时会自动加载飞书插件与长连接服务。
+                </span>
+              </div>
+              <div
+                onClick={() => onFieldChange('enabled', !form.enabled)}
+                className={`relative inline-flex h-6 w-11 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${form.enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+                  }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${form.enabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                />
+              </div>
             </div>
-            <div
-              onClick={() => onFieldChange('enabled', !form.enabled)}
-              className={`relative inline-flex h-6 w-11 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] ${
-                form.enabled ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                  form.enabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </div>
-          </div>
-        ) : null}
+          ) : null}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -115,22 +115,12 @@ export function FeishuChannelForm({
               />
             </div>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 border-t border-[hsl(var(--hairline))] pt-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">账户昵称 (Account Name)</label>
-              <Input
-                value={form.accountName}
-                onChange={(event) => onFieldChange('accountName', event.target.value)}
-                placeholder="Primary bot"
-                className="text-xs"
-              />
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      <Card>
+      {credentialAssistant}
+
+      <Card className='bg-[hsl(var(--surface-soft))]'>
         <CardHeader className="mb-4 border-b border-[hsl(var(--hairline))] p-5 pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
             <Shield className="h-4 w-4" />
@@ -192,7 +182,7 @@ export function FeishuChannelForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className='bg-[hsl(var(--surface-soft))]'>
         <CardHeader className="mb-4 border-b border-[hsl(var(--hairline))] p-5 pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[hsl(var(--primary))]">
             <BookOpen className="h-4 w-4" />
@@ -303,11 +293,10 @@ function ConnectionModeCard({
   return (
     <div
       onClick={onClick}
-      className={`group flex cursor-pointer select-none flex-col gap-2 rounded-xl border-2 p-4 transition-all duration-200 ${
-        active
-          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
-          : 'border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] hover:border-[hsl(var(--muted-soft))]'
-      }`}
+      className={`group flex cursor-pointer select-none flex-col gap-2 rounded-xl border-2 p-4 transition-all duration-200 ${active
+        ? 'border-[hsl(var(--primary))] bg-[hsl(var(--surface-soft))] shadow-2xs'
+        : 'border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] hover:border-[hsl(var(--muted-soft))]'
+        }`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-[hsl(var(--ink))]">
