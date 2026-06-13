@@ -331,6 +331,8 @@ pub fn write_openclaw_config(
             "entries": default_skill_entries(&default_skills)
         },
         "plugins": {
+            "allow": [DEFAULT_BROWSER_PLUGIN_ID],
+            "bundledDiscovery": "compat",
             "entries": {
                 DEFAULT_BROWSER_PLUGIN_ID: {
                     "enabled": true
@@ -341,6 +343,106 @@ pub fn write_openclaw_config(
 
     fs::write(config_path, serde_json::to_string_pretty(&config)?)?;
     Ok(())
+}
+
+pub fn ensure_plugins_allowlist_entry(config_path: &Path, plugin_id: &str) -> anyhow::Result<bool> {
+    let plugin_id = plugin_id.trim();
+    if plugin_id.is_empty() {
+        return Ok(false);
+    }
+
+    let mut config = read_openclaw_config_value(config_path)?;
+    let changed = ensure_plugins_allowlist_entry_in_value(&mut config, plugin_id);
+    if changed {
+        write_config_value(config_path, &config)?;
+    }
+    Ok(changed)
+}
+
+pub fn remove_plugins_allowlist_entry(config_path: &Path, plugin_id: &str) -> anyhow::Result<bool> {
+    let plugin_id = plugin_id.trim();
+    if plugin_id.is_empty() {
+        return Ok(false);
+    }
+
+    let mut config = read_openclaw_config_value(config_path)?;
+    let changed = remove_plugins_allowlist_entry_in_value(&mut config, plugin_id);
+    if changed {
+        write_config_value(config_path, &config)?;
+    }
+    Ok(changed)
+}
+
+fn ensure_plugins_allowlist_entry_in_value(config: &mut Value, plugin_id: &str) -> bool {
+    let normalized = plugin_id.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return false;
+    }
+
+    if !config.is_object() {
+        *config = json!({});
+    }
+    let root = config.as_object_mut().expect("config forced to object");
+    let plugins_value = root
+        .entry("plugins".to_string())
+        .or_insert_with(|| Value::Object(serde_json::Map::new()));
+    if !plugins_value.is_object() {
+        *plugins_value = Value::Object(serde_json::Map::new());
+    }
+    let plugins = plugins_value
+        .as_object_mut()
+        .expect("plugins forced to object");
+    let allow_value = plugins
+        .entry("allow".to_string())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if !allow_value.is_array() {
+        *allow_value = Value::Array(Vec::new());
+    }
+
+    let allow_list = allow_value.as_array_mut().expect("allow forced to array");
+    let exists = allow_list.iter().any(|entry| {
+        entry.as_str()
+            .map(|value| value.trim().eq_ignore_ascii_case(&normalized))
+            .unwrap_or(false)
+    });
+    let mut changed = false;
+    if !exists {
+        allow_list.push(Value::String(plugin_id.to_string()));
+        changed = true;
+    }
+
+    let bundled_discovery = plugins
+        .entry("bundledDiscovery".to_string())
+        .or_insert_with(|| Value::String("compat".to_string()));
+    if bundled_discovery.as_str() != Some("compat") {
+        *bundled_discovery = Value::String("compat".to_string());
+        changed = true;
+    }
+
+    changed
+}
+
+fn remove_plugins_allowlist_entry_in_value(config: &mut Value, plugin_id: &str) -> bool {
+    let normalized = plugin_id.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return false;
+    }
+
+    let Some(plugins) = config.get_mut("plugins").and_then(Value::as_object_mut) else {
+        return false;
+    };
+    let Some(allow) = plugins.get_mut("allow").and_then(Value::as_array_mut) else {
+        return false;
+    };
+
+    let original_len = allow.len();
+    allow.retain(|entry| {
+        !entry
+            .as_str()
+            .map(|value| value.trim().eq_ignore_ascii_case(&normalized))
+            .unwrap_or(false)
+    });
+    original_len != allow.len()
 }
 
 pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatusSummary> {
@@ -691,6 +793,9 @@ pub fn apply_feishu_channel_setup(
     input: &FeishuChannelSetupInput,
 ) -> anyhow::Result<FeishuChannelSetupResult> {
     let config_path = PathBuf::from(&input.config_path);
+    if input.enabled {
+        let _ = ensure_plugins_allowlist_entry(&config_path, DEFAULT_FEISHU_PLUGIN_ENTRY_ID)?;
+    }
     let mut config = read_openclaw_config_value(&config_path)?;
 
     let account_id = "default";

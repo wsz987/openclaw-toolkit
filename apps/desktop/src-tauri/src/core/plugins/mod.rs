@@ -24,7 +24,10 @@ use crate::core::{
         OpenClawCliContext, inspect_plugin, list_installed_plugins, refresh_plugin_registry,
         uninstall_plugin,
     },
-    openclaw_config::apply_managed_node_command_env,
+    openclaw_config::{
+        apply_managed_node_command_env, ensure_plugins_allowlist_entry,
+        remove_plugins_allowlist_entry,
+    },
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -162,6 +165,7 @@ pub fn install_plugin_from_manifest(
         plugin,
         &discovered_plugins,
     )?;
+    let _ = ensure_plugins_allowlist_entry(config_path, &plugin.plugin_entry_id)?;
     emit_plugin_install_progress(
         progress_callback,
         "ready",
@@ -248,6 +252,7 @@ pub fn uninstall_plugin_from_manifest(
         plugin,
         &discovered_plugins,
     )?;
+    let _ = remove_plugins_allowlist_entry(config_path, &plugin.plugin_entry_id)?;
     emit_plugin_install_progress(
         progress_callback,
         "ready",

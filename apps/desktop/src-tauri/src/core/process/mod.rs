@@ -94,6 +94,7 @@ pub fn launch_managed_openclaw(
         .arg("gateway")
         .env("OPENCLAW_CONFIG_PATH", &status.config_path)
         .env("OPENCLAW_HOME", &status.openclaw_dir)
+        .env("OPENCLAW_STATE_DIR", &status.openclaw_dir)
         .current_dir(PathBuf::from(&status.openclaw_dir).join("package"))
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))

@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 
 use crate::core::{
     openclaw_cli::{read_plugin_discovery, OpenClawCliContext},
-    openclaw_config::OpenClawStatusSummary,
+    openclaw_config::{ensure_plugins_allowlist_entry, OpenClawStatusSummary},
 };
 
 const WEIXIN_PLUGIN_ID: &str = "wechat";
@@ -182,6 +182,9 @@ pub fn apply_weixin_channel_toggle(
     input: &WeixinChannelToggleInput,
 ) -> anyhow::Result<WeixinChannelToggleResult> {
     let config_path = PathBuf::from(&input.config_path);
+    if input.enabled {
+        let _ = ensure_plugins_allowlist_entry(&config_path, WEIXIN_PLUGIN_ENTRY_ID)?;
+    }
     let mut config = read_openclaw_config_value(&config_path)?;
 
     set_value_at_path(
@@ -879,6 +882,7 @@ fn list_indexed_weixin_account_ids(config_path: &Path) -> anyhow::Result<Vec<Str
 }
 
 fn ensure_weixin_channel_enabled(config_path: &Path, account_id: &str) -> anyhow::Result<()> {
+    let _ = ensure_plugins_allowlist_entry(config_path, WEIXIN_PLUGIN_ENTRY_ID)?;
     let mut config = read_openclaw_config_value(config_path)?;
     set_value_at_path(
         &mut config,
