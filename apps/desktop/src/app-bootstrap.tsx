@@ -75,21 +75,49 @@ export function AppBootstrap() {
 
   if (loading) {
     return (
-      <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
-        <div className="workspace max-w-[1200px] w-full m-auto flex flex-col gap-8 animate-fade-in">
-          <Card className="max-w-2xl mx-auto py-14">
-            <CardContent className="flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))]">
-                <SpinnerIcon size={22} className="spinning text-[hsl(var(--primary))]" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold text-[hsl(var(--ink))]">正在恢复 OpenClaw 环境</h2>
-                <p className="text-sm text-[hsl(var(--muted))] mt-2">
-                  正在读取安装记录、验证配置和恢复上次的安装实例状态。
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="app-shell flex flex-col min-h-screen bg-[hsl(var(--canvas))] relative overflow-hidden">
+        {/* Soft background glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.06)_0%,transparent_70%)] pointer-events-none" />
+        
+        <div className="flex-1 flex flex-col items-center justify-center max-w-xl w-full mx-auto p-8 relative z-10 animate-fade-in">
+          {/* Elegant concentric spinner */}
+          <div className="relative w-28 h-28 flex items-center justify-center mb-8">
+            <div className="absolute inset-0 rounded-full border border-[hsl(var(--primary)/0.12)] animate-ping [animation-duration:2.5s]" />
+            <div className="absolute inset-4 rounded-full border border-[hsl(var(--primary)/0.08)] animate-pulse" />
+            <div className="absolute inset-6 rounded-full border-2 border-[hsl(var(--hairline-soft))]" />
+            <div className="absolute inset-6 rounded-full border-2 border-transparent border-t-[hsl(var(--primary))] border-r-[hsl(var(--primary))] animate-spin [animation-duration:1.2s]" />
+            <div className="w-10 h-10 rounded-full bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] flex items-center justify-center shadow-xs">
+              <SpinnerIcon size={16} className="spinning text-[hsl(var(--primary))/0.8]" />
+            </div>
+          </div>
+
+          {/* Typography */}
+          <div className="text-center">
+            <h2 className="text-2xl font-medium tracking-tight text-[hsl(var(--ink))]">
+              正在恢复 OpenClaw 环境
+            </h2>
+            <p className="text-sm text-[hsl(var(--muted))] mt-3 leading-relaxed max-w-sm mx-auto">
+              正在读取安装记录、验证配置和恢复上次的安装实例状态。
+            </p>
+          </div>
+
+          {/* Micro-steps status */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs text-[hsl(var(--muted-soft))] select-none">
+            <span className="flex items-center gap-1.5 animate-pulse font-medium text-[hsl(var(--primary))]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--primary))] shadow-[0_0_8px_hsl(var(--primary))]" />
+              读取安装记录
+            </span>
+            <span className="hidden sm:inline w-1 h-px bg-[hsl(var(--hairline))]" />
+            <span className="flex items-center gap-1.5 opacity-60">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--muted-soft))]" />
+              验证环境配置
+            </span>
+            <span className="hidden sm:inline w-1 h-px bg-[hsl(var(--hairline))]" />
+            <span className="flex items-center gap-1.5 opacity-60">
+              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--muted-soft))]" />
+              恢复运行实例
+            </span>
+          </div>
         </div>
       </main>
     );
