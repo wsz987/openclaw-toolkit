@@ -213,7 +213,7 @@ export function WechatLoginQrDialog({
           </div>
         ) : null}
 
-        {qrDataUrl ? (
+        {/* {qrDataUrl ? (
           <div className="flex justify-center">
             <Button
               type="button"
@@ -234,7 +234,7 @@ export function WechatLoginQrDialog({
               )}
             </Button>
           </div>
-        ) : null}
+        ) : null} */}
 
         <AlertDialogFooter>
           <AlertDialogAction className="h-9 w-full text-[11px] font-medium">关闭窗口</AlertDialogAction>
