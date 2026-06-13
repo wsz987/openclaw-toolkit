@@ -24,6 +24,32 @@
         "usesManagedNodePath": true,
         "usesOpenClawCliContext": true
       }
+    },
+    {
+      "id": "wechat",
+      "channelId": "wechat",
+      "package": "@tencent-weixin/openclaw-weixin",
+      "version": "2.4.4",
+      "pluginEntryId": "openclaw-weixin",
+      "aliases": [
+        "openclaw-weixin",
+        "weixin",
+        "wechat-claw"
+      ],
+      "openclawVersionRange": ">=2026.3.22",
+      "nodeVersionRange": ">=22",
+      "installType": "official-command",
+      "installCommand": {
+        "executable": "openclaw",
+        "args": [
+          "plugins",
+          "install",
+          "@tencent-weixin/openclaw-weixin"
+        ],
+        "env": [],
+        "usesManagedNodePath": true,
+        "usesOpenClawCliContext": true
+      }
     }
   ],
   "channels": [
@@ -41,15 +67,17 @@
     },
     {
       "id": "wechat",
-      "name": "WeChat Claw",
-      "status": "reserved",
+      "name": "WeChat ClawBot",
+      "status": "active",
       "pluginId": "wechat",
-      "pluginEntryId": "wechat-claw",
+      "package": "@tencent-weixin/openclaw-weixin",
+      "pluginEntryId": "openclaw-weixin",
       "aliases": [
-        "wechat-claw",
-        "wecom-claw"
+        "openclaw-weixin",
+        "weixin",
+        "wechat-claw"
       ],
-      "notes": "预留 OpenClaw channels 规范接入位，待官方 wechat claw 包名与安装命令确定后补全。"
+      "notes": "官方微信 ClawBot 非企业版通道，安装后需继续走二维码扫码登录。"
     },
     {
       "id": "dingtalk",

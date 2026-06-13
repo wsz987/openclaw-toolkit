@@ -27,7 +27,11 @@ import { PluginUninstallDialog, type PluginUninstallDialogState } from '../plugi
 import { useFeishuChannelControl } from '../plugins/feishu/hooks/use-feishu-channel-control';
 import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../plugins/feishu/components/feishu-plugin-panel';
 import { findInstalledFeishuPlugin } from '../plugins/feishu/model/feishu-channel';
+import { useWechatChannelControl } from '../plugins/wechat/hooks/use-wechat-channel-control';
+import { WechatPluginPanel } from '../plugins/wechat/components/wechat-plugin-panel';
+import { findInstalledWechatPlugin } from '../plugins/wechat/model/wechat-channel';
 import type { ChannelController } from '../plugins/shared/model/channel-controller';
+import type { UsePluginOperationResult } from '../plugins/shared/hooks/use-plugin-install';
 import { getChannelIcon } from './channels-panel-icons';
 
 export type ChannelsPanelProps = FeishuPluginPanelProps;
@@ -65,13 +69,13 @@ const CHANNELS_LIST: ChannelItem[] = [
   },
   {
     id: 'wechat',
-    name: '企业微信 (WeCom)',
-    type: '高级通道 (规划中)',
+    name: '微信 ClawBot',
+    type: '官方通道',
     iconName: 'wechat',
-    description: '对接企业微信自建应用，实现内部智能助手或外部客户群组管理。',
-    isUpcoming: true,
+    description: '对接腾讯微信官方 openclaw-weixin 非企业版插件，通过二维码扫码登录个人微信 ClawBot。',
+    isUpcoming: false,
     colorClass: 'text-green-500 bg-green-500/10 border-green-500/20',
-    badgeBg: 'bg-green-500/10 border border-green-500/20',
+    badgeBg: 'bg-green-500/10',
     badgeText: 'text-green-500'
   },
   {
@@ -95,28 +99,6 @@ const CHANNELS_LIST: ChannelItem[] = [
     colorClass: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
     badgeBg: 'bg-sky-500/10 border border-sky-500/20',
     badgeText: 'text-sky-500'
-  },
-  {
-    id: 'slack',
-    name: 'Slack Bot',
-    type: '扩展通道 (规划中)',
-    iconName: 'slack',
-    description: '对接 Slack App，将 OpenClaw 的智能体连接至 Slack 频道 and DM。',
-    isUpcoming: true,
-    colorClass: 'text-pink-500 bg-pink-500/10 border-pink-500/20',
-    badgeBg: 'bg-pink-500/10 border border-pink-500/20',
-    badgeText: 'text-pink-500'
-  },
-  {
-    id: 'webhook',
-    name: '自定义 Webhook',
-    type: '开发者接口 (规划中)',
-    iconName: 'webhook',
-    description: '提供通用的 HTTP 请求/响应接口规范，支持连接任意第三方聊天系统。',
-    isUpcoming: true,
-    colorClass: 'text-slate-500 bg-slate-500/10 border-slate-500/20',
-    badgeBg: 'bg-slate-500/10 border border-slate-500/20',
-    badgeText: 'text-slate-500'
   }
 ];
 
@@ -144,14 +126,12 @@ function ChannelListSwitch({
         }
         onChange(!checked);
       }}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-        checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-      } ${(disabled || loading) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+        } ${(disabled || loading) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       <span
-        className={`pointer-events-none flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
+        className={`pointer-events-none flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
       >
         {loading && (
           <Loader2 className="w-3 h-3 animate-spin text-[hsl(var(--primary))]" />
@@ -177,9 +157,17 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   });
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({});
   const feishuControl = useFeishuChannelControl(props);
+  const wechatControl = useWechatChannelControl({
+    result: props.result,
+    status: props.status,
+    statusLoading: props.statusLoading,
+    pluginInstallResult: props.pluginInstallResult
+  });
   const feishuController: ChannelController = feishuControl.controller;
+  const wechatController: ChannelController = wechatControl.controller;
   const channelControllers: Partial<Record<ChannelItem['id'], ChannelController>> = {
-    feishu: feishuController
+    feishu: feishuController,
+    wechat: wechatController
   };
   const channelActionStates: Partial<Record<ChannelItem['id'], ChannelActionState>> = {
     feishu: {
@@ -189,8 +177,26 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
       onPluginUninstall: async () => {
         await feishuControl.handlePluginUninstall('飞书 / Lark');
       }
+    },
+    wechat: {
+      pluginInstalled: Boolean(findInstalledWechatPlugin(props.status?.installedPlugins)),
+      pluginInstalling: wechatControl.pluginInstall.installing,
+      pluginUninstalling: wechatControl.pluginUninstall.installing,
+      onPluginUninstall: async () => {
+        await wechatControl.handlePluginUninstall('微信 ClawBot');
+      }
     }
   };
+  const channelPluginInstallStates: Partial<Record<ChannelItem['id'], UsePluginOperationResult>> = {
+    feishu: feishuControl.pluginInstall,
+    wechat: wechatControl.pluginInstall
+  };
+  const activePluginInstallChannelId =
+    (Object.entries(channelPluginInstallStates).find(([, state]) => state?.open)?.[0] as ChannelItem['id'] | undefined) ??
+    undefined;
+  const activePluginInstallState = activePluginInstallChannelId
+    ? channelPluginInstallStates[activePluginInstallChannelId]
+    : undefined;
 
   useEffect(() => {
     if (!feishuControl.forceEnabled) {
@@ -202,31 +208,62 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
   }, [feishuControl.forceEnabled]);
 
   useEffect(() => {
+    if (!wechatControl.forceEnabled) {
+      return;
+    }
+
+    setActiveChannelId('wechat');
+    setIsDrawerOpen(true);
+  }, [wechatControl.forceEnabled]);
+
+  useEffect(() => {
     if (feishuControl.pluginUninstall.installing) {
       setUninstallDialogState('loading');
       return;
     }
 
-    if (uninstallDialogChannelId !== 'feishu') {
+    if (wechatControl.pluginUninstall.installing) {
+      setUninstallDialogState('loading');
       return;
     }
 
-    if (feishuControl.pluginUninstall.error) {
+    if (uninstallDialogChannelId !== 'feishu' && uninstallDialogChannelId !== 'wechat') {
+      return;
+    }
+
+    const uninstallError =
+      uninstallDialogChannelId === 'wechat'
+        ? wechatControl.pluginUninstall.error
+        : feishuControl.pluginUninstall.error;
+    const uninstallInstalling =
+      uninstallDialogChannelId === 'wechat'
+        ? wechatControl.pluginUninstall.installing
+        : feishuControl.pluginUninstall.installing;
+    const uninstallProgress =
+      uninstallDialogChannelId === 'wechat'
+        ? wechatControl.pluginUninstall.progress
+        : feishuControl.pluginUninstall.progress;
+
+    if (uninstallError) {
       setUninstallDialogState('error');
       return;
     }
 
     if (
       uninstallDialogState === 'loading' &&
-      !feishuControl.pluginUninstall.installing &&
-      !feishuControl.pluginUninstall.error &&
-      feishuControl.pluginUninstall.progress !== null
+      !uninstallInstalling &&
+      !uninstallError &&
+      uninstallProgress !== null
     ) {
       setUninstallDialogState('success');
     }
   }, [
     feishuControl.pluginUninstall.error,
     feishuControl.pluginUninstall.installing,
+    feishuControl.pluginUninstall.progress,
+    wechatControl.pluginUninstall.error,
+    wechatControl.pluginUninstall.installing,
+    wechatControl.pluginUninstall.progress,
     uninstallDialogChannelId,
     uninstallDialogState
   ]);
@@ -401,6 +438,17 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
         forceEnabled={feishuControl.forceEnabled}
         onForceEnabledHandled={feishuControl.markForceEnabledHandled}
       />
+    ),
+    wechat: () => (
+      <WechatPluginPanel
+        result={props.result}
+        status={props.status}
+        statusLoading={props.statusLoading}
+        pluginInstallResult={props.pluginInstallResult}
+        loginBusy={wechatControl.controller.loading}
+        forceEnabled={wechatControl.forceEnabled}
+        onForceEnabledHandled={wechatControl.markForceEnabledHandled}
+      />
     )
   };
 
@@ -408,6 +456,10 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
 
   async function handleControlledChannelToggle(channel: ChannelItem, controller: ChannelController | undefined, nextEnabled: boolean) {
     if (!controller) {
+      return;
+    }
+    if (channel.id === 'wechat') {
+      await wechatControl.handleControllerToggle(channel.name, nextEnabled);
       return;
     }
     await feishuControl.handleControllerToggle(channel.name, nextEnabled);
@@ -500,11 +552,10 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
                     if (resolvedController?.loading) return;
                     void handleChannelCardClick(channel, resolvedController ?? undefined);
                   }}
-                  className={`group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden ${
-                    resolvedController?.loading
-                      ? 'animate-pulse opacity-80 border-[hsl(var(--primary)/0.25)]'
-                      : 'hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer'
-                  }`}
+                  className={`group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden ${resolvedController?.loading
+                    ? 'animate-pulse opacity-80 border-[hsl(var(--primary)/0.25)]'
+                    : 'hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer'
+                    }`}
                 >
                   {/* Top Bar: Icon & Status */}
                   <div className="flex items-start justify-between gap-4">
@@ -625,29 +676,40 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
       </Sheet>
 
       <PluginInstallDialog
-        open={feishuControl.pluginInstall.open}
-        installing={feishuControl.pluginInstall.installing}
-        progress={feishuControl.pluginInstall.progress}
-        error={feishuControl.pluginInstall.error}
-        title={feishuControl.pluginInstall.dialog.title}
-        description={feishuControl.pluginInstall.dialog.description}
-        idleMessage={feishuControl.pluginInstall.dialog.idleMessage}
-        installingLabel={feishuControl.pluginInstall.dialog.installingLabel}
-        errorLabel={feishuControl.pluginInstall.dialog.errorLabel}
-        cancelLabel={feishuControl.pluginInstall.dialog.cancelLabel}
-        closeLabel={feishuControl.pluginInstall.dialog.closeLabel}
-        onCancel={feishuControl.pluginInstall.close}
+        open={Boolean(activePluginInstallState?.open)}
+        installing={Boolean(activePluginInstallState?.installing)}
+        progress={activePluginInstallState?.progress ?? null}
+        error={activePluginInstallState?.error ?? null}
+        title={activePluginInstallState?.dialog.title ?? ''}
+        description={activePluginInstallState?.dialog.description ?? ''}
+        idleMessage={activePluginInstallState?.dialog.idleMessage ?? ''}
+        installingLabel={activePluginInstallState?.dialog.installingLabel ?? ''}
+        errorLabel={activePluginInstallState?.dialog.errorLabel ?? ''}
+        cancelLabel={activePluginInstallState?.dialog.cancelLabel}
+        closeLabel={activePluginInstallState?.dialog.closeLabel}
+        onCancel={() => activePluginInstallState?.close()}
       />
 
       <PluginUninstallDialog
-        open={uninstallDialogChannelId === 'feishu'}
+        open={uninstallDialogChannelId === 'feishu' || uninstallDialogChannelId === 'wechat'}
         state={uninstallDialogState}
-        progress={feishuControl.pluginUninstall.progress}
-        error={feishuControl.pluginUninstall.error}
-        pluginName="飞书 / Lark"
+        progress={
+          uninstallDialogChannelId === 'wechat'
+            ? wechatControl.pluginUninstall.progress
+            : feishuControl.pluginUninstall.progress
+        }
+        error={
+          uninstallDialogChannelId === 'wechat'
+            ? wechatControl.pluginUninstall.error
+            : feishuControl.pluginUninstall.error
+        }
+        pluginName={uninstallDialogChannelId === 'wechat' ? '微信 ClawBot' : '飞书 / Lark'}
         onConfirm={async () => {
           setUninstallDialogState('loading');
-          const success = await feishuControl.handlePluginUninstall('飞书 / Lark');
+          const success =
+            uninstallDialogChannelId === 'wechat'
+              ? await wechatControl.handlePluginUninstall('微信 ClawBot')
+              : await feishuControl.handlePluginUninstall('飞书 / Lark');
           if (success) {
             setUninstallDialogState('success');
           }
@@ -657,6 +719,7 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
           setUninstallDialogChannelId(null);
           setUninstallDialogState('confirm');
           feishuControl.pluginUninstall.close();
+          wechatControl.pluginUninstall.close();
           if (wasSuccess) {
             setIsDrawerOpen(false);
           }

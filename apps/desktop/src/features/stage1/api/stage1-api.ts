@@ -33,6 +33,13 @@ import type {
   Stage1InstallResult,
   ManagedSkillCatalog,
   Stage1StepState,
+  WeixinChannelTogglePayload,
+  WeixinChannelToggleResult,
+  WeixinLoginQrStartPayload,
+  WeixinLoginQrStartResult,
+  WeixinLoginQrWaitPayload,
+  WeixinLoginQrWaitResult,
+  WeixinLoginStatus,
   UninstallPlan,
   UninstallResult,
   VersionCatalogResult
@@ -209,6 +216,28 @@ export async function createFeishuAuthQr(input: FeishuAuthQrPayload): Promise<Fe
 
 export async function inspectFeishuAuthQrStatus(input: FeishuAuthQrStatusPayload): Promise<FeishuAuthQrStatusResult> {
   return invoke<FeishuAuthQrStatusResult>('inspect_feishu_auth_qr_status_command', { input });
+}
+
+export async function inspectWeixinLoginStatus(configPath: string): Promise<WeixinLoginStatus> {
+  return invoke<WeixinLoginStatus>('inspect_weixin_login_status_command', { configPath });
+}
+
+export async function startWeixinLoginQr(
+  input: WeixinLoginQrStartPayload
+): Promise<WeixinLoginQrStartResult> {
+  return invoke<WeixinLoginQrStartResult>('start_weixin_login_qr_command', { input });
+}
+
+export async function waitForWeixinLoginQr(
+  input: WeixinLoginQrWaitPayload
+): Promise<WeixinLoginQrWaitResult> {
+  return invoke<WeixinLoginQrWaitResult>('wait_for_weixin_login_qr_command', { input });
+}
+
+export async function setWeixinChannelEnabled(
+  input: WeixinChannelTogglePayload
+): Promise<WeixinChannelToggleResult> {
+  return invoke<WeixinChannelToggleResult>('set_weixin_channel_enabled_command', { input });
 }
 
 export async function inspectUninstallPlan(installationId: string): Promise<UninstallPlan> {

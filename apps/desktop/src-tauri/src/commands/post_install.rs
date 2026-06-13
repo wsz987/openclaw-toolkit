@@ -30,10 +30,16 @@ use crate::core::{
     },
     status_events::refresh_and_emit_openclaw_status,
     status_watcher::OpenClawStatusWatcher,
+    weixin::{
+        apply_weixin_channel_toggle, inspect_weixin_login_status, start_weixin_login_with_qr,
+        wait_for_weixin_login, WeixinChannelToggleInput, WeixinChannelToggleResult,
+        WeixinLoginQrStartInput, WeixinLoginQrStartResult, WeixinLoginQrWaitInput,
+        WeixinLoginQrWaitResult, WeixinLoginStatus,
+    },
 };
 
-const FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-install-progress";
-const FEISHU_PLUGIN_UNINSTALL_PROGRESS_EVENT: &str = "openclaw://feishu-plugin-uninstall-progress";
+const OPENCLAW_PLUGIN_INSTALL_PROGRESS_EVENT: &str = "openclaw://plugin-install-progress";
+const OPENCLAW_PLUGIN_UNINSTALL_PROGRESS_EVENT: &str = "openclaw://plugin-uninstall-progress";
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -196,7 +202,7 @@ pub async fn install_openclaw_plugin(
             &PathBuf::from(&input.config_path),
             &input.plugin_id,
             Some(&|progress: &PluginInstallProgress| {
-                let _ = app.emit(FEISHU_PLUGIN_INSTALL_PROGRESS_EVENT, progress);
+                let _ = app.emit(OPENCLAW_PLUGIN_INSTALL_PROGRESS_EVENT, progress);
             }),
         )?;
         let _ = mark_runtime_action_required(
@@ -228,7 +234,7 @@ pub async fn uninstall_openclaw_plugin(
             &PathBuf::from(&input.config_path),
             &input.plugin_id,
             Some(&|progress: &PluginInstallProgress| {
-                let _ = app.emit(FEISHU_PLUGIN_UNINSTALL_PROGRESS_EVENT, progress);
+                let _ = app.emit(OPENCLAW_PLUGIN_UNINSTALL_PROGRESS_EVENT, progress);
             }),
         )?;
         let _ = mark_runtime_action_required(
@@ -289,6 +295,92 @@ pub async fn inspect_feishu_auth_qr_status_command(
             rendered
         })?
         .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn inspect_weixin_login_status_command(
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    config_path: String,
+) -> Result<WeixinLoginStatus, String> {
+    watcher.watch_config_path(&config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        inspect_weixin_login_status(&PathBuf::from(config_path)).map_err(render_error)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("inspect_weixin_login_status_command join failed:\n{}", rendered);
+        rendered
+    })?
+}
+
+#[tauri::command]
+pub async fn start_weixin_login_qr_command(
+    input: WeixinLoginQrStartInput,
+) -> Result<WeixinLoginQrStartResult, String> {
+    tauri::async_runtime::spawn_blocking(move || start_weixin_login_with_qr(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("start_weixin_login_qr_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn wait_for_weixin_login_qr_command(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: WeixinLoginQrWaitInput,
+) -> Result<WeixinLoginQrWaitResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = wait_for_weixin_login(&input)?;
+        if result.connected || result.already_connected {
+            let config_path = PathBuf::from(&input.config_path);
+            let _ = mark_runtime_action_required(
+                &config_path,
+                "restart",
+                &format!("channels.{}", "openclaw-weixin"),
+            );
+            let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        }
+        Ok::<WeixinLoginQrWaitResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("wait_for_weixin_login_qr_command join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn set_weixin_channel_enabled_command(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: WeixinChannelToggleInput,
+) -> Result<WeixinChannelToggleResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_weixin_channel_toggle(&input)?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            "channels.openclaw-weixin",
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<WeixinChannelToggleResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("set_weixin_channel_enabled_command join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
 }
 
 #[tauri::command]

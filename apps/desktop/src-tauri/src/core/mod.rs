@@ -21,4 +21,5 @@ pub mod status_events;
 pub mod status_watcher;
 pub mod uninstall;
 pub mod version_catalog;
+pub mod weixin;
 pub mod workflow;

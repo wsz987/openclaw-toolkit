@@ -605,12 +605,16 @@ fn resolve_install_command_args(
     install_command: &PluginInstallCommand,
 ) -> Vec<String> {
     let package_with_version = format!("{}@{}", plugin.package, plugin.version);
+    let npm_package_with_version = format!("npm:{}", package_with_version);
+    let npm_package = format!("npm:{}", plugin.package);
     install_command
         .args
         .iter()
         .map(|arg| {
             if arg == &plugin.package {
                 package_with_version.clone()
+            } else if arg == &npm_package {
+                npm_package_with_version.clone()
             } else {
                 arg.clone()
             }

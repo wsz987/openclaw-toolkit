@@ -147,6 +147,7 @@ fn status_semantically_equal(left: &OpenClawStatusSummary, right: &OpenClawStatu
         && left.provider_api_url == right.provider_api_url
         && left.feishu_plugin_enabled == right.feishu_plugin_enabled
         && left.feishu_channel == right.feishu_channel
+        && left.weixin_channel == right.weixin_channel
         && left.skills_installed == right.skills_installed
         && left.plugins_enabled == right.plugins_enabled
         && left.installed_plugins == right.installed_plugins

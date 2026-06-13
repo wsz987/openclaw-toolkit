@@ -33,6 +33,8 @@ type UsePluginInstallResult = {
 };
 
 export type UsePluginOperationResult = UsePluginInstallResult;
+export const OPENCLAW_PLUGIN_INSTALL_PROGRESS_EVENT = 'openclaw://plugin-install-progress';
+export const OPENCLAW_PLUGIN_UNINSTALL_PROGRESS_EVENT = 'openclaw://plugin-uninstall-progress';
 
 export function usePluginInstall({
   eventName,

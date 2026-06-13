@@ -28,6 +28,7 @@ use crate::core::{
     node_runtime::{node_runtime_executable, node_runtime_npm_command, node_runtime_npmrc_path},
     openclaw_cli::{read_plugin_discovery, OpenClawCliContext},
     remote::download_remote_file,
+    weixin::WeixinChannelSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +54,7 @@ pub struct OpenClawStatusSummary {
     pub available_providers: Vec<ProviderDescriptor>,
     pub feishu_plugin_enabled: bool,
     pub feishu_channel: FeishuChannelSummary,
+    pub weixin_channel: WeixinChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
     pub installed_plugins: Vec<InstalledPlugin>,
@@ -420,6 +422,9 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         )
         .unwrap_or(false);
 
+    let weixin_channel =
+        crate::core::weixin::read_weixin_channel_summary(&config, Some(&plugin_discovery), config_path);
+
     Ok(OpenClawStatusSummary {
         openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
         node_dir,
@@ -445,6 +450,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         available_providers,
         feishu_plugin_enabled,
         feishu_channel,
+        weixin_channel,
         skills_installed: enabled_skill_ids(&config),
         plugins_enabled: plugin_discovery.enabled_plugin_ids,
         installed_plugins: plugin_discovery.installed_plugins,

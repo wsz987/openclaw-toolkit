@@ -104,6 +104,7 @@ export type OpenClawPostInstallStatus = {
   availableProviders: ProviderCatalogEntry[];
   feishuPluginEnabled: boolean;
   feishuChannel: FeishuChannelStatus;
+  weixinChannel: WeixinChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
   installedPlugins: InstalledPluginStatus[];
@@ -138,6 +139,16 @@ export type FeishuChannelStatus = {
   webhookPath: string | null;
   webhookHost: string | null;
   webhookPort: number | null;
+};
+
+export type WeixinChannelStatus = {
+  installed: boolean;
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
+  configuredAccountIds: string[];
+  baseUrl: string;
+  cdnBaseUrl: string;
 };
 
 export type ProviderCatalogModelEntry = {
@@ -352,6 +363,63 @@ export type FeishuAuthQrStatusResult = {
   refreshTokenGranted: boolean;
   scope: string | null;
   expiresIn: number | null;
+};
+
+export type WeixinLoginStatus = {
+  installed: boolean;
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
+  configuredAccountIds: string[];
+  defaultBaseUrl: string;
+};
+
+export type WeixinLoginQrStartPayload = {
+  configPath: string;
+  accountId?: string;
+  force?: boolean;
+};
+
+export type WeixinLoginQrStartResult = {
+  sessionKey: string;
+  qrDataUrl: string | null;
+  message: string;
+  expiresIn: number;
+  requiresVerifyCode: boolean;
+};
+
+export type WeixinLoginQrWaitPayload = {
+  configPath: string;
+  sessionKey: string;
+  verifyCode?: string;
+  timeoutMs?: number;
+};
+
+export type WeixinLoginQrWaitResult = {
+  connected: boolean;
+  alreadyConnected: boolean;
+  needsVerifyCode: boolean;
+  verifyCodeBlocked: boolean;
+  expired: boolean;
+  status: string;
+  message: string;
+  accountId: string | null;
+  userId: string | null;
+  botTokenPresent: boolean;
+  qrDataUrl: string | null;
+  expiresIn: number | null;
+};
+
+export type WeixinChannelTogglePayload = {
+  configPath: string;
+  enabled: boolean;
+};
+
+export type WeixinChannelToggleResult = {
+  configPath: string;
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
 };
 
 export type UninstallRuntimePlan = {
