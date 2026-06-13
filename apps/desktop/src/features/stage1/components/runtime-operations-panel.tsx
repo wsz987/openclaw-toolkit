@@ -191,13 +191,12 @@ export function RuntimeOperationsPanel({
             </span>
           )}
           <span
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
-              isRunning
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${isRunning
                 ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                 : isStarting
                   ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]'
                   : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
-            }`}
+              }`}
           >
             {isRunning ? '服务运行中' : isStarting ? '服务启动中' : '服务未启动'}
           </span>
@@ -221,7 +220,7 @@ export function RuntimeOperationsPanel({
           </div>
         </div>
 
-        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1">
+        <div className="bg-[hsl(var(--surface-dark-soft))] border border-white/5 p-4 rounded-lg flex flex-col gap-1 flex-1">
           <span className="text-[10px] font-semibold text-[hsl(var(--on-dark-soft))] uppercase tracking-wider">插件启用状态</span>
           <span className="text-xs font-medium text-[hsl(var(--on-dark))] mt-1 truncate">
             {resolvedStatus?.pluginsEnabled.length ? resolvedStatus.pluginsEnabled.join(', ') : '未检测到已启用插件'}
