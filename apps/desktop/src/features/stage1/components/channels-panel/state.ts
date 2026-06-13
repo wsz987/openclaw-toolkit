@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import type { PluginUninstallDialogState } from '../plugins/shared/components/plugin-uninstall-dialog';
-import { useFeishuChannelControl } from '../plugins/feishu/hooks/use-feishu-channel-control';
-import type { FeishuPluginPanelProps } from '../plugins/feishu/components/feishu-plugin-panel';
-import { findInstalledFeishuPlugin } from '../plugins/feishu/model/feishu-channel';
-import { useWechatChannelControl } from '../plugins/wechat/hooks/use-wechat-channel-control';
-import { findInstalledWechatPlugin } from '../plugins/wechat/model/wechat-channel';
-import type { ChannelController } from '../plugins/shared/model/channel-controller';
-import type { UsePluginOperationResult } from '../plugins/shared/hooks/use-plugin-install';
+import type { PluginUninstallDialogState } from '../../channels/shared/components/plugin-uninstall-dialog';
+import { useFeishuChannelControl } from '../../channels/feishu/hooks/use-feishu-channel-control';
+import type { FeishuPluginPanelProps } from '../../channels/feishu/components/feishu-plugin-panel';
+import { findInstalledFeishuPlugin } from '../../channels/feishu/model/feishu-channel';
+import { useWechatChannelControl } from '../../channels/wechat/hooks/use-wechat-channel-control';
+import { findInstalledWechatPlugin } from '../../channels/wechat/model/wechat-channel';
+import type { ChannelController } from '../../channels/shared/model/channel-controller';
+import type { UsePluginOperationResult } from '../../channels/shared/hooks/use-plugin-install';
 import {
   CHANNELS_LIST,
   type ChannelActionState,
   type ChannelId,
   type ChannelItem
-} from './channels-panel-model';
+} from './model';
 
 export const CHANNELS_FILTER_TABS = [
   { id: 'all', label: '全部' },

@@ -1,8 +1,8 @@
 import { ChevronRight, Loader2, Settings, ThumbsUp, Trash2 } from 'lucide-react';
-import { Button } from '../../../components/ui/button';
-import { getChannelIcon } from './channels-panel-icons';
-import type { ChannelActionState, ChannelItem } from './channels-panel-model';
-import type { ChannelController } from '../plugins/shared/model/channel-controller';
+import { Button } from '../../../../components/ui/button';
+import { getChannelIcon } from './icons';
+import type { ChannelActionState, ChannelItem } from './model';
+import type { ChannelController } from '../../channels/shared/model/channel-controller';
 
 type ChannelListSwitchProps = {
   checked: boolean;

@@ -1,7 +1,7 @@
 import { Check, Heart, Sparkles, Star, ThumbsUp } from 'lucide-react';
-import { Button } from '../../../components/ui/button';
-import type { ChannelItem } from './channels-panel-model';
-import { UPCOMING_CHANNEL_FEATURES } from './channels-panel-model';
+import { Button } from '../../../../components/ui/button';
+import type { ChannelItem } from './model';
+import { UPCOMING_CHANNEL_FEATURES } from './model';
 
 type ChannelsUpcomingDetailsProps = {
   channel: ChannelItem;

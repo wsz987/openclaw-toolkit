@@ -3,7 +3,7 @@ import { BookOpen, Eye, EyeOff, Radio, Settings2, Shield, Webhook } from 'lucide
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { Input } from '../../../../../components/ui/input';
 import { Select } from '../../../../../components/ui/select';
-import { ChannelToggleCard } from '../../../components/channels-panel-shared';
+import { ChannelToggleCard } from '../../../components/channels-panel/shared';
 import { getFeishuPlatformLabel } from '../model/feishu-channel';
 import type { FeishuChannelFormState } from '../model/feishu-channel';
 import type { FeishuChannelStatus } from '../../../model/types';

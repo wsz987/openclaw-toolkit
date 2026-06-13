@@ -1,15 +1,15 @@
 import { Search } from 'lucide-react';
-import { Input } from '../../../components/ui/input';
-import { ScrollArea } from '../../../components/ui/scroll-area';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../components/ui/sheet';
-import { PluginInstallDialog } from '../plugins/shared/components/plugin-install-dialog';
-import { PluginUninstallDialog } from '../plugins/shared/components/plugin-uninstall-dialog';
-import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../plugins/feishu/components/feishu-plugin-panel';
-import { WechatPluginPanel } from '../plugins/wechat/components/wechat-plugin-panel';
-import { getChannelIcon } from './channels-panel-icons';
-import { ChannelsPanelCard } from './channels-panel-card';
-import { CHANNELS_FILTER_TABS, useChannelsPanelState } from './use-channels-panel-state';
-import { ChannelsUpcomingDetails } from './channels-panel-upcoming';
+import { Input } from '../../../../components/ui/input';
+import { ScrollArea } from '../../../../components/ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet';
+import { PluginInstallDialog } from '../../channels/shared/components/plugin-install-dialog';
+import { PluginUninstallDialog } from '../../channels/shared/components/plugin-uninstall-dialog';
+import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../../channels/feishu/components/feishu-plugin-panel';
+import { WechatPluginPanel } from '../../channels/wechat/components/wechat-plugin-panel';
+import { ChannelsPanelCard } from './card';
+import { getChannelIcon } from './icons';
+import { CHANNELS_FILTER_TABS, useChannelsPanelState } from './state';
+import { ChannelsUpcomingDetails } from './upcoming';
 
 export type ChannelsPanelProps = FeishuPluginPanelProps;
 
