@@ -15,7 +15,7 @@ import type {
 } from '../model/types';
 import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
-import { ChannelsPanel } from './channels-panel';
+import { ChannelsPanel } from '../channels/panel';
 import { ServiceControlPanel } from './service-control-panel';
 import { SkillsManagementPanel } from './skills-management-panel';
 import { UninstallPanel } from './uninstall-panel';
