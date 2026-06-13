@@ -9,6 +9,7 @@ import {
   PlayIcon,
   SpinnerIcon
 } from '../../../components/icons';
+import { toast } from 'sonner';
 import type {
   OpenClawPostInstallStatus,
   Stage1InstallLogTail,
@@ -27,6 +28,7 @@ type RuntimeOperationsPanelProps = {
   controlPanelOpening: boolean;
   installationDirOpening: boolean;
   logsDirOpening: boolean;
+  error?: string | null;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
   onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
@@ -46,6 +48,7 @@ export function RuntimeOperationsPanel({
   controlPanelOpening,
   installationDirOpening,
   logsDirOpening,
+  error,
   onLaunchRuntime,
   onStopRuntime,
   onRestartRuntime,
@@ -107,6 +110,17 @@ export function RuntimeOperationsPanel({
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleOpenLogsDirectory = async () => {
+    if (!onOpenLogsDirectory) {
+      return;
+    }
+
+    const openedPath = await onOpenLogsDirectory(result.configPath);
+    if (!openedPath) {
+      toast.error('打开日志目录失败，请查看页面错误提示。');
     }
   };
 
@@ -263,6 +277,12 @@ export function RuntimeOperationsPanel({
         </div>
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-[hsl(var(--error)/0.2)] bg-[hsl(var(--error)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))]">
+          {error}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
         <div className="flex flex-wrap gap-3">
           <Button
@@ -355,7 +375,7 @@ export function RuntimeOperationsPanel({
           <Button
             variant="secondary"
             disabled={!onOpenLogsDirectory || logsDirOpening}
-            onClick={() => void onOpenLogsDirectory?.(result.configPath)}
+            onClick={() => void handleOpenLogsDirectory()}
             className="bg-transparent hover:bg-white/5 text-[hsl(var(--on-dark-soft))] hover:text-[hsl(var(--on-dark))] border border-white/5 h-9 transition-colors text-xs"
           >
             {logsDirOpening ? (

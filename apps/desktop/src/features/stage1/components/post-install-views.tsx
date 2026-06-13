@@ -153,6 +153,7 @@ export function PostInstallHomeView({
             controlPanelOpening={controlPanelOpening}
             installationDirOpening={installationDirOpening}
             logsDirOpening={logsDirOpening}
+            error={error}
             onLaunchRuntime={onLaunchRuntime}
             onStopRuntime={onStopRuntime}
             onRestartRuntime={onRestartRuntime}

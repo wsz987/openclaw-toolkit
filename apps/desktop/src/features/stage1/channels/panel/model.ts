@@ -43,7 +43,7 @@ export const CHANNELS_LIST: ChannelItem[] = [
     name: '微信 ClawBot',
     type: '官方通道',
     iconName: 'wechat',
-    description: '对接腾讯微信官方 openclaw-weixin 非企业版插件，通过二维码扫码登录个人微信 ClawBot。',
+    description: '微信官方 openclaw-weixin 非企业版插件，个人微信 ClawBot。',
     drawerDescription: '检查并安装微信插件后，通过二维码完成账号绑定与通道接入。',
     isUpcoming: false,
     colorClass: 'text-green-500 bg-green-500/10 border-green-500/20',

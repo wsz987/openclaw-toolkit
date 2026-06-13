@@ -297,8 +297,10 @@ pub fn open_installation_directory(path: &Path) -> anyhow::Result<String> {
 }
 
 pub fn open_logs_directory(config_path: &Path) -> anyhow::Result<String> {
-    let status = read_openclaw_status(config_path)?;
-    let logs_dir = PathBuf::from(&status.openclaw_dir).join("logs");
+    let openclaw_dir = config_path
+        .parent()
+        .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
+    let logs_dir = openclaw_dir.join("logs");
     fs::create_dir_all(&logs_dir).with_context(|| format!("create {}", logs_dir.display()))?;
     open_path_in_explorer(&logs_dir)?;
     Ok(logs_dir.to_string_lossy().to_string())

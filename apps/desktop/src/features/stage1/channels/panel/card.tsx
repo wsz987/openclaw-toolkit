@@ -32,14 +32,12 @@ function ChannelListSwitch({
         }
         onChange(!checked);
       }}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-        checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
-      } ${(disabled || loading) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${checked ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--muted-soft))/0.3]'
+        } ${(disabled || loading) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       <span
-        className={`pointer-events-none flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
+        className={`pointer-events-none flex items-center justify-center h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
       >
         {loading ? <Loader2 className="w-3 h-3 animate-spin text-[hsl(var(--primary))]" /> : null}
       </span>
@@ -76,11 +74,10 @@ export function ChannelsPanelCard({
         }
         onCardClick();
       }}
-      className={`group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden ${
-        resolvedController?.loading
-          ? 'animate-pulse opacity-80 border-[hsl(var(--primary)/0.25)]'
-          : 'hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer'
-      }`}
+      className={`group rounded-xl border border-[hsl(var(--hairline))] bg-gradient-to-br from-[hsl(var(--surface-card))] to-[hsl(var(--surface-soft))/0.3] p-5 pb-2 flex flex-col justify-between gap-4 transition-all duration-300 relative overflow-hidden ${resolvedController?.loading
+        ? 'animate-pulse opacity-80 border-[hsl(var(--primary)/0.25)]'
+        : 'hover:border-[hsl(var(--primary)/0.25)] hover:shadow-md cursor-pointer'
+        }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="shrink-0 transition-transform group-hover:scale-105">
@@ -110,12 +107,12 @@ export function ChannelsPanelCard({
         <span className="text-[9px] font-mono text-[hsl(var(--muted-soft))] uppercase tracking-wider">
           {channel.type}
         </span>
-        <p className="text-xs leading-relaxed text-[hsl(var(--body))] mt-1.5 line-clamp-3">
+        <p className="text-xs leading-relaxed text-[hsl(var(--body))] mt-1.5 line-clamp-3 min-h-14">
           {channel.description}
         </p>
       </div>
 
-      <div className="flex items-center justify-between border-t border-[hsl(var(--muted-soft))]/50 pt-3 mt-auto">
+      <div className="flex items-center justify-between border-t border-[hsl(var(--muted-soft))]/50 pt-1 mt-auto">
         {resolvedController ? (
           resolvedController.loading ? (
             <span className="text-[10px] text-[hsl(var(--primary))] font-semibold flex items-center gap-1">
@@ -129,7 +126,7 @@ export function ChannelsPanelCard({
             </span>
           )
         ) : (
-          <span className="text-[10px] text-[hsl(var(--muted-soft))] font-medium flex items-center gap-1">
+          <span className="text-[10px] text-[hsl(var(--muted-soft))] font-medium flex items-center gap-1 py-1.5">
             <ThumbsUp className="w-3 h-3 text-[hsl(var(--primary))]" />
             支持投票 ({voteCount} 票)
           </span>
