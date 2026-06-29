@@ -24,15 +24,14 @@ const WEIXIN_DEFAULT_BASE_URL: &str = "https://ilinkai.weixin.qq.com";
 const WEIXIN_DEFAULT_CDN_BASE_URL: &str = "https://novac2c.cdn.weixin.qq.com/c2c";
 const WEIXIN_DEFAULT_BOT_TYPE: &str = "3";
 const WEIXIN_ACTIVE_LOGIN_TTL_MS: u64 = 5 * 60_000;
+/// Display-only countdown for the QR code (seconds). The real expiry is
+/// driven by the server returning `status == "expired"` (≈2–3 min); this
+/// value just keeps the UI countdown roughly in sync with that instead of
+/// showing the misleading 5-minute session TTL. Session freshness still
+/// uses `WEIXIN_ACTIVE_LOGIN_TTL_MS`.
+const WEIXIN_QR_DISPLAY_TTL_SECS: u64 = 180;
 const WEIXIN_DEFAULT_WAIT_TIMEOUT_MS: u64 = 480_000;
 const WEIXIN_QR_LONG_POLL_TIMEOUT_MS: u64 = 35_000;
-/// Per-session QR refresh cap. The upstream `openclaw-weixin` login flow
-/// (`src/auth/login-qr.ts`) treats the initial QR code as refresh #1 and
-/// aborts after `MAX_QR_REFRESH_COUNT` (3) total codes — i.e. 2 refreshes.
-/// This counter is 0-based (the initial fetch is not counted), so the
-/// equivalent cap is one less: allow 2 refreshes, 3 QR codes total.
-const WEIXIN_MAX_QR_REFRESH_COUNT: u8 = 2;
-
 static WEIXIN_LOGIN_SESSIONS: OnceLock<Mutex<HashMap<String, ActiveWeixinLogin>>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -132,7 +131,6 @@ struct ActiveWeixinLogin {
     current_api_base_url: String,
     status: String,
     pending_verify_code: Option<String>,
-    refresh_count: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -264,7 +262,6 @@ pub fn start_weixin_login_with_qr(
         current_api_base_url: WEIXIN_DEFAULT_BASE_URL.to_string(),
         status: "wait".to_string(),
         pending_verify_code: None,
-        refresh_count: 0,
     };
 
     login_sessions()
@@ -276,7 +273,7 @@ pub fn start_weixin_login_with_qr(
         session_key,
         qr_data_url: Some(qrcode.qrcode_img_content),
         message: "请使用手机微信扫描二维码以继续连接。".to_string(),
-        expires_in: WEIXIN_ACTIVE_LOGIN_TTL_MS / 1000,
+        expires_in: WEIXIN_QR_DISPLAY_TTL_SECS,
         requires_verify_code: false,
     })
 }
@@ -435,8 +432,8 @@ fn step_weixin_login_poll(
     };
 
     if !is_login_fresh(active) {
-        let refreshed = refresh_login_qr(config_path, active)?;
-        return Ok(expired_result("二维码已失效，已自动刷新，请重新扫码。", &refreshed));
+        sessions.remove(session_key);
+        return Ok(expired_result("二维码已失效，请重新生成。"));
     }
 
     if let Some(code) = verify_code {
@@ -504,7 +501,7 @@ fn step_weixin_login_poll(
             })
         }
         "verify_code_blocked" => {
-            let refreshed = refresh_login_qr(config_path, active)?;
+            sessions.remove(session_key);
             Ok(WeixinLoginQrWaitResult {
                 connected: false,
                 already_connected: false,
@@ -512,17 +509,17 @@ fn step_weixin_login_poll(
                 verify_code_blocked: true,
                 expired: false,
                 status: "verify_code_blocked".to_string(),
-                message: "多次验证码输入错误，二维码已刷新，请重新扫码。".to_string(),
+                message: "多次验证码输入错误，请重新生成二维码。".to_string(),
                 account_id: None,
                 user_id: None,
                 bot_token_present: false,
-                qr_data_url: Some(refreshed.qrcode_img_content),
-                expires_in: Some(WEIXIN_ACTIVE_LOGIN_TTL_MS / 1000),
+                qr_data_url: None,
+                expires_in: None,
             })
         }
         "expired" => {
-            let refreshed = refresh_login_qr(config_path, active)?;
-            Ok(expired_result("二维码已过期，已为你刷新，请重新扫码。", &refreshed))
+            sessions.remove(session_key);
+            Ok(expired_result("二维码已过期，请重新生成。"))
         }
         "scaned_but_redirect" => {
             if let Some(redirect_host) = response.redirect_host.as_deref() {
@@ -633,7 +630,7 @@ fn progress_result(
     }
 }
 
-fn expired_result(message: &str, refreshed: &WeixinQrCodeResponse) -> WeixinLoginQrWaitResult {
+fn expired_result(message: &str) -> WeixinLoginQrWaitResult {
     WeixinLoginQrWaitResult {
         connected: false,
         already_connected: false,
@@ -645,28 +642,9 @@ fn expired_result(message: &str, refreshed: &WeixinQrCodeResponse) -> WeixinLogi
         account_id: None,
         user_id: None,
         bot_token_present: false,
-        qr_data_url: Some(refreshed.qrcode_img_content.clone()),
-        expires_in: Some(WEIXIN_ACTIVE_LOGIN_TTL_MS / 1000),
+        qr_data_url: None,
+        expires_in: None,
     }
-}
-
-fn refresh_login_qr(
-    config_path: &Path,
-    active: &mut ActiveWeixinLogin,
-) -> anyhow::Result<WeixinQrCodeResponse> {
-    if active.refresh_count >= WEIXIN_MAX_QR_REFRESH_COUNT {
-        anyhow::bail!("二维码已多次失效，请稍后再试");
-    }
-
-    let refreshed = fetch_weixin_qrcode(config_path, WEIXIN_DEFAULT_BOT_TYPE)?;
-    active.qrcode = refreshed.qrcode.clone();
-    active.qrcode_url = refreshed.qrcode_img_content.clone();
-    active.started_at = Instant::now();
-    active.current_api_base_url = WEIXIN_DEFAULT_BASE_URL.to_string();
-    active.status = "wait".to_string();
-    active.pending_verify_code = None;
-    active.refresh_count = active.refresh_count.saturating_add(1);
-    Ok(refreshed)
 }
 
 fn fetch_weixin_qrcode(
@@ -998,7 +976,7 @@ fn is_login_fresh(login: &ActiveWeixinLogin) -> bool {
 }
 
 fn remaining_expires_in(login: &ActiveWeixinLogin) -> u64 {
-    Duration::from_millis(WEIXIN_ACTIVE_LOGIN_TTL_MS)
+    Duration::from_secs(WEIXIN_QR_DISPLAY_TTL_SECS)
         .saturating_sub(login.started_at.elapsed())
         .as_secs()
         .max(1)

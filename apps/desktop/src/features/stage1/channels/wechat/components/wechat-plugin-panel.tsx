@@ -137,6 +137,7 @@ export function WechatPluginPanel({
 
     if (outcome.verifyCodeBlocked || outcome.expired) {
       setVerifyCode('');
+      setExpiresIn(0);
       setLoginBlocking(false);
       setLoginPolling(false);
       return;
