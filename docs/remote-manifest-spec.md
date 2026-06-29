@@ -102,7 +102,7 @@ OpenClaw 制品文件名，相对路径定位到：
 
 注意：
 
-- 该清单用于安装器部署 `skills/` 资源和生成默认 `agents.defaults.skills`
+- 该清单用于安装器部署 `<workspace>/skills/` 资源和生成默认 `agents.defaults.skills`
 - 不应再直接写入 OpenClaw 最新版 `openclaw.json` 的根级 `skills: []`
 - OpenClaw 最新版配置里，根级 `skills` 是对象配置段，agent 可见技能列表应写入 `agents.defaults.skills` 或 `agents.list[].skills`
 

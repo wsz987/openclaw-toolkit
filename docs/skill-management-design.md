@@ -27,6 +27,9 @@ artifacts/
 OpenClaw 2026.5.20 的 skill 规则：
 
 - 每个 skill 是一个包含 `SKILL.md` 的目录。
+- `<workspace>/skills` 是当前工作区下的优先 skill 目录。
+- `~/.openclaw/skills` 是用户级共享 skill 目录。
+- `skills.allowBundled` 控制是否允许加载 OpenClaw 自带 bundled skills。
 - `skills.load.extraDirs` 是额外扫描根目录，每个根目录下放多个 skill 子目录。
 - `agents.defaults.skills` 是默认 agent 的可见 skill allowlist。
 - 省略 `agents.defaults.skills` 表示默认不限制；写 `[]` 表示暴露无 skill。

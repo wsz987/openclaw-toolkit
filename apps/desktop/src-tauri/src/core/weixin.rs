@@ -26,7 +26,12 @@ const WEIXIN_DEFAULT_BOT_TYPE: &str = "3";
 const WEIXIN_ACTIVE_LOGIN_TTL_MS: u64 = 5 * 60_000;
 const WEIXIN_DEFAULT_WAIT_TIMEOUT_MS: u64 = 480_000;
 const WEIXIN_QR_LONG_POLL_TIMEOUT_MS: u64 = 35_000;
-const WEIXIN_MAX_QR_REFRESH_COUNT: u8 = 3;
+/// Per-session QR refresh cap. The upstream `openclaw-weixin` login flow
+/// (`src/auth/login-qr.ts`) treats the initial QR code as refresh #1 and
+/// aborts after `MAX_QR_REFRESH_COUNT` (3) total codes — i.e. 2 refreshes.
+/// This counter is 0-based (the initial fetch is not counted), so the
+/// equivalent cap is one less: allow 2 refreshes, 3 QR codes total.
+const WEIXIN_MAX_QR_REFRESH_COUNT: u8 = 2;
 
 static WEIXIN_LOGIN_SESSIONS: OnceLock<Mutex<HashMap<String, ActiveWeixinLogin>>> = OnceLock::new();
 

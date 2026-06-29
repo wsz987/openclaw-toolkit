@@ -79,8 +79,8 @@ Tauri Rust Core
 OpenClaw Managed Runtime
   ├─ D:\OpenClaw\runtimes\node\<node-version>\node.exe
   ├─ D:\OpenClaw\openclaw\<openclaw-version>\
-  ├─ D:\OpenClaw\skills\
   ├─ D:\OpenClaw\workspace\
+  │  └─ skills\
   ├─ D:\OpenClaw\logs\
   └─ D:\OpenClaw\backups\
 ```

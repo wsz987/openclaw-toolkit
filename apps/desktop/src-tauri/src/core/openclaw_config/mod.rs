@@ -327,7 +327,7 @@ pub fn write_openclaw_config(
         },
         "plugins": {
             "allow": [DEFAULT_BROWSER_PLUGIN_ID],
-            "bundledDiscovery": "compat",
+            "bundledDiscovery": "allowlist",
             "entries": {
                 DEFAULT_BROWSER_PLUGIN_ID: {
                     "enabled": true
@@ -408,9 +408,9 @@ fn ensure_plugins_allowlist_entry_in_value(config: &mut Value, plugin_id: &str) 
 
     let bundled_discovery = plugins
         .entry("bundledDiscovery".to_string())
-        .or_insert_with(|| Value::String("compat".to_string()));
-    if bundled_discovery.as_str() != Some("compat") {
-        *bundled_discovery = Value::String("compat".to_string());
+        .or_insert_with(|| Value::String("allowlist".to_string()));
+    if bundled_discovery.as_str() != Some("allowlist") {
+        *bundled_discovery = Value::String("allowlist".to_string());
         changed = true;
     }
 
