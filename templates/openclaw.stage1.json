@@ -46,11 +46,6 @@
     }
   },
   "skills": {
-    "load": {
-      "extraDirs": [
-        "${openclawDir}\\skills"
-      ]
-    },
     "entries": {
       "browser-control": {
         "enabled": true

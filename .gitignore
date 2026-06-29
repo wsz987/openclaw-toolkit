@@ -23,3 +23,4 @@ artifacts/license.dat
 /target
 
 artifacts/tmp
+.reasonix

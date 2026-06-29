@@ -3,7 +3,7 @@
 ## 当前结论
 
 当前项目原先的 skill 链路只是基础占位：安装流程会创建
-`<openclawDir>/skills/installed-skills.json`，并把 release manifest 里的
+`<workspace>/skills/installed-skills.json`，并把 release manifest 里的
 `skills` 写入 `agents.defaults.skills`。它没有真正把内置 skill 目录复制到
 OpenClaw 可扫描位置，也没有启用/关闭 UI。
 
@@ -35,8 +35,7 @@ OpenClaw 2026.5.20 的 skill 规则：
 
 因此工具包启用一个内置 skill 时会同时保证：
 
-- 资源存在于 `<openclawDir>/skills/<skill-name>/SKILL.md`
-- `<openclawDir>/skills` 在 `skills.load.extraDirs`
+- 资源存在于 `<workspace>/skills/<skill-name>/SKILL.md`
 - `skills.entries.<skill-name>.enabled = true`
 - `agents.defaults.skills` 包含该 skill
 

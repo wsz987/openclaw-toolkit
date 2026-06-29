@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::core::{
     background_process::background_command,
     manifest::{models::InstalledManifest, write_installed_manifest},
+    node_runtime::ensure_node_runtime_mirror_config,
     openclaw_config::{read_openclaw_status, OpenClawStatusSummary},
     runtime_host::default_runtime_host_kind,
 };
@@ -494,6 +495,20 @@ fn validate_installation(record: &mut InstallationRecord) -> anyhow::Result<Open
 
     let status = resolve_status_for_record(&config_path, record)?;
     apply_status_to_record(record, &status);
+
+    // 启动时刷新 node runtime 的国内镜像源配置（.npmrc），
+    // 确保后续 npm 操作始终走国内源。失败不阻断启动。
+    let node_dir = PathBuf::from(&record.node_dir);
+    if node_dir.is_dir() {
+        if let Err(error) = ensure_node_runtime_mirror_config(&node_dir) {
+            eprintln!(
+                "刷新 node runtime 镜像源失败（不阻断启动）：{} - {}",
+                node_dir.display(),
+                error
+            );
+        }
+    }
+
     Ok(status)
 }
 

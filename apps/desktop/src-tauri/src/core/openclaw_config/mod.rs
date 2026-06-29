@@ -323,9 +323,6 @@ pub fn write_openclaw_config(
             "providers": {}
         },
         "skills": {
-            "load": {
-                "extraDirs": [openclaw_dir.join("skills").to_string_lossy()]
-            },
             "entries": default_skill_entries(&default_skills)
         },
         "plugins": {

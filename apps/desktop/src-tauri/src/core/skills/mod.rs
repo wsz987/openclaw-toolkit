@@ -69,6 +69,7 @@ pub fn install_skills(
 ) -> anyhow::Result<Vec<ReleaseSkill>> {
     let manifest = load_skill_manifest(project_root)?;
     let skills_dir = managed_skills_dir(openclaw_dir);
+    migrate_legacy_managed_skills_dir(openclaw_dir)?;
     fs::create_dir_all(&skills_dir)
         .with_context(|| format!("create skills dir {}", skills_dir.display()))?;
 
@@ -129,6 +130,7 @@ pub fn inspect_skill_catalog(config_path: &Path) -> anyhow::Result<ManagedSkillC
     let openclaw_dir = config_path
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
+    migrate_legacy_managed_skills_dir(openclaw_dir)?;
     let project_root = resolve_resource_root_from_config_path(config_path)?;
     let manifest = load_skill_manifest(&project_root)?;
     let config = read_config_value(config_path)?;
@@ -182,6 +184,7 @@ pub fn set_skill_enabled(input: &SkillToggleInput) -> anyhow::Result<SkillToggle
     let openclaw_dir = config_path
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
+    migrate_legacy_managed_skills_dir(openclaw_dir)?;
     let project_root = resolve_resource_root_from_config_path(&config_path)?;
     let manifest = load_skill_manifest(&project_root)?;
     let skill = resolve_skill(&manifest.skills, &input.skill_id)?;
@@ -213,6 +216,7 @@ pub fn ensure_managed_skills_config(config_path: &Path) -> anyhow::Result<()> {
     let openclaw_dir = config_path
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
+    migrate_legacy_managed_skills_dir(openclaw_dir)?;
     let mut config = read_config_value(config_path)?;
     ensure_managed_skills_dir_config(&mut config, openclaw_dir);
     write_config_value(config_path, &config)
@@ -223,6 +227,7 @@ fn ensure_skill_installed(
     openclaw_dir: &Path,
     skill: &SkillArtifact,
 ) -> anyhow::Result<()> {
+    migrate_legacy_managed_skills_dir(openclaw_dir)?;
     let Some(source_dir) = skill.source_dir.as_deref() else {
         return Ok(());
     };
@@ -357,7 +362,53 @@ fn write_installed_skills_record(skills_dir: &Path, skills: &[ReleaseSkill]) -> 
 }
 
 fn managed_skills_dir(openclaw_dir: &Path) -> PathBuf {
+    openclaw_dir.join("workspace").join("skills")
+}
+
+fn legacy_managed_skills_dir(openclaw_dir: &Path) -> PathBuf {
     openclaw_dir.join("skills")
+}
+
+fn migrate_legacy_managed_skills_dir(openclaw_dir: &Path) -> anyhow::Result<()> {
+    let legacy_dir = legacy_managed_skills_dir(openclaw_dir);
+    if !legacy_dir.exists() {
+        return Ok(());
+    }
+
+    let workspace_dir = managed_skills_dir(openclaw_dir);
+    fs::create_dir_all(&workspace_dir)
+        .with_context(|| format!("create workspace skills dir {}", workspace_dir.display()))?;
+
+    for entry in fs::read_dir(&legacy_dir)
+        .with_context(|| format!("read legacy skills dir {}", legacy_dir.display()))?
+    {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = workspace_dir.join(entry.file_name());
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            if target_path.exists() {
+                continue;
+            }
+            copy_tree(&source_path, &target_path)?;
+            continue;
+        }
+
+        if target_path.exists() {
+            continue;
+        }
+
+        fs::copy(&source_path, &target_path).with_context(|| {
+            format!(
+                "copy legacy skill file {} to {}",
+                source_path.display(),
+                target_path.display()
+            )
+        })?;
+    }
+
+    Ok(())
 }
 
 fn resolve_skill_source_dir(project_root: &Path, source_dir: &str) -> anyhow::Result<PathBuf> {
@@ -440,7 +491,7 @@ fn write_skill_entry_enabled(config: &mut Value, skill_name: &str, enabled: bool
 }
 
 fn ensure_managed_skills_dir_config(config: &mut Value, openclaw_dir: &Path) {
-    let managed_dir = managed_skills_dir(openclaw_dir)
+    let legacy_dir = legacy_managed_skills_dir(openclaw_dir)
         .to_string_lossy()
         .to_string();
     let mut extra_dirs: Vec<String> = value_at_path(config, &["skills", "load", "extraDirs"])
@@ -454,12 +505,7 @@ fn ensure_managed_skills_dir_config(config: &mut Value, openclaw_dir: &Path) {
         })
         .unwrap_or_default();
 
-    if !extra_dirs
-        .iter()
-        .any(|entry| entry.eq_ignore_ascii_case(&managed_dir))
-    {
-        extra_dirs.push(managed_dir);
-    }
+    extra_dirs.retain(|entry| !entry.eq_ignore_ascii_case(&legacy_dir));
 
     set_value_at_path(
         config,
