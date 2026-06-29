@@ -243,6 +243,7 @@ const DEFAULT_DINGTALK_PLUGIN_ENTRY_ID: &str = "dingtalk-connector";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
 const DEFAULT_AGENT_SKILLS: [&str; 2] = ["browser-control", "local-filesystem"];
+const LEGACY_DINGTALK_EXTRA_FIELDS: [&str; 2] = ["channelConfigUpdatedAt", "streaming"];
 
 pub fn openclaw_dir(base_dir: &Path, release: &ReleaseArtifact) -> PathBuf {
     base_dir.join("openclaw").join(&release.version)
@@ -489,6 +490,7 @@ fn remove_plugins_allowlist_entry_in_value(config: &mut Value, plugin_id: &str) 
 }
 
 pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatusSummary> {
+    sanitize_legacy_dingtalk_channel_config(config_path).ok();
     let config = read_openclaw_config_value(config_path)?;
     let manifest_catalog = load_provider_catalog_from_config_path(config_path)
         .map(|manifest| manifest.providers)
@@ -1046,6 +1048,28 @@ pub fn apply_feishu_channel_setup(
     })
 }
 
+fn sanitize_legacy_dingtalk_channel_config(config_path: &Path) -> anyhow::Result<bool> {
+    let mut config = read_openclaw_config_value(config_path)?;
+    let before = serde_json::to_string(&value_at_path(
+        &config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID],
+    ))
+    .unwrap_or_default();
+    remove_legacy_dingtalk_extra_fields(&mut config);
+    let after = serde_json::to_string(&value_at_path(
+        &config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID],
+    ))
+    .unwrap_or_default();
+
+    if before != after {
+        write_config_value(config_path, &config)?;
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
 pub fn apply_dingtalk_channel_setup(
     input: &DingtalkChannelSetupInput,
 ) -> anyhow::Result<DingtalkChannelSetupResult> {
@@ -1079,6 +1103,7 @@ pub fn apply_dingtalk_channel_setup(
             &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientSecret"],
         ),
     );
+    remove_legacy_dingtalk_extra_fields(&mut config);
 
     set_value_at_path(
         &mut config,
@@ -1099,11 +1124,6 @@ pub fn apply_dingtalk_channel_setup(
         &mut config,
         &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "defaultAccount"],
         Value::String(account_id.to_string()),
-    );
-    set_value_at_path(
-        &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "channelConfigUpdatedAt"],
-        Value::String(chrono::Utc::now().to_rfc3339()),
     );
     set_value_at_path(
         &mut config,
@@ -1129,11 +1149,6 @@ pub fn apply_dingtalk_channel_setup(
         &mut config,
         &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
         Value::Bool(input.require_mention),
-    );
-    set_value_at_path(
-        &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "streaming"],
-        Value::Bool(input.streaming),
     );
     set_value_at_path(
         &mut config,
@@ -1244,11 +1259,9 @@ fn read_dingtalk_channel_summary(config: &Value) -> DingtalkChannelSummary {
             &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
         )
         .unwrap_or(true),
-        streaming: bool_at_path(
-            config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "streaming"],
-        )
-        .unwrap_or(true),
+        // The official connector schema does not expose a top-level `streaming` field.
+        // Keep the UI toggle optimistic for now and avoid writing invalid config.
+        streaming: true,
         typing_indicator: bool_at_path(
             config,
             &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "typingIndicator"],
@@ -1264,6 +1277,15 @@ fn read_dingtalk_channel_summary(config: &Value) -> DingtalkChannelSummary {
             &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupReplyMode"],
         )
         .unwrap_or_else(|| "aicard".to_string()),
+    }
+}
+
+fn remove_legacy_dingtalk_extra_fields(config: &mut Value) {
+    for field in LEGACY_DINGTALK_EXTRA_FIELDS {
+        remove_value_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, field],
+        );
     }
 }
 
