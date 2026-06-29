@@ -1,0 +1,13 @@
+{
+  "name": "byted-ark-seedance-skill",
+  "version": "3.0.0",
+  "description": "豆包 Seedance 视频生成 Skill for Agent Plan",
+  "main": "scripts/seedance-wrapper.js",
+  "scripts": {
+    "test": "node scripts/seedance-wrapper.js help"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
