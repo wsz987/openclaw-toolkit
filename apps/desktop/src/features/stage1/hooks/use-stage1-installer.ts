@@ -27,6 +27,8 @@ import type {
   InstallMode,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawDingtalkChannelSetupPayload,
+  OpenClawDingtalkChannelSetupResult,
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
@@ -62,6 +64,7 @@ import {
   restartOpenClawRuntime,
   setOpenClawSkillEnabled,
   setupOpenClawFeishuChannel,
+  setupOpenClawDingtalkChannel,
   setupOpenClawProvider,
   stopOpenClawRuntime,
   startStage1Install
@@ -95,6 +98,8 @@ export function useStage1Installer(
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
   const [feishuSetupLoading, setFeishuSetupLoading] = useState(false);
   const [feishuSetupResult, setFeishuSetupResult] = useState<OpenClawFeishuChannelSetupResult | null>(null);
+  const [dingtalkSetupLoading, setDingtalkSetupLoading] = useState(false);
+  const [dingtalkSetupResult, setDingtalkSetupResult] = useState<OpenClawDingtalkChannelSetupResult | null>(null);
   const [pluginInstallLoading, setPluginInstallLoading] = useState(false);
   const [pluginInstallResult, setPluginInstallResult] = useState<OpenClawPluginInstallResult | null>(null);
   const [pluginInstallLogs, setPluginInstallLogs] = useState<PluginInstallLogEntry[]>([]);
@@ -124,6 +129,7 @@ export function useStage1Installer(
   const postInstallStatusRequestGuard = useLatestRequestGuard();
   const providerSetupRequestGuard = useLatestRequestGuard();
   const feishuSetupRequestGuard = useLatestRequestGuard();
+  const dingtalkSetupRequestGuard = useLatestRequestGuard();
   const pluginInstallRequestGuard = useLatestRequestGuard();
   const skillCatalogRequestGuard = useLatestRequestGuard();
   const runtimeLaunchRequestGuard = useLatestRequestGuard();
@@ -514,6 +520,35 @@ export function useStage1Installer(
     } finally {
       if (feishuSetupRequestGuard.isCurrent(requestId)) {
         setFeishuSetupLoading(false);
+      }
+    }
+  }
+
+  async function handleDingtalkChannelSetup(input: OpenClawDingtalkChannelSetupPayload) {
+    const requestId = dingtalkSetupRequestGuard.begin();
+    setDingtalkSetupLoading(true);
+    setError(null);
+
+    try {
+      const response = await setupOpenClawDingtalkChannel(input);
+
+      if (!dingtalkSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setDingtalkSetupResult(response);
+      await finalizePostInstallMutation(response.configPath);
+      return response;
+    } catch (err) {
+      if (!dingtalkSetupRequestGuard.isCurrent(requestId)) {
+        return null;
+      }
+
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    } finally {
+      if (dingtalkSetupRequestGuard.isCurrent(requestId)) {
+        setDingtalkSetupLoading(false);
       }
     }
   }
@@ -980,6 +1015,8 @@ export function useStage1Installer(
     providerSetupLoading,
     feishuSetupLoading,
     feishuSetupResult,
+    dingtalkSetupLoading,
+    dingtalkSetupResult,
     pluginInstallLoading,
     pluginInstallResult,
     pluginInstallLogs,
@@ -1001,6 +1038,7 @@ export function useStage1Installer(
     handleExecuteUninstall,
     handleInstallPlugin,
     handleFeishuChannelSetup,
+    handleDingtalkChannelSetup,
     handleProviderSetup,
     handleSkillToggle,
     loadSkillCatalog,

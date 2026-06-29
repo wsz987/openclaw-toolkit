@@ -53,13 +53,13 @@ export const CHANNELS_LIST: ChannelItem[] = [
   {
     id: 'dingtalk',
     name: '钉钉 (DingTalk)',
-    type: '官方通道 (规划中)',
+    type: '官方通道',
     iconName: 'dingtalk',
-    description: '对接钉钉单聊及群聊机器人，支持流式交互卡片 and 快捷菜单。',
-    drawerDescription: '查看规划功能并为它投票排期。',
-    isUpcoming: true,
+    description: "钉钉官方出品的 OpenClaw 钉钉 Channel 插件，将你的 OpenClaw Agent 无缝连接到钉钉，赋予其直接收发消息、操作文档、管理日程、协同待办等能力。",
+    drawerDescription: '配置钉钉企业内部应用的 Client ID、Client Secret 与消息策略，开启 Stream 模式机器人。',
+    isUpcoming: false,
     colorClass: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
-    badgeBg: 'bg-orange-500/10 border border-orange-500/20',
+    badgeBg: 'bg-orange-500/10',
     badgeText: 'text-orange-500'
   },
   {

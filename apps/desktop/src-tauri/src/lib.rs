@@ -71,6 +71,7 @@ pub fn run() {
             commands::post_install::setup_openclaw_provider,
             commands::post_install::test_openclaw_provider_connection,
             commands::post_install::setup_openclaw_feishu_channel,
+            commands::post_install::setup_openclaw_dingtalk_channel,
             commands::post_install::install_openclaw_plugin,
             commands::post_install::uninstall_openclaw_plugin,
             commands::post_install::open_external_url_command,

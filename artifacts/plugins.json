@@ -50,6 +50,32 @@
         "usesManagedNodePath": true,
         "usesOpenClawCliContext": true
       }
+    },
+    {
+      "id": "dingtalk",
+      "channelId": "dingtalk",
+      "package": "@dingtalk-real-ai/dingtalk-connector",
+      "version": "0.8.23",
+      "pluginEntryId": "dingtalk-connector",
+      "aliases": [
+        "dingtalk-connector",
+        "dd",
+        "ding"
+      ],
+      "openclawVersionRange": ">=2026.4.9",
+      "nodeVersionRange": ">=22",
+      "installType": "official-command",
+      "installCommand": {
+        "executable": "openclaw",
+        "args": [
+          "plugins",
+          "install",
+          "@dingtalk-real-ai/dingtalk-connector"
+        ],
+        "env": [],
+        "usesManagedNodePath": true,
+        "usesOpenClawCliContext": true
+      }
     }
   ],
   "channels": [
@@ -82,13 +108,16 @@
     {
       "id": "dingtalk",
       "name": "DingTalk Claw",
-      "status": "reserved",
+      "status": "active",
       "pluginId": "dingtalk",
-      "pluginEntryId": "dingtalk-claw",
+      "package": "@dingtalk-real-ai/dingtalk-connector",
+      "pluginEntryId": "dingtalk-connector",
       "aliases": [
-        "dingtalk-claw"
+        "dingtalk-connector",
+        "dd",
+        "ding"
       ],
-      "notes": "预留 OpenClaw channels 规范接入位，待官方 dingtalk claw 包名与安装命令确定后补全。"
+      "notes": "钉钉官方 OpenClaw 通道插件（dingtalk-openclaw-connector），Stream 模式企业内部机器人，支持 AI Card 流式响应。"
     }
   ]
 }

@@ -11,6 +11,8 @@ import type {
   OpenClawLaunchResult,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
+  OpenClawDingtalkChannelSetupPayload,
+  OpenClawDingtalkChannelSetupResult,
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
   OpenClawPluginUninstallPayload,
@@ -136,6 +138,12 @@ export async function setupOpenClawFeishuChannel(
   input: OpenClawFeishuChannelSetupPayload
 ): Promise<OpenClawFeishuChannelSetupResult> {
   return invoke<OpenClawFeishuChannelSetupResult>('setup_openclaw_feishu_channel', { input });
+}
+
+export async function setupOpenClawDingtalkChannel(
+  input: OpenClawDingtalkChannelSetupPayload
+): Promise<OpenClawDingtalkChannelSetupResult> {
+  return invoke<OpenClawDingtalkChannelSetupResult>('setup_openclaw_dingtalk_channel', { input });
 }
 
 export async function installOpenClawPlugin(input: OpenClawPluginInstallPayload): Promise<OpenClawPluginInstallResult> {

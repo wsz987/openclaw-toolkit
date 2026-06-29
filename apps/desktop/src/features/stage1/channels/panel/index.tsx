@@ -6,12 +6,13 @@ import { PluginInstallDialog } from '../../channels/shared/components/plugin-ins
 import { PluginUninstallDialog } from '../../channels/shared/components/plugin-uninstall-dialog';
 import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../../channels/feishu/components/feishu-plugin-panel';
 import { WechatPluginPanel } from '../../channels/wechat/components/wechat-plugin-panel';
+import { DingtalkPluginPanel } from '../../channels/dingtalk/components/dingtalk-plugin-panel';
 import { ChannelsPanelCard } from './card';
 import { getChannelIcon } from './icons';
-import { CHANNELS_FILTER_TABS, useChannelsPanelState } from './state';
+import { CHANNELS_FILTER_TABS, useChannelsPanelState, type ChannelsPanelStateProps } from './state';
 import { ChannelsUpcomingDetails } from './upcoming';
 
-export type ChannelsPanelProps = FeishuPluginPanelProps;
+export type ChannelsPanelProps = FeishuPluginPanelProps & Omit<ChannelsPanelStateProps, keyof FeishuPluginPanelProps>;
 
 export function ChannelsPanel(props: ChannelsPanelProps) {
   const state = useChannelsPanelState(props);
@@ -42,6 +43,26 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
         loginBusy={state.wechatControl.controller.loading}
         forceEnabled={state.wechatControl.forceEnabled}
         onForceEnabledHandled={state.wechatControl.markForceEnabledHandled}
+      />
+    ),
+    dingtalk: () => (
+      <DingtalkPluginPanel
+        result={props.result}
+        status={props.status}
+        statusLoading={props.statusLoading}
+        dingtalkSetupLoading={props.dingtalkSetupLoading}
+        dingtalkSetupResult={props.dingtalkSetupResult}
+        pluginInstallResult={props.pluginInstallResult}
+        onDingtalkChannelSetup={async (input) => {
+          const response = await props.onDingtalkChannelSetup(input);
+          if (response) {
+            state.setIsDrawerOpen(false);
+          }
+          return response;
+        }}
+        hideInternalEnableToggle
+        forceEnabled={state.dingtalkControl.forceEnabled}
+        onForceEnabledHandled={state.dingtalkControl.markForceEnabledHandled}
       />
     )
   } as const;
@@ -173,11 +194,11 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
       />
 
       <PluginUninstallDialog
-        open={state.uninstallDialogChannelId === 'feishu' || state.uninstallDialogChannelId === 'wechat'}
+        open={Boolean(state.activeManagedUninstallContext)}
         state={state.uninstallDialogState}
         progress={state.activeUninstallState.progress}
         error={state.activeUninstallState.error}
-        pluginName={state.uninstallDialogChannelId === 'wechat' ? '微信 ClawBot' : '飞书 / Lark'}
+        pluginName={state.activeManagedUninstallContext?.pluginName ?? ''}
         onConfirm={() => void state.handleUninstallConfirm()}
         onClose={state.handleUninstallClose}
       />

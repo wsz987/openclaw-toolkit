@@ -6,6 +6,9 @@ import type { FeishuPluginPanelProps } from '../../channels/feishu/components/fe
 import { findInstalledFeishuPlugin } from '../../channels/feishu/model/feishu-channel';
 import { useWechatChannelControl } from '../../channels/wechat/hooks/use-wechat-channel-control';
 import { findInstalledWechatPlugin } from '../../channels/wechat/model/wechat-channel';
+import { useDingtalkChannelControl } from '../../channels/dingtalk/hooks/use-dingtalk-channel-control';
+import { findInstalledDingtalkPlugin } from '../../channels/dingtalk/model/dingtalk-channel';
+import type { OpenClawDingtalkChannelSetupPayload, OpenClawDingtalkChannelSetupResult } from '../../model/types';
 import type { ChannelController } from '../../channels/shared/model/channel-controller';
 import type { UsePluginOperationResult } from '../../channels/shared/hooks/use-plugin-install';
 import {
@@ -38,7 +41,22 @@ function resolveActivePluginInstallState(
   return activeChannelId ? channelPluginInstallStates[activeChannelId] : undefined;
 }
 
-export function useChannelsPanelState(props: FeishuPluginPanelProps) {
+const MANAGED_CHANNEL_IDS = ['feishu', 'wechat', 'dingtalk'] as const;
+type ManagedChannelId = (typeof MANAGED_CHANNEL_IDS)[number];
+
+function isManagedChannelId(channelId: ChannelId | null): channelId is ManagedChannelId {
+  return Boolean(channelId && MANAGED_CHANNEL_IDS.includes(channelId as ManagedChannelId));
+}
+
+export type ChannelsPanelStateProps = FeishuPluginPanelProps & {
+  dingtalkSetupLoading: boolean;
+  dingtalkSetupResult: OpenClawDingtalkChannelSetupResult | null;
+  onDingtalkChannelSetup: (
+    input: OpenClawDingtalkChannelSetupPayload
+  ) => Promise<OpenClawDingtalkChannelSetupResult | null>;
+};
+
+export function useChannelsPanelState(props: ChannelsPanelStateProps) {
   const [activeChannelId, setActiveChannelId] = useState<ChannelId>('feishu');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<ChannelsTabId>('all');
@@ -61,13 +79,23 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
     statusLoading: props.statusLoading,
     pluginInstallResult: props.pluginInstallResult
   });
+  const dingtalkControl = useDingtalkChannelControl({
+    result: props.result,
+    status: props.status,
+    statusLoading: props.statusLoading,
+    dingtalkSetupLoading: props.dingtalkSetupLoading,
+    dingtalkSetupResult: props.dingtalkSetupResult,
+    pluginInstallResult: props.pluginInstallResult,
+    onDingtalkChannelSetup: props.onDingtalkChannelSetup
+  });
 
   const channelControllers = useMemo<Partial<Record<ChannelId, ChannelController>>>(
     () => ({
       feishu: feishuControl.controller,
-      wechat: wechatControl.controller
+      wechat: wechatControl.controller,
+      dingtalk: dingtalkControl.controller
     }),
-    [feishuControl.controller, wechatControl.controller]
+    [feishuControl.controller, wechatControl.controller, dingtalkControl.controller]
   );
 
   const channelActionStates = useMemo<Partial<Record<ChannelId, ChannelActionState>>>(
@@ -87,6 +115,14 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
         onPluginUninstall: async () => {
           await wechatControl.handlePluginUninstall('微信 ClawBot');
         }
+      },
+      dingtalk: {
+        pluginInstalled: Boolean(findInstalledDingtalkPlugin(props.status?.installedPlugins)),
+        pluginInstalling: dingtalkControl.pluginInstall.installing,
+        pluginUninstalling: dingtalkControl.pluginUninstall.installing,
+        onPluginUninstall: async () => {
+          await dingtalkControl.handlePluginUninstall('钉钉 (DingTalk)');
+        }
       }
     }),
     [
@@ -96,22 +132,61 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
       props.status?.installedPlugins,
       wechatControl.handlePluginUninstall,
       wechatControl.pluginInstall.installing,
-      wechatControl.pluginUninstall.installing
+      wechatControl.pluginUninstall.installing,
+      dingtalkControl.handlePluginUninstall,
+      dingtalkControl.pluginInstall.installing,
+      dingtalkControl.pluginUninstall.installing
     ]
   );
 
   const channelPluginInstallStates = useMemo<Partial<Record<ChannelId, UsePluginOperationResult>>>(
     () => ({
       feishu: feishuControl.pluginInstall,
-      wechat: wechatControl.pluginInstall
+      wechat: wechatControl.pluginInstall,
+      dingtalk: dingtalkControl.pluginInstall
     }),
-    [feishuControl.pluginInstall, wechatControl.pluginInstall]
+    [feishuControl.pluginInstall, wechatControl.pluginInstall, dingtalkControl.pluginInstall]
   );
 
   const activePluginInstallState = useMemo(
     () => resolveActivePluginInstallState(channelPluginInstallStates),
     [channelPluginInstallStates]
   );
+
+  const managedChannelControls = useMemo(
+    () => ({
+      feishu: {
+        pluginName: '飞书 / Lark',
+        control: feishuControl
+      },
+      wechat: {
+        pluginName: '微信 ClawBot',
+        control: wechatControl
+      },
+      dingtalk: {
+        pluginName: '钉钉 (DingTalk)',
+        control: dingtalkControl
+      }
+    }) satisfies Record<
+      ManagedChannelId,
+      {
+        pluginName: string;
+        control: {
+          forceEnabled: boolean;
+          markForceEnabledHandled: () => void;
+          handleControllerToggle: (channelName: string, nextEnabled: boolean) => Promise<void>;
+          handlePluginUninstall: (channelName: string) => Promise<boolean>;
+          pluginInstall: UsePluginOperationResult;
+          pluginUninstall: UsePluginOperationResult;
+        };
+      }
+    >,
+    [dingtalkControl, feishuControl, wechatControl]
+  );
+
+  const activeManagedUninstallContext = isManagedChannelId(uninstallDialogChannelId)
+    ? managedChannelControls[uninstallDialogChannelId]
+    : null;
 
   useEffect(() => {
     if (!feishuControl.forceEnabled) {
@@ -132,19 +207,29 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
   }, [wechatControl.forceEnabled]);
 
   useEffect(() => {
-    if (feishuControl.pluginUninstall.installing || wechatControl.pluginUninstall.installing) {
+    if (!dingtalkControl.forceEnabled) {
+      return;
+    }
+
+    setActiveChannelId('dingtalk');
+    setIsDrawerOpen(true);
+  }, [dingtalkControl.forceEnabled]);
+
+  useEffect(() => {
+    const anyPluginUninstalling = Object.values(managedChannelControls).some(
+      ({ control }) => control.pluginUninstall.installing
+    );
+
+    if (anyPluginUninstalling) {
       setUninstallDialogState('loading');
       return;
     }
 
-    if (uninstallDialogChannelId !== 'feishu' && uninstallDialogChannelId !== 'wechat') {
+    if (!activeManagedUninstallContext) {
       return;
     }
 
-    const activeUninstallState =
-      uninstallDialogChannelId === 'wechat'
-        ? wechatControl.pluginUninstall
-        : feishuControl.pluginUninstall;
+    const activeUninstallState = activeManagedUninstallContext.control.pluginUninstall;
 
     if (activeUninstallState.error) {
       setUninstallDialogState('error');
@@ -160,10 +245,9 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
       setUninstallDialogState('success');
     }
   }, [
-    feishuControl.pluginUninstall,
-    uninstallDialogChannelId,
+    activeManagedUninstallContext,
+    managedChannelControls,
     uninstallDialogState,
-    wechatControl.pluginUninstall
   ]);
 
   const activeChannel = CHANNELS_LIST.find((channel) => channel.id === activeChannelId) || CHANNELS_LIST[0];
@@ -194,10 +278,7 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
     [activeTab, channelControllers, searchQuery]
   );
 
-  const activeUninstallState =
-    uninstallDialogChannelId === 'wechat'
-      ? wechatControl.pluginUninstall
-      : feishuControl.pluginUninstall;
+  const activeUninstallState = activeManagedUninstallContext?.control.pluginUninstall ?? feishuControl.pluginUninstall;
 
   function handleVote(channelId: string) {
     if (hasVoted[channelId]) {
@@ -225,12 +306,11 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
       return;
     }
 
-    if (channel.id === 'wechat') {
-      await wechatControl.handleControllerToggle(channel.name, nextEnabled);
+    if (!isManagedChannelId(channel.id)) {
       return;
     }
 
-    await feishuControl.handleControllerToggle(channel.name, nextEnabled);
+    await managedChannelControls[channel.id].control.handleControllerToggle(channel.name, nextEnabled);
   }
 
   async function handleChannelCardClick(channel: ChannelItem, controller: ChannelController | undefined) {
@@ -256,11 +336,14 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
   }
 
   async function handleUninstallConfirm() {
+    if (!activeManagedUninstallContext) {
+      return;
+    }
+
     setUninstallDialogState('loading');
-    const success =
-      uninstallDialogChannelId === 'wechat'
-        ? await wechatControl.handlePluginUninstall('微信 ClawBot')
-        : await feishuControl.handlePluginUninstall('飞书 / Lark');
+    const success = await activeManagedUninstallContext.control.handlePluginUninstall(
+      activeManagedUninstallContext.pluginName
+    );
 
     if (success) {
       setUninstallDialogState('success');
@@ -271,8 +354,9 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
     const wasSuccess = uninstallDialogState === 'success';
     setUninstallDialogChannelId(null);
     setUninstallDialogState('confirm');
-    feishuControl.pluginUninstall.close();
-    wechatControl.pluginUninstall.close();
+    Object.values(managedChannelControls).forEach(({ control }) => {
+      control.pluginUninstall.close();
+    });
     if (wasSuccess) {
       setIsDrawerOpen(false);
     }
@@ -281,9 +365,11 @@ export function useChannelsPanelState(props: FeishuPluginPanelProps) {
   return {
     feishuControl,
     wechatControl,
+    dingtalkControl,
     activeChannel,
     activeChannelId,
     activePluginInstallState,
+    activeManagedUninstallContext,
     activeTab,
     activeUninstallState,
     channelActionStates,

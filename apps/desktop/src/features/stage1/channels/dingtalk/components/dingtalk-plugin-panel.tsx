@@ -1,0 +1,270 @@
+import { useEffect, useState } from 'react';
+import { AlertTriangle, BookOpen, Check, ExternalLink, RefreshCw, Shield } from 'lucide-react';
+import { Button } from '../../../../../components/ui/button';
+import { ScrollArea } from '../../../../../components/ui/scroll-area';
+import { openExternalUrl } from '../../../api/stage1-api';
+import { DingtalkChannelForm } from './dingtalk-channel-form';
+import { DingtalkDocLinksCard } from './dingtalk-doc-links-card';
+import { DingtalkHelpDialog } from './dingtalk-help-dialog';
+import { DINGTALK_PERMISSION_TROUBLESHOOTING, getDingtalkConsoleLinks } from '../model/dingtalk-docs';
+import { buildDingtalkChannelSetupPayload, createDingtalkChannelFormState } from '../model/dingtalk-channel';
+import type {
+  OpenClawDingtalkChannelSetupResult,
+  OpenClawPluginInstallResult,
+  OpenClawPostInstallStatus,
+  Stage1InstallResult
+} from '../../../model/types';
+
+type SecretVisibilityState = {
+  clientSecret: boolean;
+};
+
+export type DingtalkPluginPanelProps = {
+  result: Stage1InstallResult;
+  status: OpenClawPostInstallStatus | null;
+  statusLoading: boolean;
+  dingtalkSetupLoading: boolean;
+  dingtalkSetupResult: OpenClawDingtalkChannelSetupResult | null;
+  pluginInstallResult?: OpenClawPluginInstallResult | null;
+  onDingtalkChannelSetup: (
+    input: ReturnType<typeof buildDingtalkChannelSetupPayload>
+  ) => Promise<OpenClawDingtalkChannelSetupResult | null>;
+  hideInternalEnableToggle?: boolean;
+  forceEnabled?: boolean;
+  onForceEnabledHandled?: () => void;
+};
+
+export function DingtalkPluginPanel({
+  result,
+  status,
+  statusLoading,
+  dingtalkSetupLoading,
+  dingtalkSetupResult,
+  pluginInstallResult = null,
+  onDingtalkChannelSetup,
+  hideInternalEnableToggle = false,
+  forceEnabled = false,
+  onForceEnabledHandled
+}: DingtalkPluginPanelProps) {
+  const dingtalk = status?.dingtalkChannel ?? null;
+  const [form, setForm] = useState(() => createDingtalkChannelFormState(dingtalk));
+  const [secretVisibility, setSecretVisibility] = useState<SecretVisibilityState>({
+    clientSecret: false
+  });
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const resolvedLinks = getDingtalkConsoleLinks(form.clientId);
+  const effectiveEnabled = hideInternalEnableToggle ? true : form.enabled;
+  const postInstallActionLoading = statusLoading || dingtalkSetupLoading;
+  const showPostInstallGuide = Boolean(
+    pluginInstallResult && pluginInstallResult.pluginId === 'dingtalk' && !dingtalk?.configured
+  );
+  const canSaveConfiguration =
+    !effectiveEnabled || (form.clientId.trim().length > 0 && form.clientSecret.trim().length > 0);
+
+  const credentialAssistant = (
+    <div className="animate-fade-in rounded-xl border border-dashed border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.02)] p-4 shadow-2xs">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1.5">
+          <strong className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--body-strong))]">
+            <Shield className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+            钉钉凭证与机器人配置助手
+          </strong>
+          <p className="max-w-[560px] text-[10px] leading-relaxed text-[hsl(var(--muted))]">
+            在「钉钉开发者后台」企业内部应用的「基础信息 -&gt; 应用凭证」中获取 AppKey（Client ID）与 AppSecret（Client Secret），并在「机器人」能力页将消息接收模式设置为 Stream。
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
+              onClick={() => void handleOpenUrl(resolvedLinks.credentials)}
+            >
+              <ExternalLink className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+              直达钉钉应用凭证页
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-7 border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] px-2.5 text-[10px] font-medium hover:bg-[hsl(var(--surface-soft))]"
+              onClick={() => void handleOpenUrl(resolvedLinks.docs)}
+            >
+              <BookOpen className="mr-1 h-3 w-3 text-[hsl(var(--muted))]" />
+              查看官方接入指引
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  async function handleOpenUrl(url: string) {
+    try {
+      await openExternalUrl({ url });
+    } catch (error) {
+      console.error('[钉钉文档] 打开链接失败', error);
+    }
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    window.setTimeout(() => setCopiedText(null), 2000);
+  }
+
+  function resetFormToCurrentStatus() {
+    setForm(createDingtalkChannelFormState(dingtalk));
+    setSecretVisibility({ clientSecret: false });
+  }
+
+  function handleFieldChange<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((current) => ({
+      ...current,
+      [key]: value
+    }));
+  }
+
+  function handleToggleSecret(name: keyof SecretVisibilityState) {
+    setSecretVisibility((current) => ({
+      ...current,
+      [name]: !current[name]
+    }));
+  }
+
+  useEffect(() => {
+    setForm(createDingtalkChannelFormState(dingtalk));
+  }, [dingtalk]);
+
+  useEffect(() => {
+    if (!forceEnabled) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      enabled: true
+    }));
+    onForceEnabledHandled?.();
+  }, [forceEnabled, onForceEnabledHandled]);
+
+  return (
+    <div className="relative flex h-full min-h-0 flex-1 animate-fade-in flex-col">
+      <ScrollArea className="flex-1 -mr-4 pr-4">
+        <div className="flex flex-col gap-6 pb-6">
+          {showPostInstallGuide ? (
+            <div className="animate-fade-in rounded-xl border border-[hsl(var(--primary)/0.2)] bg-[hsl(var(--primary)/0.06)] px-5 py-4 text-xs leading-relaxed text-[hsl(var(--body-strong))] shadow-2xs">
+              <div className="flex items-start gap-3">
+                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[hsl(var(--primary))]" />
+                <div className="flex flex-col gap-2">
+                  <strong>钉钉插件已经注册完成，下一步配置机器人接入信息。</strong>
+                  <span>当前安装阶段只负责把 `{pluginInstallResult?.pluginEntryId}` 注册到 OpenClaw，不再执行交互式 onboarding。</span>
+                  <div className="grid gap-1 text-[11px] text-[hsl(var(--body))]">
+                    <span>1. 在下方填写钉钉企业内部应用的 `Client ID` 和 `Client Secret`。</span>
+                    <span>2. 在开发者后台开启「机器人」能力，并将消息接收模式设置为 Stream。</span>
+                    <span>3. 按需配置私聊/群聊策略并保存配置，随后重启 OpenClaw 服务。</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-6">
+            <DingtalkChannelForm
+              form={{
+                ...form,
+                enabled: effectiveEnabled
+              }}
+              status={dingtalk}
+              loading={postInstallActionLoading}
+              hideEnableToggle={hideInternalEnableToggle}
+              credentialAssistant={credentialAssistant}
+              secretVisibility={secretVisibility}
+              onFieldChange={handleFieldChange}
+              onToggleSecret={handleToggleSecret}
+            />
+
+            <DingtalkDocLinksCard
+              clientId={form.clientId}
+              activeStep={null}
+              onOpenUrl={handleOpenUrl}
+              onOpenFaq={() => setHelpDialogOpen(true)}
+            />
+          </div>
+
+          {dingtalkSetupResult ? (
+            <div className="animate-fade-in flex items-start gap-2.5 rounded-lg border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.06)] px-4 py-3 text-xs leading-relaxed text-[hsl(var(--body-strong))] shadow-2xs">
+              <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[hsl(var(--success))]" />
+              <div>
+                <strong>钉钉通道配置写入成功！</strong>
+                <span> 凭证已写入。您可以在运行控制中心重启 OpenClaw 服务以更新底层通道进程。</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
+
+      <div className="relative z-10 mt-2 flex-none border-t border-[hsl(var(--hairline))] bg-[hsl(var(--canvas))] pt-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted))]">
+            {dingtalk?.configured ? (
+              <>
+                <Check className="h-4 w-4 text-[hsl(var(--success))]" />
+                已存在旧配置，您可以直接继续调整。
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4 text-[hsl(var(--warning))]" />
+                尚未配置有效的钉钉接入凭据。
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-1 gap-3 sm:flex-initial sm:justify-end">
+            <Button
+              variant="secondary"
+              disabled={postInstallActionLoading}
+              onClick={resetFormToCurrentStatus}
+              className="h-10 cursor-pointer px-5 font-medium hover:bg-[hsl(var(--surface-soft))]"
+            >
+              重置
+            </Button>
+
+            <Button
+              variant="default"
+              disabled={postInstallActionLoading || !canSaveConfiguration}
+              onClick={() =>
+                void onDingtalkChannelSetup(
+                  buildDingtalkChannelSetupPayload(result.configPath, {
+                    ...form,
+                    enabled: effectiveEnabled
+                  })
+                )
+              }
+              className="h-10 min-w-[160px] flex-1 cursor-pointer bg-[hsl(var(--primary))] font-medium text-[hsl(var(--on-primary))] shadow-sm hover:bg-[hsl(var(--primary-active))] sm:flex-none"
+            >
+              {dingtalkSetupLoading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  正在保存通道配置...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  保存并应用配置
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <DingtalkHelpDialog
+        open={helpDialogOpen}
+        copied={copiedText === DINGTALK_PERMISSION_TROUBLESHOOTING.copyText}
+        onOpenChange={setHelpDialogOpen}
+        onCopy={() => copyToClipboard(DINGTALK_PERMISSION_TROUBLESHOOTING.copyText)}
+        onOpenPermissions={() => void handleOpenUrl(resolvedLinks.permissions)}
+      />
+    </div>
+  );
+}

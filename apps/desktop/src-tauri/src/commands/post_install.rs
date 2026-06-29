@@ -10,8 +10,9 @@ use crate::core::{
         resolve_installation_status_by_config_path,
     },
     openclaw_config::{
-        apply_feishu_channel_setup, apply_provider_setup, read_openclaw_status,
-        test_provider_connection, FeishuChannelSetupInput, FeishuChannelSetupResult,
+        apply_dingtalk_channel_setup, apply_feishu_channel_setup, apply_provider_setup,
+        read_openclaw_status, test_provider_connection, DingtalkChannelSetupInput,
+        DingtalkChannelSetupResult, FeishuChannelSetupInput, FeishuChannelSetupResult,
         OpenClawStatusSummary, ProviderConnectionTestInput, ProviderConnectionTestResult,
         ProviderSetupInput, ProviderSetupResult,
     },
@@ -185,6 +186,32 @@ pub async fn setup_openclaw_feishu_channel(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("setup_openclaw_feishu_channel join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn setup_openclaw_dingtalk_channel(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: DingtalkChannelSetupInput,
+) -> Result<DingtalkChannelSetupResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_dingtalk_channel_setup(&input)?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            "channels.dingtalk-connector",
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<DingtalkChannelSetupResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("setup_openclaw_dingtalk_channel join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

@@ -55,6 +55,7 @@ pub struct OpenClawStatusSummary {
     pub feishu_plugin_enabled: bool,
     pub feishu_channel: FeishuChannelSummary,
     pub weixin_channel: WeixinChannelSummary,
+    pub dingtalk_channel: DingtalkChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
     pub installed_plugins: Vec<InstalledPlugin>,
@@ -187,11 +188,58 @@ pub struct FeishuChannelSetupResult {
     pub app_id: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkChannelSummary {
+    pub enabled: bool,
+    pub configured: bool,
+    pub account_id: String,
+    pub client_id: Option<String>,
+    pub client_secret_configured: bool,
+    pub dm_policy: String,
+    pub allow_from: Vec<String>,
+    pub group_policy: String,
+    pub group_allow_from: Vec<String>,
+    pub require_mention: bool,
+    pub streaming: bool,
+    pub typing_indicator: bool,
+    pub resolve_sender_names: bool,
+    pub group_reply_mode: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkChannelSetupInput {
+    pub config_path: String,
+    pub enabled: bool,
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
+    pub dm_policy: Option<String>,
+    pub allow_from: Vec<String>,
+    pub group_policy: Option<String>,
+    pub group_allow_from: Vec<String>,
+    pub require_mention: bool,
+    pub streaming: bool,
+    pub typing_indicator: bool,
+    pub resolve_sender_names: bool,
+    pub group_reply_mode: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkChannelSetupResult {
+    pub config_path: String,
+    pub enabled: bool,
+    pub configured: bool,
+    pub client_id: Option<String>,
+}
+
 const DEFAULT_GATEWAY_PORT: u16 = 18789;
 const DEFAULT_GATEWAY_BIND: &str = "loopback";
 const DEFAULT_GATEWAY_MODE: &str = "local";
 const LEGACY_FEISHU_PLUGIN_ID: &str = "feishu";
 const DEFAULT_FEISHU_PLUGIN_ENTRY_ID: &str = "openclaw-lark";
+const DEFAULT_DINGTALK_PLUGIN_ENTRY_ID: &str = "dingtalk-connector";
 const DEFAULT_BROWSER_PLUGIN_ID: &str = "browser";
 const DEFAULT_OPENAI_PROVIDER_API: &str = "openai-completions";
 const DEFAULT_AGENT_SKILLS: [&str; 2] = ["browser-control", "local-filesystem"];
@@ -521,6 +569,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
 
     let weixin_channel =
         crate::core::weixin::read_weixin_channel_summary(&config, Some(&plugin_discovery), config_path);
+    let dingtalk_channel = read_dingtalk_channel_summary(&config);
 
     Ok(OpenClawStatusSummary {
         openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
@@ -548,6 +597,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         feishu_plugin_enabled,
         feishu_channel,
         weixin_channel,
+        dingtalk_channel,
         skills_installed: enabled_skill_ids(&config),
         plugins_enabled: plugin_discovery.enabled_plugin_ids,
         installed_plugins: plugin_discovery.installed_plugins,
@@ -994,6 +1044,227 @@ pub fn apply_feishu_channel_setup(
         connection_mode: summary.connection_mode,
         app_id: summary.app_id,
     })
+}
+
+pub fn apply_dingtalk_channel_setup(
+    input: &DingtalkChannelSetupInput,
+) -> anyhow::Result<DingtalkChannelSetupResult> {
+    let config_path = PathBuf::from(&input.config_path);
+    if input.enabled {
+        let _ = ensure_plugins_allowlist_entry(&config_path, DEFAULT_DINGTALK_PLUGIN_ENTRY_ID)?;
+    }
+    let mut config = read_openclaw_config_value(&config_path)?;
+
+    let account_id = "default";
+    let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("open".to_string()));
+    let group_policy =
+        normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
+    let allow_from = if dm_policy == "open" && input.allow_from.is_empty() {
+        vec!["*".to_string()]
+    } else {
+        input.allow_from.clone()
+    };
+    let group_reply_mode = normalize_non_empty(
+        input.group_reply_mode.as_deref(),
+        Some("aicard".to_string()),
+    );
+    let client_id = normalize_optional_non_empty(
+        input.client_id.as_deref(),
+        string_at_path(&config, &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"]),
+    );
+    let client_secret = normalize_optional_non_empty(
+        input.client_secret.as_deref(),
+        string_at_path(
+            &config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientSecret"],
+        ),
+    );
+
+    set_value_at_path(
+        &mut config,
+        &[
+            "plugins",
+            "entries",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "enabled",
+        ],
+        Value::Bool(input.enabled),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "enabled"],
+        Value::Bool(input.enabled),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "defaultAccount"],
+        Value::String(account_id.to_string()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "channelConfigUpdatedAt"],
+        Value::String(chrono::Utc::now().to_rfc3339()),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "dmPolicy"],
+        Value::String(dm_policy),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "allowFrom"],
+        string_vec_to_value(&allow_from),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupPolicy"],
+        Value::String(group_policy),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupAllowFrom"],
+        string_vec_to_value(&input.group_allow_from),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
+        Value::Bool(input.require_mention),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "streaming"],
+        Value::Bool(input.streaming),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "typingIndicator"],
+        Value::Bool(input.typing_indicator),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "resolveSenderNames"],
+        Value::Bool(input.resolve_sender_names),
+    );
+    set_value_at_path(
+        &mut config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupReplyMode"],
+        Value::String(group_reply_mode),
+    );
+
+    if let Some(client_id) = client_id.clone() {
+        set_value_at_path(
+            &mut config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"],
+            Value::String(client_id),
+        );
+    } else {
+        remove_value_at_path(
+            &mut config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"],
+        );
+    }
+
+    if let Some(client_secret) = client_secret.clone() {
+        set_value_at_path(
+            &mut config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientSecret"],
+            Value::String(client_secret),
+        );
+    } else {
+        remove_value_at_path(
+            &mut config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientSecret"],
+        );
+    }
+
+    write_config_value(&config_path, &config)?;
+    let summary = read_dingtalk_channel_summary(&config);
+
+    Ok(DingtalkChannelSetupResult {
+        config_path: config_path.to_string_lossy().to_string(),
+        enabled: summary.enabled,
+        configured: summary.configured,
+        client_id: summary.client_id,
+    })
+}
+
+fn read_dingtalk_channel_summary(config: &Value) -> DingtalkChannelSummary {
+    let client_id = string_at_path(
+        config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"],
+    );
+    let client_secret_configured = string_at_path(
+        config,
+        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientSecret"],
+    )
+    .map(|value| !value.trim().is_empty())
+    .unwrap_or(false);
+
+    DingtalkChannelSummary {
+        enabled: bool_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "enabled"],
+        )
+        .unwrap_or(false),
+        configured: client_id
+            .as_deref()
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false)
+            && client_secret_configured,
+        account_id: "default".to_string(),
+        client_id,
+        client_secret_configured,
+        dm_policy: string_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "dmPolicy"],
+        )
+        .unwrap_or_else(|| "open".to_string()),
+        allow_from: {
+            let allow_from = string_array_at_path(
+                config,
+                &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "allowFrom"],
+            );
+            if allow_from.is_empty() {
+                vec!["*".to_string()]
+            } else {
+                allow_from
+            }
+        },
+        group_policy: string_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupPolicy"],
+        )
+        .unwrap_or_else(|| "open".to_string()),
+        group_allow_from: string_array_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupAllowFrom"],
+        ),
+        require_mention: bool_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
+        )
+        .unwrap_or(true),
+        streaming: bool_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "streaming"],
+        )
+        .unwrap_or(true),
+        typing_indicator: bool_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "typingIndicator"],
+        )
+        .unwrap_or(true),
+        resolve_sender_names: bool_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "resolveSenderNames"],
+        )
+        .unwrap_or(true),
+        group_reply_mode: string_at_path(
+            config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupReplyMode"],
+        )
+        .unwrap_or_else(|| "aicard".to_string()),
+    }
 }
 
 fn read_openclaw_config_value(config_path: &Path) -> anyhow::Result<Value> {

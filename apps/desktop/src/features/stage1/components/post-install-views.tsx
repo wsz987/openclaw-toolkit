@@ -1,5 +1,7 @@
 import { AlertIcon } from '../../../components/icons';
 import type {
+  OpenClawDingtalkChannelSetupPayload,
+  OpenClawDingtalkChannelSetupResult,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallResult,
@@ -27,6 +29,8 @@ type PostInstallHomeViewProps = {
   providerSetupLoading: boolean;
   feishuSetupLoading: boolean;
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
+  dingtalkSetupLoading: boolean;
+  dingtalkSetupResult: OpenClawDingtalkChannelSetupResult | null;
   pluginInstallResult: OpenClawPluginInstallResult | null;
   skillCatalog: ManagedSkillCatalog | null;
   skillCatalogLoading: boolean;
@@ -43,6 +47,9 @@ type PostInstallHomeViewProps = {
   uninstallResult: UninstallResult | null;
   onProviderSetup: (input: OpenClawProviderSetupPayload) => Promise<OpenClawProviderSetupResult | null>;
   onFeishuChannelSetup: (input: OpenClawFeishuChannelSetupPayload) => Promise<OpenClawFeishuChannelSetupResult | null>;
+  onDingtalkChannelSetup: (
+    input: OpenClawDingtalkChannelSetupPayload
+  ) => Promise<OpenClawDingtalkChannelSetupResult | null>;
   onReloadSkillCatalog: (configPath: string) => Promise<ManagedSkillCatalog | null>;
   onSkillToggle: (input: OpenClawSkillTogglePayload) => Promise<unknown>;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
@@ -75,6 +82,8 @@ export function PostInstallHomeView({
   providerSetupLoading,
   feishuSetupLoading,
   feishuSetupResult,
+  dingtalkSetupLoading,
+  dingtalkSetupResult,
   pluginInstallResult,
   skillCatalog,
   skillCatalogLoading,
@@ -91,6 +100,7 @@ export function PostInstallHomeView({
   uninstallResult,
   onProviderSetup,
   onFeishuChannelSetup,
+  onDingtalkChannelSetup,
   onReloadSkillCatalog,
   onSkillToggle,
   onLaunchRuntime,
@@ -181,8 +191,11 @@ export function PostInstallHomeView({
             statusLoading={statusLoading}
             feishuSetupLoading={feishuSetupLoading}
             feishuSetupResult={feishuSetupResult}
+            dingtalkSetupLoading={dingtalkSetupLoading}
+            dingtalkSetupResult={dingtalkSetupResult}
             pluginInstallResult={pluginInstallResult}
             onFeishuChannelSetup={onFeishuChannelSetup}
+            onDingtalkChannelSetup={onDingtalkChannelSetup}
           />
         ) : activeTab === 'skills' ? (
           <SkillsManagementPanel

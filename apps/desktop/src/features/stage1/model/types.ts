@@ -105,6 +105,7 @@ export type OpenClawPostInstallStatus = {
   feishuPluginEnabled: boolean;
   feishuChannel: FeishuChannelStatus;
   weixinChannel: WeixinChannelStatus;
+  dingtalkChannel: DingtalkChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
   installedPlugins: InstalledPluginStatus[];
@@ -148,6 +149,23 @@ export type WeixinChannelStatus = {
   configuredAccountIds: string[];
   baseUrl: string;
   cdnBaseUrl: string;
+};
+
+export type DingtalkChannelStatus = {
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
+  clientId: string | null;
+  clientSecretConfigured: boolean;
+  dmPolicy: 'open' | 'pairing' | 'allowlist' | string;
+  allowFrom: string[];
+  groupPolicy: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  requireMention: boolean;
+  streaming: boolean;
+  typingIndicator: boolean;
+  resolveSenderNames: boolean;
+  groupReplyMode: 'aicard' | 'text' | 'markdown' | string;
 };
 
 export type ProviderCatalogModelEntry = {
@@ -233,6 +251,29 @@ export type OpenClawFeishuChannelSetupResult = {
   configured: boolean;
   connectionMode: string;
   appId: string | null;
+};
+
+export type OpenClawDingtalkChannelSetupPayload = {
+  configPath: string;
+  enabled: boolean;
+  clientId?: string;
+  clientSecret?: string;
+  dmPolicy?: 'open' | 'pairing' | 'allowlist' | string;
+  allowFrom: string[];
+  groupPolicy?: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  requireMention: boolean;
+  streaming: boolean;
+  typingIndicator: boolean;
+  resolveSenderNames: boolean;
+  groupReplyMode?: 'aicard' | 'text' | 'markdown' | string;
+};
+
+export type OpenClawDingtalkChannelSetupResult = {
+  configPath: string;
+  enabled: boolean;
+  configured: boolean;
+  clientId: string | null;
 };
 
 export type PluginInstallProgress = {
