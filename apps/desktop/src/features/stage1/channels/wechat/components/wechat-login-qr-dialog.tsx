@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
 import { Check, Copy, Loader2, QrCode, RefreshCw, ShieldAlert, Smartphone } from 'lucide-react';
 import {
   AlertDialog,
@@ -12,6 +10,7 @@ import {
 } from '../../../../../components/ui/alert-dialog';
 import { Button } from '../../../../../components/ui/button';
 import { Input } from '../../../../../components/ui/input';
+import { useQrCodeDisplay } from '../../shared/hooks/use-qr-code-display';
 
 type WechatLoginQrDialogProps = {
   open: boolean;
@@ -48,73 +47,12 @@ export function WechatLoginQrDialog({
   onSubmitVerifyCode,
   onCopy
 }: WechatLoginQrDialogProps) {
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [renderedQrDataUrl, setRenderedQrDataUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let disposed = false;
-
-    async function renderQrCode() {
-      if (!qrDataUrl) {
-        setRenderedQrDataUrl(null);
-        return;
-      }
-
-      if (qrDataUrl.startsWith('data:image/')) {
-        setRenderedQrDataUrl(qrDataUrl);
-        return;
-      }
-
-      try {
-        const dataUrl = await QRCode.toDataURL(qrDataUrl, {
-          errorCorrectionLevel: 'M',
-          margin: 1,
-          width: 208
-        });
-        if (!disposed) {
-          setRenderedQrDataUrl(dataUrl);
-        }
-      } catch {
-        if (!disposed) {
-          setRenderedQrDataUrl(null);
-        }
-      }
-    }
-
-    void renderQrCode();
-
-    return () => {
-      disposed = true;
-    };
-  }, [qrDataUrl]);
-
-  useEffect(() => {
-    if (open && expiresIn) {
-      setTimeLeft(expiresIn);
-    } else if (!open) {
-      setTimeLeft(0);
-    }
-  }, [expiresIn, open]);
-
-  useEffect(() => {
-    if (!open || blocking || timeLeft <= 0) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      setTimeLeft((current) => Math.max(0, current - 1));
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [blocking, open, timeLeft]);
-
-  const isExpired = !blocking && renderedQrDataUrl !== null && timeLeft <= 0;
-
-  function formatTime(seconds: number) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
+  const { qrDataUrl: renderedQrDataUrl, timeLeft, isExpired, formatTime } = useQrCodeDisplay({
+    open,
+    source: qrDataUrl,
+    expiresIn,
+    loading: blocking
+  });
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

@@ -404,6 +404,27 @@ export type FeishuAuthQrStatusResult = {
   expiresIn: number | null;
 };
 
+export type DingtalkAuthQrPayload = {
+  configPath: string;
+};
+
+export type DingtalkAuthQrResult = {
+  deviceCode: string;
+  verificationUriComplete: string;
+  expiresIn: number;
+  interval: number;
+};
+
+export type DingtalkAuthQrStatusPayload = {
+  configPath: string;
+  deviceCode: string;
+};
+
+export type DingtalkAuthQrStatusResult = {
+  status: 'pending' | 'authorized' | 'expired';
+  detail: string | null;
+};
+
 export type WeixinLoginStatus = {
   installed: boolean;
   enabled: boolean;

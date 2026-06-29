@@ -2,6 +2,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { isInstallStep } from '../model/graph';
 import type {
   AppBootstrapState,
+  DingtalkAuthQrPayload,
+  DingtalkAuthQrResult,
+  DingtalkAuthQrStatusPayload,
+  DingtalkAuthQrStatusResult,
   DirectoryPickerResponse,
   FeishuAuthQrPayload,
   FeishuAuthQrResult,
@@ -224,6 +228,16 @@ export async function createFeishuAuthQr(input: FeishuAuthQrPayload): Promise<Fe
 
 export async function inspectFeishuAuthQrStatus(input: FeishuAuthQrStatusPayload): Promise<FeishuAuthQrStatusResult> {
   return invoke<FeishuAuthQrStatusResult>('inspect_feishu_auth_qr_status_command', { input });
+}
+
+export async function createDingtalkAuthQr(input: DingtalkAuthQrPayload): Promise<DingtalkAuthQrResult> {
+  return invoke<DingtalkAuthQrResult>('create_dingtalk_auth_qr_command', { input });
+}
+
+export async function inspectDingtalkAuthQrStatus(
+  input: DingtalkAuthQrStatusPayload
+): Promise<DingtalkAuthQrStatusResult> {
+  return invoke<DingtalkAuthQrStatusResult>('inspect_dingtalk_auth_qr_status_command', { input });
 }
 
 export async function inspectWeixinLoginStatus(configPath: string): Promise<WeixinLoginStatus> {

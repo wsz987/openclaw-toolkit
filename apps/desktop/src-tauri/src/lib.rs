@@ -77,6 +77,8 @@ pub fn run() {
             commands::post_install::open_external_url_command,
             commands::post_install::create_feishu_auth_qr_command,
             commands::post_install::inspect_feishu_auth_qr_status_command,
+            commands::post_install::create_dingtalk_auth_qr_command,
+            commands::post_install::inspect_dingtalk_auth_qr_status_command,
             commands::post_install::inspect_weixin_login_status_command,
             commands::post_install::start_weixin_login_qr_command,
             commands::post_install::wait_for_weixin_login_qr_command,

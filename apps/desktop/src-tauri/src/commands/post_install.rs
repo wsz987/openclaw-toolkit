@@ -66,6 +66,19 @@ pub struct FeishuAuthQrStatusInput {
     pub device_code: String,
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkAuthQrInput {
+    pub config_path: String,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkAuthQrStatusInput {
+    pub config_path: String,
+    pub device_code: String,
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeishuAuthQrResult {
@@ -87,6 +100,22 @@ pub struct FeishuAuthQrStatusResult {
     pub refresh_token_granted: bool,
     pub scope: Option<String>,
     pub expires_in: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkAuthQrResult {
+    pub device_code: String,
+    pub verification_uri_complete: String,
+    pub expires_in: u64,
+    pub interval: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DingtalkAuthQrStatusResult {
+    pub status: String,
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -322,6 +351,54 @@ pub async fn inspect_feishu_auth_qr_status_command(
             rendered
         })?
         .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn create_dingtalk_auth_qr_command(
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: DingtalkAuthQrInput,
+) -> Result<DingtalkAuthQrResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || create_dingtalk_auth_qr(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("create_dingtalk_auth_qr_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn inspect_dingtalk_auth_qr_status_command(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: DingtalkAuthQrStatusInput,
+) -> Result<DingtalkAuthQrStatusResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = inspect_dingtalk_auth_qr_status(&input)?;
+        if result.status == "authorized" {
+            let config_path = PathBuf::from(&input.config_path);
+            let _ = mark_runtime_action_required(
+                &config_path,
+                "restart",
+                "channels.dingtalk-connector",
+            );
+            let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        }
+        Ok::<DingtalkAuthQrStatusResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!(
+            "inspect_dingtalk_auth_qr_status_command join failed:\n{}",
+            rendered
+        );
+        rendered
+    })?
+    .map_err(render_error)
 }
 
 #[tauri::command]
@@ -646,6 +723,33 @@ struct FeishuDeviceAuthorizationResponse {
 }
 
 #[derive(Debug, serde::Deserialize)]
+struct DingtalkRegistrationInitResponse {
+    errcode: i64,
+    errmsg: Option<String>,
+    nonce: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct DingtalkRegistrationBeginResponse {
+    errcode: i64,
+    errmsg: Option<String>,
+    device_code: Option<String>,
+    verification_uri_complete: Option<String>,
+    interval: Option<u64>,
+    expires_in: Option<u64>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct DingtalkRegistrationPollResponse {
+    errcode: i64,
+    errmsg: Option<String>,
+    status: Option<String>,
+    fail_reason: Option<String>,
+    client_id: Option<serde_json::Value>,
+    client_secret: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct FeishuDeviceTokenResponse {
     access_token: Option<String>,
     refresh_token: Option<String>,
@@ -864,6 +968,210 @@ fn inspect_feishu_auth_qr_status(
     }
 
     Err(last_error.unwrap_or_else(|| anyhow::anyhow!("查询二维码授权状态失败")))
+}
+
+fn create_dingtalk_auth_qr(input: &DingtalkAuthQrInput) -> anyhow::Result<DingtalkAuthQrResult> {
+    if input.config_path.trim().is_empty() {
+        anyhow::bail!("缺少 configPath");
+    }
+
+    let base_url = std::env::var("DINGTALK_REGISTRATION_BASE_URL")
+        .unwrap_or_else(|_| "https://oapi.dingtalk.com".to_string());
+    let source = std::env::var("DINGTALK_REGISTRATION_SOURCE")
+        .unwrap_or_else(|_| "DING_DWS_CLAW".to_string());
+
+    let client = reqwest::blocking::Client::builder()
+        .use_rustls_tls()
+        .build()?;
+
+    let init_url = format!("{}/app/registration/init", base_url.trim_end_matches('/'));
+    let init_response = client
+        .post(&init_url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(serde_json::json!({ "source": source }).to_string())
+        .send()
+        .context("request DingTalk registration init")?;
+    let init_status = init_response.status();
+    let init_body = init_response
+        .text()
+        .with_context(|| format!("read DingTalk registration init response: HTTP {}", init_status))?;
+    eprintln!(
+        "[DingTalk Auth QR] registration init {} -> HTTP {} body: {}",
+        init_url, init_status, init_body
+    );
+    let init_payload: DingtalkRegistrationInitResponse = serde_json::from_str(&init_body)
+        .with_context(|| {
+            format!(
+                "parse DingTalk registration init response: HTTP {} body: {}",
+                init_status, init_body
+            )
+        })?;
+    if init_payload.errcode != 0 {
+        anyhow::bail!(
+            "{}",
+            init_payload
+                .errmsg
+                .unwrap_or_else(|| format!("registration init failed (errcode={})", init_payload.errcode))
+        );
+    }
+    let nonce = init_payload.nonce.context("钉钉未返回 nonce")?;
+
+    let begin_url = format!("{}/app/registration/begin", base_url.trim_end_matches('/'));
+    let begin_response = client
+        .post(&begin_url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(serde_json::json!({ "nonce": nonce }).to_string())
+        .send()
+        .context("request DingTalk registration begin")?;
+    let begin_status = begin_response.status();
+    let begin_body = begin_response
+        .text()
+        .with_context(|| format!("read DingTalk registration begin response: HTTP {}", begin_status))?;
+    eprintln!(
+        "[DingTalk Auth QR] registration begin {} -> HTTP {} body: {}",
+        begin_url, begin_status, begin_body
+    );
+    let begin_payload: DingtalkRegistrationBeginResponse = serde_json::from_str(&begin_body)
+        .with_context(|| {
+            format!(
+                "parse DingTalk registration begin response: HTTP {} body: {}",
+                begin_status, begin_body
+            )
+        })?;
+    if begin_payload.errcode != 0 {
+        anyhow::bail!(
+            "{}",
+            begin_payload
+                .errmsg
+                .unwrap_or_else(|| format!("registration begin failed (errcode={})", begin_payload.errcode))
+        );
+    }
+
+    Ok(DingtalkAuthQrResult {
+        device_code: begin_payload.device_code.context("钉钉未返回 device_code")?,
+        verification_uri_complete: begin_payload
+            .verification_uri_complete
+            .context("钉钉未返回 verification_uri_complete")?,
+        expires_in: begin_payload.expires_in.unwrap_or(7200),
+        interval: begin_payload.interval.unwrap_or(3),
+    })
+}
+
+fn inspect_dingtalk_auth_qr_status(
+    input: &DingtalkAuthQrStatusInput,
+) -> anyhow::Result<DingtalkAuthQrStatusResult> {
+    let config_path = PathBuf::from(&input.config_path);
+    let device_code = input.device_code.trim();
+    if device_code.is_empty() {
+        anyhow::bail!("二维码状态缺少 device code");
+    }
+
+    let base_url = std::env::var("DINGTALK_REGISTRATION_BASE_URL")
+        .unwrap_or_else(|_| "https://oapi.dingtalk.com".to_string());
+    let poll_url = format!("{}/app/registration/poll", base_url.trim_end_matches('/'));
+    let client = reqwest::blocking::Client::builder()
+        .use_rustls_tls()
+        .build()?;
+    let poll_response = client
+        .post(&poll_url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(serde_json::json!({ "device_code": device_code }).to_string())
+        .send()
+        .context("request DingTalk registration poll")?;
+    let poll_status = poll_response.status();
+    let poll_body = poll_response
+        .text()
+        .with_context(|| format!("read DingTalk registration poll response: HTTP {}", poll_status))?;
+    eprintln!(
+        "[DingTalk Auth QR] registration poll {} -> HTTP {} body: {}",
+        poll_url, poll_status, poll_body
+    );
+    let poll_payload: DingtalkRegistrationPollResponse = serde_json::from_str(&poll_body)
+        .with_context(|| {
+            format!(
+                "parse DingTalk registration poll response: HTTP {} body: {}",
+                poll_status, poll_body
+            )
+        })?;
+    if poll_payload.errcode != 0 {
+        anyhow::bail!(
+            "{}",
+            poll_payload
+                .errmsg
+                .unwrap_or_else(|| format!("registration poll failed (errcode={})", poll_payload.errcode))
+        );
+    }
+
+    let status = poll_payload
+        .status
+        .unwrap_or_else(|| "WAITING".to_string())
+        .to_ascii_uppercase();
+    if status == "WAITING" {
+        return Ok(DingtalkAuthQrStatusResult {
+            status: "pending".to_string(),
+            detail: Some("等待钉钉扫码授权中".to_string()),
+        });
+    }
+
+    if status == "SUCCESS" {
+        let current_status = read_openclaw_status(&config_path)?;
+        let current = current_status.dingtalk_channel;
+        let client_id = poll_payload
+            .client_id
+            .as_ref()
+            .and_then(|value| {
+                value
+                    .as_str()
+                    .map(ToString::to_string)
+                    .or_else(|| value.as_i64().map(|v| v.to_string()))
+                    .or_else(|| value.as_u64().map(|v| v.to_string()))
+            })
+            .filter(|value| !value.trim().is_empty())
+            .context("扫码成功但未返回 client_id")?;
+        let client_secret = poll_payload
+            .client_secret
+            .filter(|value| !value.trim().is_empty())
+            .context("扫码成功但未返回 client_secret")?;
+
+        let setup_input = DingtalkChannelSetupInput {
+            config_path: input.config_path.clone(),
+            enabled: current.enabled || current.configured,
+            client_id: Some(client_id),
+            client_secret: Some(client_secret),
+            dm_policy: Some(current.dm_policy),
+            allow_from: current.allow_from,
+            group_policy: Some(current.group_policy),
+            group_allow_from: current.group_allow_from,
+            require_mention: current.require_mention,
+            streaming: current.streaming,
+            typing_indicator: current.typing_indicator,
+            resolve_sender_names: current.resolve_sender_names,
+            group_reply_mode: Some(current.group_reply_mode),
+        };
+        let _ = apply_dingtalk_channel_setup(&setup_input)?;
+
+        return Ok(DingtalkAuthQrStatusResult {
+            status: "authorized".to_string(),
+            detail: Some("钉钉扫码授权已完成，凭证已写入本地配置".to_string()),
+        });
+    }
+
+    if status == "FAIL" || status == "EXPIRED" {
+        return Ok(DingtalkAuthQrStatusResult {
+            status: "expired".to_string(),
+            detail: Some(
+                poll_payload
+                    .fail_reason
+                    .or(poll_payload.errmsg)
+                    .unwrap_or_else(|| "二维码已失效或授权失败".to_string()),
+            ),
+        });
+    }
+
+    Ok(DingtalkAuthQrStatusResult {
+        status: "pending".to_string(),
+        detail: Some(format!("当前状态：{status}")),
+    })
 }
 
 fn post_feishu_device_token_request(
