@@ -98,11 +98,7 @@ pub struct WeixinLoginQrWaitResult {
     pub verify_code_blocked: bool,
     #[serde(default)]
     pub expired: bool,
-    pub status: String,
     pub message: String,
-    pub account_id: Option<String>,
-    pub user_id: Option<String>,
-    pub bot_token_present: bool,
     pub qr_data_url: Option<String>,
     pub expires_in: Option<u64>,
 }
@@ -314,11 +310,7 @@ pub fn wait_for_weixin_login(
                 needs_verify_code: false,
                 verify_code_blocked: false,
                 expired: false,
-                status: "timeout".to_string(),
                 message: "登录超时，请重试。".to_string(),
-                account_id: None,
-                user_id: None,
-                bot_token_present: false,
                 qr_data_url: None,
                 expires_in: None,
             });
@@ -421,11 +413,7 @@ fn step_weixin_login_poll(
             needs_verify_code: false,
             verify_code_blocked: false,
             expired: true,
-            status: "missing".to_string(),
             message: "当前没有进行中的微信登录会话，请重新生成二维码。".to_string(),
-            account_id: None,
-            user_id: None,
-            bot_token_present: false,
             qr_data_url: None,
             expires_in: None,
         });
@@ -451,7 +439,6 @@ fn step_weixin_login_poll(
     match response.status.as_str() {
         "wait" => Ok(progress_result(
             active,
-            "wait",
             "等待扫码中。",
             false,
             false,
@@ -462,7 +449,6 @@ fn step_weixin_login_poll(
                 active.pending_verify_code = None;
                 return Ok(progress_result(
                     active,
-                    "scaned",
                     "验证码已确认，请继续在手机端完成授权。",
                     false,
                     false,
@@ -472,7 +458,6 @@ fn step_weixin_login_poll(
 
             Ok(progress_result(
                 active,
-                "scaned",
                 "已扫码，正在等待手机端确认。",
                 false,
                 false,
@@ -487,15 +472,11 @@ fn step_weixin_login_poll(
                 needs_verify_code: true,
                 verify_code_blocked: false,
                 expired: false,
-                status: "need_verifycode".to_string(),
                 message: if pending_verify_code.is_some() {
                     "验证码不匹配，请重新输入手机微信上显示的数字。".to_string()
                 } else {
                     "请输入手机微信上显示的数字验证码。".to_string()
                 },
-                account_id: None,
-                user_id: None,
-                bot_token_present: false,
                 qr_data_url: Some(active.qrcode_url.clone()),
                 expires_in: Some(remaining_expires_in(active)),
             })
@@ -508,11 +489,7 @@ fn step_weixin_login_poll(
                 needs_verify_code: false,
                 verify_code_blocked: true,
                 expired: false,
-                status: "verify_code_blocked".to_string(),
                 message: "多次验证码输入错误，请重新生成二维码。".to_string(),
-                account_id: None,
-                user_id: None,
-                bot_token_present: false,
                 qr_data_url: None,
                 expires_in: None,
             })
@@ -527,7 +504,6 @@ fn step_weixin_login_poll(
             }
             Ok(progress_result(
                 active,
-                "scaned_but_redirect",
                 "扫码状态已更新，正在切换微信接入节点。",
                 false,
                 false,
@@ -542,11 +518,7 @@ fn step_weixin_login_poll(
                 needs_verify_code: false,
                 verify_code_blocked: false,
                 expired: false,
-                status: "binded_redirect".to_string(),
                 message: "该微信账号已经绑定到当前 OpenClaw，无需重复登录。".to_string(),
-                account_id: None,
-                user_id: None,
-                bot_token_present: false,
                 qr_data_url: None,
                 expires_in: None,
             })
@@ -586,18 +558,13 @@ fn step_weixin_login_poll(
                 needs_verify_code: false,
                 verify_code_blocked: false,
                 expired: false,
-                status: "confirmed".to_string(),
                 message: "已将此 OpenClaw 连接到微信。".to_string(),
-                account_id: Some(normalized_account_id),
-                user_id: response.ilink_user_id,
-                bot_token_present: response.bot_token.is_some(),
                 qr_data_url: None,
                 expires_in: None,
             })
         }
         other => Ok(progress_result(
             active,
-            other,
             &format!("微信登录状态更新：{other}"),
             false,
             false,
@@ -608,7 +575,6 @@ fn step_weixin_login_poll(
 
 fn progress_result(
     active: &ActiveWeixinLogin,
-    status: &str,
     message: &str,
     needs_verify_code: bool,
     verify_code_blocked: bool,
@@ -620,11 +586,7 @@ fn progress_result(
         needs_verify_code,
         verify_code_blocked,
         expired,
-        status: status.to_string(),
         message: message.to_string(),
-        account_id: None,
-        user_id: None,
-        bot_token_present: false,
         qr_data_url: Some(active.qrcode_url.clone()),
         expires_in: Some(remaining_expires_in(active)),
     }
@@ -637,11 +599,7 @@ fn expired_result(message: &str) -> WeixinLoginQrWaitResult {
         needs_verify_code: false,
         verify_code_blocked: false,
         expired: true,
-        status: "expired".to_string(),
         message: message.to_string(),
-        account_id: None,
-        user_id: None,
-        bot_token_present: false,
         qr_data_url: None,
         expires_in: None,
     }

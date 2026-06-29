@@ -399,11 +399,7 @@ export type WeixinLoginQrWaitResult = {
   needsVerifyCode: boolean;
   verifyCodeBlocked: boolean;
   expired: boolean;
-  status: string;
   message: string;
-  accountId: string | null;
-  userId: string | null;
-  botTokenPresent: boolean;
   qrDataUrl: string | null;
   expiresIn: number | null;
 };
