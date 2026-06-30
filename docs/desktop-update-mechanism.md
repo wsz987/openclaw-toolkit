@@ -33,6 +33,12 @@ Default database path:
 apps/update-server/data/update-server.sqlite
 ```
 
+Docker database path:
+
+```text
+/data/update-server.sqlite
+```
+
 Initialize or update schema:
 
 ```powershell
@@ -44,6 +50,36 @@ Ignored runtime paths:
 - `apps/update-server/data/`
 - `apps/update-server/storage/`
 - `*.sqlite`, `*.sqlite-shm`, `*.sqlite-wal`
+
+## Docker
+
+Build from the repository root:
+
+```powershell
+docker build -f apps/update-server/Dockerfile -t openclaw-update-server:local .
+```
+
+Run with a named volume for SQLite and uploaded updater artifacts:
+
+```powershell
+docker run -d --name openclaw-update-server `
+  -p 31421:31421 `
+  -e PUBLIC_UPDATE_BASE_URL=https://openclaw.wsz987.xyz `
+  -e UPDATE_ADMIN_TOKEN=replace-with-a-long-random-token `
+  -e SQLITE_DB_PATH=/data/update-server.sqlite `
+  -e RELEASE_STORAGE_DIR=/data/releases `
+  -v openclaw-update-server-data:/data `
+  openclaw-update-server:local
+```
+
+Or use:
+
+```powershell
+$env:UPDATE_ADMIN_TOKEN="replace-with-a-long-random-token"
+docker compose -f apps/update-server/docker-compose.yml up -d --build
+```
+
+The container runs migrations on startup. Keep `/data` mounted; it contains both the SQLite database and uploaded update artifacts.
 
 ## Admin Page
 

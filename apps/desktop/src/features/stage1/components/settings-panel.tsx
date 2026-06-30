@@ -20,7 +20,7 @@ const statusText: Record<DesktopUpdateStatus, string> = {
   idle: '等待检查',
   checking: '正在检查',
   available: '发现新版本',
-  'not-available': '已是最新',
+  'not-available': '无可用更新',
   downloading: '正在下载并安装',
   ready: '准备重启',
   error: '检查失败'
@@ -122,7 +122,7 @@ export function SettingsPanel({
             </Button>
           </div>
         ) : status === 'not-available' ? (
-          <p className="mt-4 text-xs text-[hsl(var(--muted))]">当前已是服务器启用的最新版本。</p>
+          <p className="mt-4 text-xs text-[hsl(var(--muted))]">当前已是最新版本，无可用更新。</p>
         ) : null}
 
         {error ? (

@@ -1,0 +1,10 @@
+.next
+data
+storage
+node_modules
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*

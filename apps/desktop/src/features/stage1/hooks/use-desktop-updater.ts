@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getName, getTauriVersion, getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
+import { buildUpdateCheckFailure } from './desktop-update-policy';
 
 const PERIODIC_UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
 
@@ -72,9 +73,11 @@ export function useDesktopUpdater(enabled = true) {
       setStatus('available');
       return update;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      setStatus('error');
+      const failure = buildUpdateCheckFailure(err, manual);
+      console.warn(failure.logMessage, err);
+      setAvailableUpdate(null);
+      setError(failure.userError);
+      setStatus(failure.status);
       return null;
     } finally {
       checkingRef.current = false;
