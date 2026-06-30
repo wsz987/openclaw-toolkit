@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { Activity, Terminal, Key, Radio, Component, Trash2 } from 'lucide-react';
+import { Activity, Terminal, Key, Radio, Component, Settings, Trash2 } from 'lucide-react';
 import type { PostInstallTab } from '../model/types';
 
 type MenuIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>;
@@ -67,6 +67,12 @@ const postInstallMenuItems: PostInstallMenuItem[] = [
     title: 'Skill 管理',
     description: '启用内置技能',
     icon: Component
+  },
+  {
+    tab: 'settings',
+    title: '设置',
+    description: '版本与更新',
+    icon: Settings
   },
   {
     tab: 'uninstall',

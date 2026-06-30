@@ -7,6 +7,8 @@
   "scripts": {
     "build": "pnpm --filter @openclaw-toolkit/desktop build",
     "dev:desktop": "pnpm --filter @openclaw-toolkit/desktop dev",
+    "dev:update-server": "pnpm --filter @openclaw-toolkit/update-server dev",
+    "test:update-server": "pnpm --filter @openclaw-toolkit/update-server test",
     "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck",
     "license:generate-keys": "node scripts/license.mjs generate-keys",
     "license:init-signing-keys": "node scripts/license.mjs generate-keys",

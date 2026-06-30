@@ -2,7 +2,7 @@ export type InstallMode = 'local' | 'remote' | 'npm';
 export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
 export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
 export type Stage1CheckState = 'ok' | 'warn' | 'error';
-export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills' | 'uninstall';
+export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills' | 'settings' | 'uninstall';
 
 export type InstallStep =
   | 'loadManifest'

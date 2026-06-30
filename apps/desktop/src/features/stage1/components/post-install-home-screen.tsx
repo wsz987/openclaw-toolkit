@@ -4,6 +4,7 @@ import { PostInstallHomeView } from './post-install-views';
 import { PostInstallMenu } from './post-install-menu';
 import { Stage1Shell } from './stage1-shell';
 import { createInstallResultFromRecord, type Stage1InstallerController } from '../hooks/use-stage1-installer';
+import { useDesktopUpdater } from '../hooks/use-desktop-updater';
 import type { AppBootstrapState, PostInstallTab } from '../model/types';
 import { getRecoveredInstallationMode } from '../model/app-flow';
 import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
@@ -28,6 +29,7 @@ export function PostInstallHomeScreen({
   const resolvedStatus = subscribedStatus ?? controller.postInstallStatus ?? bootstrapStatus;
   const providerReady = resolvedStatus?.providerInitialized ?? false;
   const feishuEnabled = resolvedStatus?.feishuChannel.enabled ?? false;
+  const updater = useDesktopUpdater(Boolean(result));
 
   const [activeTab, setActiveTab] = useState<PostInstallTab>('controls');
   const [hasInitializedTab, setHasInitializedTab] = useState(false);
@@ -157,6 +159,16 @@ export function PostInstallHomeScreen({
           activeTab={activeTab}
           onNavigateToProvider={() => setActiveTab('provider')}
           onNavigateToAdvancedConsole={() => setActiveTab('advanced-console')}
+          updater={{
+            versionInfo: updater.versionInfo,
+            status: updater.status,
+            availableUpdate: updater.availableUpdate,
+            downloadProgress: updater.downloadProgress,
+            lastCheckedAt: updater.lastCheckedAt,
+            error: updater.error,
+            onCheckUpdate: () => updater.checkForUpdates(true),
+            onInstallUpdate: updater.installAvailableUpdate
+          }}
         />
       }
       contentClassName="overflow-hidden"

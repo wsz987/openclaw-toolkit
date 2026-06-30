@@ -22,7 +22,10 @@ import { RuntimeOperationsPanel } from './runtime-operations-panel';
 import { ChannelsPanel } from '../channels/panel';
 import { ServiceControlPanel } from './service-control-panel';
 import { SkillsManagementPanel } from './skills-management-panel';
+import { SettingsPanel } from './settings-panel';
 import { UninstallPanel } from './uninstall-panel';
+import type { DesktopUpdateStatus, DesktopVersionInfo } from '../hooks/use-desktop-updater';
+import type { Update } from '@tauri-apps/plugin-updater';
 
 type PostInstallHomeViewProps = {
   result: Stage1InstallResult;
@@ -80,6 +83,16 @@ type PostInstallHomeViewProps = {
   activeTab: PostInstallTab;
   onNavigateToProvider?: () => void;
   onNavigateToAdvancedConsole?: () => void;
+  updater: {
+    versionInfo: DesktopVersionInfo | null;
+    status: DesktopUpdateStatus;
+    availableUpdate: Update | null;
+    downloadProgress: number;
+    lastCheckedAt: string | null;
+    error: string | null;
+    onCheckUpdate: () => Promise<unknown>;
+    onInstallUpdate: () => Promise<unknown>;
+  };
 };
 
 export function PostInstallHomeView({
@@ -129,7 +142,8 @@ export function PostInstallHomeView({
   onImportInstallation,
   activeTab,
   onNavigateToProvider,
-  onNavigateToAdvancedConsole
+  onNavigateToAdvancedConsole,
+  updater
 }: PostInstallHomeViewProps) {
   return (
     <div className="w-full h-full flex flex-col gap-6 animate-fade-in py-4 flex-1 min-h-0">
@@ -218,6 +232,17 @@ export function PostInstallHomeView({
             toggleLoadingIds={skillToggleLoadingIds}
             onReloadCatalog={onReloadSkillCatalog}
             onSkillToggle={onSkillToggle}
+          />
+        ) : activeTab === 'settings' ? (
+          <SettingsPanel
+            versionInfo={updater.versionInfo}
+            status={updater.status}
+            availableUpdate={updater.availableUpdate}
+            downloadProgress={updater.downloadProgress}
+            lastCheckedAt={updater.lastCheckedAt}
+            error={updater.error}
+            onCheckUpdate={updater.onCheckUpdate}
+            onInstallUpdate={updater.onInstallUpdate}
           />
         ) : (
           <UninstallPanel

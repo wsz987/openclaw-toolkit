@@ -25,6 +25,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "resources": {
       "../../../artifacts": "artifacts",
       "../../../licenses": "licenses"
@@ -35,6 +36,20 @@
         "installerIcon": null,
         "languages": ["SimpChinese"],
         "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczODhCRTgzNkQwMjAwRjMKUldUekFBSnRnNzZJYzlpbEl5UVZ6WUw1WTU1blp6U0N3RFpSM1dqUkc3RlhBQmx3QUlTMFpVYTcK",
+      "endpoints": [
+        "https://openclaw.wsz987.xyz/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}",
+        "http://47.80.6.78/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "dangerousInsecureTransportProtocol": true,
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

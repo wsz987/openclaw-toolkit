@@ -55,6 +55,8 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::app_state::bootstrap_app_state_command,
             commands::app_state::import_installation_from_path_command,
