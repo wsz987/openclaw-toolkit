@@ -39,10 +39,7 @@ pub fn node_runtime_npx_command(node_dir: &Path) -> PathBuf {
 
 pub fn node_runtime_npmrc_path(node_dir: &Path) -> PathBuf {
     let node_exe = node_runtime_executable(node_dir);
-    node_exe
-        .parent()
-        .unwrap_or(node_dir)
-        .join(".npmrc")
+    node_exe.parent().unwrap_or(node_dir).join(".npmrc")
 }
 
 pub fn ensure_node_runtime(

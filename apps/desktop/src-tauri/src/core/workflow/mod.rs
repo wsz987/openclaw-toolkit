@@ -9,9 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{
     app_state::{
-        derive_installation_id, prepare_installation_target, register_successful_install,
-        remember_last_selected_base_dir,
+        default_base_dir, derive_installation_id, prepare_installation_target,
+        register_successful_install, remember_last_selected_base_dir,
     },
+    background_process::process_friendly_path_string,
     browser::configure_browser_runtime,
     environment::{validate_windows_environment, windows_environment_status},
     license::{ensure_install_mode_allowed, ensure_license_feature, verify_offline_license},
@@ -920,9 +921,9 @@ fn build_environment_checks(
                 Stage1CheckState::Error
             },
             detail: if project_root.exists() {
-                project_root.display().to_string()
+                display_path(project_root)
             } else {
-                format!("未找到安装资源目录：{}", project_root.display())
+                format!("未找到安装资源目录：{}", display_path(project_root))
             },
         },
         Stage1EnvironmentCheck {
@@ -934,7 +935,7 @@ fn build_environment_checks(
                 Stage1CheckState::Warn
             },
             detail: if toolkit_manifest_path.exists() {
-                toolkit_manifest_path.display().to_string()
+                display_path(&toolkit_manifest_path)
             } else {
                 "缺少 artifacts/toolkit-manifest.json".to_string()
             },
@@ -983,7 +984,7 @@ fn build_environment_checks(
                     "远程模式需要先配置内部 settings 的制品源地址".to_string()
                 }
             } else if release_manifest_path.exists() {
-                release_manifest_path.display().to_string()
+                display_path(&release_manifest_path)
             } else {
                 "缺少 artifacts/manifest.json".to_string()
             },
@@ -1020,7 +1021,7 @@ fn build_environment_checks(
             },
             detail: installed_manifest_path
                 .as_ref()
-                .map(|path| path.display().to_string())
+                .map(|path| display_path(path))
                 .unwrap_or_else(|| "尚未安装到目标版本目录".to_string()),
         },
         Stage1EnvironmentCheck {
@@ -1037,7 +1038,7 @@ fn build_environment_checks(
             },
             detail: config_path
                 .as_ref()
-                .map(|path| path.display().to_string())
+                .map(|path| display_path(path))
                 .unwrap_or_else(|| "尚未生成配置文件".to_string()),
         },
     ]
@@ -1312,9 +1313,7 @@ fn infer_precheck_step(
 }
 
 fn resolve_base_dir(base_dir: Option<&str>) -> PathBuf {
-    base_dir
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"D:\OpenClaw"))
+    base_dir.map(PathBuf::from).unwrap_or_else(default_base_dir)
 }
 
 fn resolve_resource_root(project_root: Option<&str>) -> anyhow::Result<PathBuf> {
@@ -1389,6 +1388,10 @@ fn has_toolkit_manifest(root: &Path) -> bool {
         .join("toolkit-manifest.json")
         .exists()
         && root.join("artifacts").join("providers.json").exists()
+}
+
+fn display_path(path: &Path) -> String {
+    process_friendly_path_string(path)
 }
 
 fn stage1_status_path(base_dir: &Path) -> PathBuf {
@@ -1519,4 +1522,32 @@ fn step_description(step: InstallStep) -> &'static str {
 
 fn uuid_like() -> String {
     format!("stage1-{}", Utc::now().timestamp_millis())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::display_path;
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn display_path_strips_windows_verbatim_prefix() {
+        assert_eq!(
+            display_path(Path::new(
+                r"\\?\D:\workspace\auto-tools-install\artifacts\manifest.json"
+            )),
+            r"D:\workspace\auto-tools-install\artifacts\manifest.json"
+        );
+    }
+
+    #[test]
+    fn display_path_keeps_regular_paths() {
+        assert_eq!(
+            display_path(Path::new(
+                r"D:\workspace\auto-tools-install\artifacts\manifest.json"
+            )),
+            r"D:\workspace\auto-tools-install\artifacts\manifest.json"
+        );
+    }
 }

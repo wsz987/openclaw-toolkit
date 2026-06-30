@@ -32,10 +32,7 @@ pub fn suppress_console_window(command: &mut Command) -> &mut Command {
 pub fn detach_from_parent_process(command: &mut Command) -> &mut Command {
     #[cfg(target_os = "windows")]
     command.creation_flags(
-        CREATE_NO_WINDOW
-            | DETACHED_PROCESS
-            | CREATE_NEW_PROCESS_GROUP
-            | CREATE_BREAKAWAY_FROM_JOB,
+        CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB,
     );
 
     command

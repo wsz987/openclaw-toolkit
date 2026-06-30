@@ -6,8 +6,7 @@ use tauri::Emitter;
 use crate::core::{
     app_state::{
         mark_installation_runtime_state, mark_runtime_action_required,
-        resolve_runtime_host_kind_by_config_path,
-        resolve_installation_status_by_config_path,
+        resolve_installation_status_by_config_path, resolve_runtime_host_kind_by_config_path,
     },
     openclaw_config::{
         apply_dingtalk_channel_setup, apply_feishu_channel_setup, apply_provider_setup,
@@ -343,16 +342,13 @@ pub async fn uninstall_openclaw_plugin(
 }
 
 #[tauri::command]
-pub async fn open_external_url_command(
-    input: OpenExternalUrlInput,
-) -> Result<String, String> {
+pub async fn open_external_url_command(input: OpenExternalUrlInput) -> Result<String, String> {
     let url = input.url.trim();
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return Err("仅支持打开 http/https 链接".to_string());
     }
 
-    tauri_plugin_opener::open_url(url, None::<&str>)
-        .map_err(|error| error.to_string())?;
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|error| error.to_string())?;
 
     Ok(url.to_string())
 }
@@ -379,7 +375,10 @@ pub async fn inspect_feishu_auth_qr_status_command(
         .await
         .map_err(|error| {
             let rendered = error.to_string();
-            eprintln!("inspect_feishu_auth_qr_status_command join failed:\n{}", rendered);
+            eprintln!(
+                "inspect_feishu_auth_qr_status_command join failed:\n{}",
+                rendered
+            );
             rendered
         })?
         .map_err(render_error)
@@ -445,7 +444,10 @@ pub async fn inspect_weixin_login_status_command(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("inspect_weixin_login_status_command join failed:\n{}", rendered);
+        eprintln!(
+            "inspect_weixin_login_status_command join failed:\n{}",
+            rendered
+        );
         rendered
     })?
 }
@@ -487,7 +489,10 @@ pub async fn wait_for_weixin_login_qr_command(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("wait_for_weixin_login_qr_command join failed:\n{}", rendered);
+        eprintln!(
+            "wait_for_weixin_login_qr_command join failed:\n{}",
+            rendered
+        );
         rendered
     })?
     .map_err(render_error)
@@ -513,7 +518,10 @@ pub async fn set_weixin_channel_enabled_command(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("set_weixin_channel_enabled_command join failed:\n{}", rendered);
+        eprintln!(
+            "set_weixin_channel_enabled_command join failed:\n{}",
+            rendered
+        );
         rendered
     })?
     .map_err(render_error)
@@ -577,7 +585,10 @@ pub async fn set_qqbot_channel_enabled_command(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!("set_qqbot_channel_enabled_command join failed:\n{}", rendered);
+        eprintln!(
+            "set_qqbot_channel_enabled_command join failed:\n{}",
+            rendered
+        );
         rendered
     })?
     .map_err(render_error)
@@ -878,7 +889,10 @@ fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuth
     };
 
     let mut scope = input.scope.clone().unwrap_or_default().trim().to_string();
-    if !scope.split_whitespace().any(|item| item == "offline_access") {
+    if !scope
+        .split_whitespace()
+        .any(|item| item == "offline_access")
+    {
         scope = if scope.is_empty() {
             "offline_access".to_string()
         } else {
@@ -896,8 +910,14 @@ fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuth
         .build()?;
     let response = client
         .post(device_authorization_url)
-        .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .header(reqwest::header::AUTHORIZATION, format!("Basic {basic_auth}"))
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("Basic {basic_auth}"),
+        )
         .form(&[("client_id", app_id), ("scope", scope.as_str())])
         .send()
         .context("request Feishu device authorization")?;
@@ -910,9 +930,13 @@ fn create_feishu_auth_qr(input: &FeishuAuthQrInput) -> anyhow::Result<FeishuAuth
         "[Feishu Auth QR] device_authorization {} -> HTTP {} body: {}",
         device_authorization_url, status, body
     );
-    let payload: FeishuDeviceAuthorizationResponse = serde_json::from_str(&body).with_context(
-        || format!("parse Feishu device authorization response: HTTP {} body: {}", status, body),
-    )?;
+    let payload: FeishuDeviceAuthorizationResponse =
+        serde_json::from_str(&body).with_context(|| {
+            format!(
+                "parse Feishu device authorization response: HTTP {} body: {}",
+                status, body
+            )
+        })?;
 
     if let Some(error) = payload.error {
         let description = payload
@@ -1025,8 +1049,7 @@ fn inspect_feishu_auth_qr_status(
                         "[Feishu Auth QR] poll failed via {} with form {:?}: {}",
                         token_url, form, rendered
                     );
-                    if rendered.contains("authorization_pending")
-                        || rendered.contains("slow_down")
+                    if rendered.contains("authorization_pending") || rendered.contains("slow_down")
                     {
                         last_pending = Some(FeishuAuthQrStatusResult {
                             status: "pending".to_string(),
@@ -1088,9 +1111,12 @@ fn create_dingtalk_auth_qr(input: &DingtalkAuthQrInput) -> anyhow::Result<Dingta
         .send()
         .context("request DingTalk registration init")?;
     let init_status = init_response.status();
-    let init_body = init_response
-        .text()
-        .with_context(|| format!("read DingTalk registration init response: HTTP {}", init_status))?;
+    let init_body = init_response.text().with_context(|| {
+        format!(
+            "read DingTalk registration init response: HTTP {}",
+            init_status
+        )
+    })?;
     eprintln!(
         "[DingTalk Auth QR] registration init {} -> HTTP {} body: {}",
         init_url, init_status, init_body
@@ -1105,9 +1131,10 @@ fn create_dingtalk_auth_qr(input: &DingtalkAuthQrInput) -> anyhow::Result<Dingta
     if init_payload.errcode != 0 {
         anyhow::bail!(
             "{}",
-            init_payload
-                .errmsg
-                .unwrap_or_else(|| format!("registration init failed (errcode={})", init_payload.errcode))
+            init_payload.errmsg.unwrap_or_else(|| format!(
+                "registration init failed (errcode={})",
+                init_payload.errcode
+            ))
         );
     }
     let nonce = init_payload.nonce.context("钉钉未返回 nonce")?;
@@ -1120,9 +1147,12 @@ fn create_dingtalk_auth_qr(input: &DingtalkAuthQrInput) -> anyhow::Result<Dingta
         .send()
         .context("request DingTalk registration begin")?;
     let begin_status = begin_response.status();
-    let begin_body = begin_response
-        .text()
-        .with_context(|| format!("read DingTalk registration begin response: HTTP {}", begin_status))?;
+    let begin_body = begin_response.text().with_context(|| {
+        format!(
+            "read DingTalk registration begin response: HTTP {}",
+            begin_status
+        )
+    })?;
     eprintln!(
         "[DingTalk Auth QR] registration begin {} -> HTTP {} body: {}",
         begin_url, begin_status, begin_body
@@ -1137,14 +1167,17 @@ fn create_dingtalk_auth_qr(input: &DingtalkAuthQrInput) -> anyhow::Result<Dingta
     if begin_payload.errcode != 0 {
         anyhow::bail!(
             "{}",
-            begin_payload
-                .errmsg
-                .unwrap_or_else(|| format!("registration begin failed (errcode={})", begin_payload.errcode))
+            begin_payload.errmsg.unwrap_or_else(|| format!(
+                "registration begin failed (errcode={})",
+                begin_payload.errcode
+            ))
         );
     }
 
     Ok(DingtalkAuthQrResult {
-        device_code: begin_payload.device_code.context("钉钉未返回 device_code")?,
+        device_code: begin_payload
+            .device_code
+            .context("钉钉未返回 device_code")?,
         verification_uri_complete: begin_payload
             .verification_uri_complete
             .context("钉钉未返回 verification_uri_complete")?,
@@ -1175,9 +1208,12 @@ fn inspect_dingtalk_auth_qr_status(
         .send()
         .context("request DingTalk registration poll")?;
     let poll_status = poll_response.status();
-    let poll_body = poll_response
-        .text()
-        .with_context(|| format!("read DingTalk registration poll response: HTTP {}", poll_status))?;
+    let poll_body = poll_response.text().with_context(|| {
+        format!(
+            "read DingTalk registration poll response: HTTP {}",
+            poll_status
+        )
+    })?;
     eprintln!(
         "[DingTalk Auth QR] registration poll {} -> HTTP {} body: {}",
         poll_url, poll_status, poll_body
@@ -1192,9 +1228,10 @@ fn inspect_dingtalk_auth_qr_status(
     if poll_payload.errcode != 0 {
         anyhow::bail!(
             "{}",
-            poll_payload
-                .errmsg
-                .unwrap_or_else(|| format!("registration poll failed (errcode={})", poll_payload.errcode))
+            poll_payload.errmsg.unwrap_or_else(|| format!(
+                "registration poll failed (errcode={})",
+                poll_payload.errcode
+            ))
         );
     }
 
@@ -1278,8 +1315,14 @@ fn post_feishu_device_token_request(
 ) -> anyhow::Result<FeishuAuthQrStatusResult> {
     let response = client
         .post(token_url)
-        .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .header(reqwest::header::AUTHORIZATION, format!("Basic {basic_auth}"))
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded",
+        )
+        .header(
+            reqwest::header::AUTHORIZATION,
+            format!("Basic {basic_auth}"),
+        )
         .form(form)
         .send()
         .context("request Feishu device token")?;
@@ -1292,8 +1335,12 @@ fn post_feishu_device_token_request(
         "[Feishu Auth QR] token poll {} with form {:?} -> HTTP {} body: {}",
         token_url, form, status, body
     );
-    let payload: FeishuDeviceTokenResponse = serde_json::from_str(&body)
-        .with_context(|| format!("parse Feishu device token response: HTTP {} body: {}", status, body))?;
+    let payload: FeishuDeviceTokenResponse = serde_json::from_str(&body).with_context(|| {
+        format!(
+            "parse Feishu device token response: HTTP {} body: {}",
+            status, body
+        )
+    })?;
 
     if let Some(error) = payload.error {
         let description = payload

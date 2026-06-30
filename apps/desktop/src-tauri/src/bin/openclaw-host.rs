@@ -9,9 +9,7 @@ use std::{
 
 use anyhow::Context;
 use openclaw_toolkit_desktop_lib::core::{
-    background_process::{
-        background_command, detach_from_parent_process, suppress_console_window,
-    },
+    background_process::{background_command, detach_from_parent_process, suppress_console_window},
     openclaw_config::read_openclaw_status,
     process::{launch_managed_openclaw, stop_managed_openclaw},
     runtime_host::RUNTIME_HOST_KIND_EXTERNAL_HELPER,
@@ -127,14 +125,16 @@ fn run() -> anyhow::Result<()> {
             })?;
         }
         "stop" => {
-            let config_path = if let Ok(value) = parse_named_arg(remaining_args.clone(), "--config") {
+            let config_path = if let Ok(value) = parse_named_arg(remaining_args.clone(), "--config")
+            {
                 value
             } else {
                 let pid = parse_named_arg(remaining_args, "--pid")?
                     .parse::<u32>()
                     .context("parse --pid as u32")?;
-                let guessed = try_resolve_config_from_pid(pid)
-                    .with_context(|| format!("cannot infer config from pid {pid}, please use --config"))?;
+                let guessed = try_resolve_config_from_pid(pid).with_context(|| {
+                    format!("cannot infer config from pid {pid}, please use --config")
+                })?;
                 guessed
             };
             let response = handle_client_command(&config_path, HostCommandKind::Stop)?;
@@ -167,7 +167,9 @@ fn run() -> anyhow::Result<()> {
             write_json(&StatusResponse {
                 running,
                 pid: state.as_ref().and_then(|item| item.runtime_pid),
-                log_path: state.as_ref().and_then(|item| item.runtime_log_path.clone()),
+                log_path: state
+                    .as_ref()
+                    .and_then(|item| item.runtime_log_path.clone()),
                 runtime_host_kind: RUNTIME_HOST_KIND_EXTERNAL_HELPER.to_string(),
                 daemon_running,
             })?;
@@ -220,14 +222,19 @@ fn ensure_daemon_running(paths: &HostPaths) -> anyhow::Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null());
 
-    command
-        .spawn()
-        .with_context(|| format!("spawn runtime host daemon for {}", paths.config_path.display()))?;
+    command.spawn().with_context(|| {
+        format!(
+            "spawn runtime host daemon for {}",
+            paths.config_path.display()
+        )
+    })?;
 
     let started = Instant::now();
     while started.elapsed() < Duration::from_millis(SPAWN_READY_TIMEOUT_MS) {
         if let Some(state) = read_state_if_present(paths)? {
-            if state.config_path.eq_ignore_ascii_case(&paths.config_path.to_string_lossy())
+            if state
+                .config_path
+                .eq_ignore_ascii_case(&paths.config_path.to_string_lossy())
                 && process_is_running(state.daemon_pid)
             {
                 return Ok(());
@@ -255,9 +262,12 @@ fn spawn_detached_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null());
 
-    command
-        .spawn()
-        .with_context(|| format!("spawn detached runtime host daemon for {}", config_path.display()))?;
+    command.spawn().with_context(|| {
+        format!(
+            "spawn detached runtime host daemon for {}",
+            config_path.display()
+        )
+    })?;
 
     Ok(())
 }
@@ -358,7 +368,9 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         reconcile_runtime_state(&status.config_path, &mut state);
         persist_state(&paths, &state)?;
 
-        if let Some(command) = read_json_file_if_present::<HostCommandEnvelope>(&paths.command_path)? {
+        if let Some(command) =
+            read_json_file_if_present::<HostCommandEnvelope>(&paths.command_path)?
+        {
             let result = execute_command(&status, &mut state, &command);
             let host_result = match result {
                 Ok(()) => HostCommandResult {
@@ -458,7 +470,8 @@ fn reconcile_runtime_state(config_path: &str, state: &mut DaemonState) {
 }
 
 fn cleanup_stale_command(paths: &HostPaths) -> anyhow::Result<()> {
-    let Some(command) = read_json_file_if_present::<HostCommandEnvelope>(&paths.command_path)? else {
+    let Some(command) = read_json_file_if_present::<HostCommandEnvelope>(&paths.command_path)?
+    else {
         return Ok(());
     };
 
@@ -466,7 +479,12 @@ fn cleanup_stale_command(paths: &HostPaths) -> anyhow::Result<()> {
         .map(|value| value.with_timezone(&chrono::Utc))
         .ok();
     let stale = requested_at
-        .map(|value| chrono::Utc::now().signed_duration_since(value).num_seconds() > STALE_COMMAND_TIMEOUT_SECS)
+        .map(|value| {
+            chrono::Utc::now()
+                .signed_duration_since(value)
+                .num_seconds()
+                > STALE_COMMAND_TIMEOUT_SECS
+        })
         .unwrap_or(true);
 
     if stale {
@@ -557,15 +575,16 @@ fn write_json_file<T: Serialize>(path: &Path, value: &T) -> anyhow::Result<()> {
     let temp_path = path.with_extension("tmp");
     fs::write(&temp_path, serde_json::to_vec_pretty(value)?)
         .with_context(|| format!("write {}", temp_path.display()))?;
-    fs::rename(&temp_path, path).or_else(|rename_error| {
-        if rename_error.kind() == ErrorKind::AlreadyExists {
-            let _ = fs::remove_file(path);
-            fs::rename(&temp_path, path)
-        } else {
-            Err(rename_error)
-        }
-    })
-    .with_context(|| format!("replace {}", path.display()))?;
+    fs::rename(&temp_path, path)
+        .or_else(|rename_error| {
+            if rename_error.kind() == ErrorKind::AlreadyExists {
+                let _ = fs::remove_file(path);
+                fs::rename(&temp_path, path)
+            } else {
+                Err(rename_error)
+            }
+        })
+        .with_context(|| format!("replace {}", path.display()))?;
     Ok(())
 }
 

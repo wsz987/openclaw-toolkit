@@ -74,7 +74,10 @@ pub fn stop_openclaw_runtime(
 }
 
 fn normalize_runtime_host_kind(runtime_host_kind: Option<&str>) -> &str {
-    match runtime_host_kind.map(str::trim).filter(|value| !value.is_empty()) {
+    match runtime_host_kind
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         Some(value) => value,
         None => default_runtime_host_kind(),
     }

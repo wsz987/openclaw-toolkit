@@ -446,7 +446,8 @@ fn ensure_plugins_allowlist_entry_in_value(config: &mut Value, plugin_id: &str) 
 
     let allow_list = allow_value.as_array_mut().expect("allow forced to array");
     let exists = allow_list.iter().any(|entry| {
-        entry.as_str()
+        entry
+            .as_str()
             .map(|value| value.trim().eq_ignore_ascii_case(&normalized))
             .unwrap_or(false)
     });
@@ -535,8 +536,8 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .unwrap_or(false);
     let available_providers = merge_provider_catalog(&manifest_catalog, &config);
     let feishu_channel = read_feishu_channel_summary(&config);
-    let plugin_discovery = read_openclaw_discovered_plugins(openclaw_dir, config_path)
-        .or_else(|_| {
+    let plugin_discovery =
+        read_openclaw_discovered_plugins(openclaw_dir, config_path).or_else(|_| {
             Ok::<crate::core::openclaw_cli::OpenClawPluginDiscovery, anyhow::Error>(
                 crate::core::openclaw_cli::OpenClawPluginDiscovery {
                     installed_plugins: installed_manifest
@@ -547,31 +548,30 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
                 },
             )
         })?;
-    let feishu_plugin_enabled = plugin_discovery
-        .enabled_plugin_ids
-        .iter()
-        .any(|plugin_id| {
-            plugin_id.eq_ignore_ascii_case(DEFAULT_FEISHU_PLUGIN_ENTRY_ID)
-                || plugin_id.eq_ignore_ascii_case(LEGACY_FEISHU_PLUGIN_ID)
-        })
-        || bool_at_path(
-            &config,
-            &[
-                "plugins",
-                "entries",
-                DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
-                "enabled",
-            ],
-        )
-        .unwrap_or(false)
+    let feishu_plugin_enabled = plugin_discovery.enabled_plugin_ids.iter().any(|plugin_id| {
+        plugin_id.eq_ignore_ascii_case(DEFAULT_FEISHU_PLUGIN_ENTRY_ID)
+            || plugin_id.eq_ignore_ascii_case(LEGACY_FEISHU_PLUGIN_ID)
+    }) || bool_at_path(
+        &config,
+        &[
+            "plugins",
+            "entries",
+            DEFAULT_FEISHU_PLUGIN_ENTRY_ID,
+            "enabled",
+        ],
+    )
+    .unwrap_or(false)
         || bool_at_path(
             &config,
             &["plugins", "entries", LEGACY_FEISHU_PLUGIN_ID, "enabled"],
         )
         .unwrap_or(false);
 
-    let weixin_channel =
-        crate::core::weixin::read_weixin_channel_summary(&config, Some(&plugin_discovery), config_path);
+    let weixin_channel = crate::core::weixin::read_weixin_channel_summary(
+        &config,
+        Some(&plugin_discovery),
+        config_path,
+    );
     let dingtalk_channel = read_dingtalk_channel_summary(&config);
     let qqbot_channel = crate::core::qqbot::read_qqbot_channel_summary_from_config(
         &config,
@@ -858,8 +858,7 @@ pub fn apply_feishu_channel_setup(
         Some("websocket".to_string()),
     );
     let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("open".to_string()));
-    let group_policy =
-        normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
+    let group_policy = normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
     let allow_from = if dm_policy == "open" && input.allow_from.is_empty() {
         vec!["*".to_string()]
     } else {
@@ -1087,8 +1086,7 @@ pub fn apply_dingtalk_channel_setup(
 
     let account_id = "default";
     let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("open".to_string()));
-    let group_policy =
-        normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
+    let group_policy = normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
     let allow_from = if dm_policy == "open" && input.allow_from.is_empty() {
         vec!["*".to_string()]
     } else {
@@ -1100,7 +1098,10 @@ pub fn apply_dingtalk_channel_setup(
     );
     let client_id = normalize_optional_non_empty(
         input.client_id.as_deref(),
-        string_at_path(&config, &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"]),
+        string_at_path(
+            &config,
+            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "clientId"],
+        ),
     );
     let client_secret = normalize_optional_non_empty(
         input.client_secret.as_deref(),
@@ -1128,7 +1129,11 @@ pub fn apply_dingtalk_channel_setup(
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "defaultAccount"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "defaultAccount",
+        ],
         Value::String(account_id.to_string()),
     );
     set_value_at_path(
@@ -1148,27 +1153,47 @@ pub fn apply_dingtalk_channel_setup(
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupAllowFrom"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "groupAllowFrom",
+        ],
         string_vec_to_value(&input.group_allow_from),
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "requireMention",
+        ],
         Value::Bool(input.require_mention),
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "typingIndicator"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "typingIndicator",
+        ],
         Value::Bool(input.typing_indicator),
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "resolveSenderNames"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "resolveSenderNames",
+        ],
         Value::Bool(input.resolve_sender_names),
     );
     set_value_at_path(
         &mut config,
-        &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupReplyMode"],
+        &[
+            "channels",
+            DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+            "groupReplyMode",
+        ],
         Value::String(group_reply_mode),
     );
 
@@ -1258,11 +1283,19 @@ fn read_dingtalk_channel_summary(config: &Value) -> DingtalkChannelSummary {
         .unwrap_or_else(|| "open".to_string()),
         group_allow_from: string_array_at_path(
             config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupAllowFrom"],
+            &[
+                "channels",
+                DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+                "groupAllowFrom",
+            ],
         ),
         require_mention: bool_at_path(
             config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "requireMention"],
+            &[
+                "channels",
+                DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+                "requireMention",
+            ],
         )
         .unwrap_or(true),
         // The official connector schema does not expose a top-level `streaming` field.
@@ -1270,17 +1303,29 @@ fn read_dingtalk_channel_summary(config: &Value) -> DingtalkChannelSummary {
         streaming: true,
         typing_indicator: bool_at_path(
             config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "typingIndicator"],
+            &[
+                "channels",
+                DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+                "typingIndicator",
+            ],
         )
         .unwrap_or(true),
         resolve_sender_names: bool_at_path(
             config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "resolveSenderNames"],
+            &[
+                "channels",
+                DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+                "resolveSenderNames",
+            ],
         )
         .unwrap_or(true),
         group_reply_mode: string_at_path(
             config,
-            &["channels", DEFAULT_DINGTALK_PLUGIN_ENTRY_ID, "groupReplyMode"],
+            &[
+                "channels",
+                DEFAULT_DINGTALK_PLUGIN_ENTRY_ID,
+                "groupReplyMode",
+            ],
         )
         .unwrap_or_else(|| "aicard".to_string()),
     }
@@ -1620,7 +1665,10 @@ fn normalize_optional_non_empty(value: Option<&str>, fallback: Option<String>) -
 
 fn read_feishu_channel_summary(config: &Value) -> FeishuChannelSummary {
     let account_id = "default".to_string();
-    let account = value_at_path(config, &["channels", "feishu", "accounts", account_id.as_str()]);
+    let account = value_at_path(
+        config,
+        &["channels", "feishu", "accounts", account_id.as_str()],
+    );
     let app_id = string_at_path(config, &["channels", "feishu", "appId"]).or_else(|| {
         account
             .and_then(|entry| entry.get("appId"))

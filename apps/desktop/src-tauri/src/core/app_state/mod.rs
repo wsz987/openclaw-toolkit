@@ -119,6 +119,7 @@ impl InstallationLifecycleState {
 #[serde(rename_all = "camelCase")]
 pub struct AppBootstrapState {
     pub screen: String,
+    pub default_base_dir: String,
     pub settings: AppSettings,
     pub active_installation: Option<InstallationRecord>,
     pub status: Option<OpenClawStatusSummary>,
@@ -129,6 +130,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
     let mut settings = load_app_settings()?;
     let mut registry = load_install_registry()?;
     let registry_changed = discover_installations_from_known_locations(&settings, &mut registry)?;
+    let default_base_dir = default_base_dir_string();
 
     let active_id = settings
         .active_installation_id
@@ -144,6 +146,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
     let Some(active_id) = active_id else {
         return Ok(AppBootstrapState {
             screen: "installer".to_string(),
+            default_base_dir,
             settings,
             active_installation: None,
             status: None,
@@ -158,6 +161,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
     else {
         return Ok(AppBootstrapState {
             screen: "installer".to_string(),
+            default_base_dir,
             settings,
             active_installation: None,
             status: None,
@@ -178,6 +182,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
 
             Ok(AppBootstrapState {
                 screen: "installedHome".to_string(),
+                default_base_dir,
                 settings,
                 active_installation: Some(installation),
                 status: Some(status),
@@ -202,6 +207,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
 
                 return Ok(AppBootstrapState {
                     screen: "installer".to_string(),
+                    default_base_dir,
                     settings,
                     active_installation: Some(installation),
                     status: None,
@@ -221,6 +227,7 @@ pub fn bootstrap_app_state() -> anyhow::Result<AppBootstrapState> {
 
             Ok(AppBootstrapState {
                 screen: "recovery".to_string(),
+                default_base_dir,
                 settings,
                 active_installation: Some(installation),
                 status: None,
@@ -273,6 +280,7 @@ pub fn import_installation_from_path(selected_path: &Path) -> anyhow::Result<App
 
     Ok(AppBootstrapState {
         screen: "installedHome".to_string(),
+        default_base_dir: default_base_dir_string(),
         settings,
         active_installation: Some(record),
         status: Some(status),
@@ -546,7 +554,7 @@ fn discover_installations_from_known_locations(
         candidates.push(PathBuf::from(base_dir));
     }
 
-    candidates.push(PathBuf::from(DEFAULT_BASE_DIR));
+    candidates.push(default_base_dir());
 
     for installation in &registry.installations {
         candidates.push(PathBuf::from(&installation.base_dir));
@@ -876,6 +884,21 @@ fn derive_base_dir_from_openclaw_dir(openclaw_dir: &str) -> String {
         .and_then(Path::parent)
         .map(|item| item.to_string_lossy().to_string())
         .unwrap_or_else(|| DEFAULT_BASE_DIR.to_string())
+}
+
+pub fn default_base_dir() -> PathBuf {
+    if cfg!(debug_assertions) {
+        return PathBuf::from(DEFAULT_BASE_DIR);
+    }
+
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_BASE_DIR))
+}
+
+fn default_base_dir_string() -> String {
+    default_base_dir().to_string_lossy().to_string()
 }
 
 fn infer_base_dir_from_manifest_path(manifest_path: &Path, openclaw_dir: &str) -> String {

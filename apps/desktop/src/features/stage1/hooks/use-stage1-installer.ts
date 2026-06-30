@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
-import { normalizeOpenClawBaseDir } from '../../../lib/openclaw-path';
 import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '../model/graph';
 import {
   stage1Steps,
@@ -77,6 +76,18 @@ import {
   refreshOpenClawStatus
 } from '../model/openclaw-status-store';
 
+const DEFAULT_TOOLKIT_INSTALL_DIR_NAME = 'OpenClaw Toolkit';
+
+function normalizePickedBaseDir(path: string) {
+  const trimmed = path.trim();
+  const driveRoot = /^([a-zA-Z]):[\\/]*$/.exec(trimmed);
+  if (!driveRoot) {
+    return path;
+  }
+
+  return `${driveRoot[1].toUpperCase()}:\\${DEFAULT_TOOLKIT_INSTALL_DIR_NAME}`;
+}
+
 export function useStage1Installer(
   initialBaseDir?: string | null,
   initialConfigPath?: string | null,
@@ -84,8 +95,9 @@ export function useStage1Installer(
   initialWizardStep: InstallerWizardStep = 0
 ) {
   const DASHBOARD_DEBOUNCE_MS = 350;
+  const fallbackBaseDir = 'D:\\OpenClaw';
 
-  const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : 'D:\\OpenClaw');
+  const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : fallbackBaseDir);
   const [licenseKey, setLicenseKey] = useState('');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
   const [selectedVersion, setSelectedVersion] = useState('latest');
@@ -371,7 +383,7 @@ export function useStage1Installer(
   async function handlePickDirectory() {
     const picked = await pickDirectory(baseDir);
     if (picked) {
-      setBaseDir(normalizeOpenClawBaseDir(picked));
+      setBaseDir(normalizePickedBaseDir(picked));
     }
   }
 

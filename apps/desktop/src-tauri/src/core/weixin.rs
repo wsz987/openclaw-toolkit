@@ -168,13 +168,18 @@ pub fn inspect_weixin_login_status(config_path: &Path) -> anyhow::Result<WeixinL
 
 pub fn inspect_weixin_channel_summary(config_path: &Path) -> anyhow::Result<WeixinChannelSummary> {
     let cli_context = openclaw_cli_context(config_path)?;
-    let discovery =
-        read_plugin_discovery(&cli_context).unwrap_or(crate::core::openclaw_cli::OpenClawPluginDiscovery {
+    let discovery = read_plugin_discovery(&cli_context).unwrap_or(
+        crate::core::openclaw_cli::OpenClawPluginDiscovery {
             installed_plugins: Vec::new(),
             enabled_plugin_ids: Vec::new(),
-        });
+        },
+    );
     let config = read_openclaw_config_value(config_path)?;
-    Ok(read_weixin_channel_summary(&config, Some(&discovery), config_path))
+    Ok(read_weixin_channel_summary(
+        &config,
+        Some(&discovery),
+        config_path,
+    ))
 }
 
 pub fn apply_weixin_channel_toggle(
@@ -202,7 +207,12 @@ pub fn apply_weixin_channel_toggle(
         Value::String(chrono::Utc::now().to_rfc3339()),
     );
 
-    if value_at_path(&config, &["channels", WEIXIN_PLUGIN_ENTRY_ID, "defaultAccount"]).is_none() {
+    if value_at_path(
+        &config,
+        &["channels", WEIXIN_PLUGIN_ENTRY_ID, "defaultAccount"],
+    )
+    .is_none()
+    {
         let fallback_account_id = configured_weixin_account_ids(&config_path)?
             .into_iter()
             .next()
@@ -334,12 +344,20 @@ pub fn read_weixin_channel_summary(
     config_path: &Path,
 ) -> WeixinChannelSummary {
     let configured_account_ids = configured_weixin_account_ids(config_path).unwrap_or_default();
-    let account_id = string_at_path(config, &["channels", WEIXIN_PLUGIN_ENTRY_ID, "defaultAccount"])
-        .or_else(|| configured_account_ids.first().cloned())
-        .unwrap_or_else(|| "default".to_string());
+    let account_id = string_at_path(
+        config,
+        &["channels", WEIXIN_PLUGIN_ENTRY_ID, "defaultAccount"],
+    )
+    .or_else(|| configured_account_ids.first().cloned())
+    .unwrap_or_else(|| "default".to_string());
     let account_entry = value_at_path(
         config,
-        &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id.as_str()],
+        &[
+            "channels",
+            WEIXIN_PLUGIN_ENTRY_ID,
+            "accounts",
+            account_id.as_str(),
+        ],
     );
     let state_account = load_weixin_account(config_path, &account_id)
         .ok()
@@ -359,8 +377,11 @@ pub fn read_weixin_channel_summary(
             })
         })
         .unwrap_or_else(|| {
-            bool_at_path(config, &["plugins", "entries", WEIXIN_PLUGIN_ENTRY_ID, "enabled"])
-                .unwrap_or(false)
+            bool_at_path(
+                config,
+                &["plugins", "entries", WEIXIN_PLUGIN_ENTRY_ID, "enabled"],
+            )
+            .unwrap_or(false)
         });
     let enabled = discovery
         .map(|entries| {
@@ -370,8 +391,11 @@ pub fn read_weixin_channel_summary(
             })
         })
         .unwrap_or(false)
-        || bool_at_path(config, &["plugins", "entries", WEIXIN_PLUGIN_ENTRY_ID, "enabled"])
-            .unwrap_or(false)
+        || bool_at_path(
+            config,
+            &["plugins", "entries", WEIXIN_PLUGIN_ENTRY_ID, "enabled"],
+        )
+        .unwrap_or(false)
         || bool_at_path(config, &["channels", WEIXIN_PLUGIN_ENTRY_ID, "enabled"]).unwrap_or(false);
 
     let configured = !configured_account_ids.is_empty();
@@ -437,13 +461,7 @@ fn step_weixin_login_poll(
     active.status = response.status.clone();
 
     match response.status.as_str() {
-        "wait" => Ok(progress_result(
-            active,
-            "等待扫码中。",
-            false,
-            false,
-            false,
-        )),
+        "wait" => Ok(progress_result(active, "等待扫码中。", false, false, false)),
         "scaned" => {
             if pending_verify_code.is_some() {
                 active.pending_verify_code = None;
@@ -605,10 +623,7 @@ fn expired_result(message: &str) -> WeixinLoginQrWaitResult {
     }
 }
 
-fn fetch_weixin_qrcode(
-    config_path: &Path,
-    bot_type: &str,
-) -> anyhow::Result<WeixinQrCodeResponse> {
+fn fetch_weixin_qrcode(config_path: &Path, bot_type: &str) -> anyhow::Result<WeixinQrCodeResponse> {
     let local_token_list = local_weixin_tokens(config_path)?;
     let client = reqwest_client()?;
     let response = client
@@ -744,10 +759,9 @@ fn load_weixin_account(
     }
     let raw = fs::read_to_string(&path)
         .with_context(|| format!("read weixin account {}", path.display()))?;
-    Ok(Some(
-        serde_json::from_str(&raw)
-            .with_context(|| format!("parse weixin account {}", path.display()))?,
-    ))
+    Ok(Some(serde_json::from_str(&raw).with_context(|| {
+        format!("parse weixin account {}", path.display())
+    })?))
 }
 
 fn clear_stale_accounts_for_user_id(
@@ -773,7 +787,8 @@ fn clear_stale_accounts_for_user_id(
             continue;
         };
         if account.user_id.as_deref().map(str::trim) == Some(user_id.as_str()) {
-            let account_path = resolve_weixin_accounts_dir(config_path).join(format!("{account_id}.json"));
+            let account_path =
+                resolve_weixin_accounts_dir(config_path).join(format!("{account_id}.json"));
             let _ = fs::remove_file(account_path);
             account_ids.retain(|entry| entry != &account_id);
             changed = true;
@@ -794,7 +809,10 @@ fn clear_stale_accounts_for_user_id(
 
 fn register_weixin_account_id(config_path: &Path, account_id: &str) -> anyhow::Result<()> {
     let mut ids = list_indexed_weixin_account_ids(config_path)?;
-    if !ids.iter().any(|existing| existing.eq_ignore_ascii_case(account_id)) {
+    if !ids
+        .iter()
+        .any(|existing| existing.eq_ignore_ascii_case(account_id))
+    {
         ids.push(account_id.to_string());
         fs::create_dir_all(resolve_weixin_state_dir(config_path))?;
         fs::write(
@@ -845,7 +863,11 @@ fn ensure_weixin_channel_enabled(config_path: &Path, account_id: &str) -> anyhow
         &["channels", WEIXIN_PLUGIN_ENTRY_ID, "channelConfigUpdatedAt"],
         Value::String(chrono::Utc::now().to_rfc3339()),
     );
-    if value_at_path(&config, &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id]).is_none()
+    if value_at_path(
+        &config,
+        &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id],
+    )
+    .is_none()
     {
         set_value_at_path(
             &mut config,
@@ -858,18 +880,36 @@ fn ensure_weixin_channel_enabled(config_path: &Path, account_id: &str) -> anyhow
     } else {
         set_value_at_path(
             &mut config,
-            &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id, "enabled"],
+            &[
+                "channels",
+                WEIXIN_PLUGIN_ENTRY_ID,
+                "accounts",
+                account_id,
+                "enabled",
+            ],
             Value::Bool(true),
         );
         if value_at_path(
             &config,
-            &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id, "cdnBaseUrl"],
+            &[
+                "channels",
+                WEIXIN_PLUGIN_ENTRY_ID,
+                "accounts",
+                account_id,
+                "cdnBaseUrl",
+            ],
         )
         .is_none()
         {
             set_value_at_path(
                 &mut config,
-                &["channels", WEIXIN_PLUGIN_ENTRY_ID, "accounts", account_id, "cdnBaseUrl"],
+                &[
+                    "channels",
+                    WEIXIN_PLUGIN_ENTRY_ID,
+                    "accounts",
+                    account_id,
+                    "cdnBaseUrl",
+                ],
                 Value::String(WEIXIN_DEFAULT_CDN_BASE_URL.to_string()),
             );
         }
@@ -897,8 +937,13 @@ fn openclaw_cli_context(config_path: &Path) -> anyhow::Result<OpenClawCliContext
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
     let installed_manifest_path = openclaw_dir.join("installed-manifest.json");
-    let installed_manifest_raw = fs::read_to_string(&installed_manifest_path)
-        .with_context(|| format!("read installed manifest {}", installed_manifest_path.display()))?;
+    let installed_manifest_raw =
+        fs::read_to_string(&installed_manifest_path).with_context(|| {
+            format!(
+                "read installed manifest {}",
+                installed_manifest_path.display()
+            )
+        })?;
     let installed_manifest: crate::core::manifest::models::InstalledManifest =
         serde_json::from_str(&installed_manifest_raw).with_context(|| {
             format!(

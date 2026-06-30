@@ -166,7 +166,7 @@ export function PrecheckStepView({
                   className="bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]"
                   value={baseDir}
                   onChange={(event) => onBaseDirChange(event.target.value)}
-                  placeholder="如 D:\OpenClaw"
+                  placeholder="如 E:\OpenClaw Toolkit"
                 />
                 <Button variant="secondary" onClick={onPickDirectory} className="bg-[hsl(var(--canvas))] border-[hsl(var(--hairline))]">
                   <FolderIcon size={13} className="mr-1.5" /> 选择
@@ -182,7 +182,7 @@ export function PrecheckStepView({
               </div>
             ) : null}
             <Button variant="default" className="h-11 w-full text-sm font-medium" onClick={onNext} disabled={!step1Ready}>
-              下一步：配置授权与提取模式 <ChevronRightIcon size={14} className="ml-1.5" />
+              下一步 <ChevronRightIcon size={14} className="ml-1.5" />
             </Button>
           </div>
         </div>

@@ -46,7 +46,9 @@ pub struct OpenClawPluginDiscovery {
     pub enabled_plugin_ids: Vec<String>,
 }
 
-pub fn read_plugin_discovery(context: &OpenClawCliContext) -> anyhow::Result<OpenClawPluginDiscovery> {
+pub fn read_plugin_discovery(
+    context: &OpenClawCliContext,
+) -> anyhow::Result<OpenClawPluginDiscovery> {
     let output = run_openclaw_cli(context, &["plugins", "list", "--json"])?;
     let parsed: PluginsListResponse = serde_json::from_slice(&output.stdout)
         .context("解析 openclaw plugins list --json 输出失败")?;
@@ -76,7 +78,9 @@ pub fn read_plugin_discovery(context: &OpenClawCliContext) -> anyhow::Result<Ope
     })
 }
 
-pub fn list_installed_plugins(context: &OpenClawCliContext) -> anyhow::Result<Vec<InstalledPlugin>> {
+pub fn list_installed_plugins(
+    context: &OpenClawCliContext,
+) -> anyhow::Result<Vec<InstalledPlugin>> {
     Ok(read_plugin_discovery(context)?.installed_plugins)
 }
 

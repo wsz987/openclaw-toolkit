@@ -185,7 +185,10 @@ pub fn read_qqbot_channel_summary(config_path: &Path) -> anyhow::Result<QqbotCha
         },
     );
     let config = read_openclaw_config_value(config_path)?;
-    Ok(read_qqbot_channel_summary_from_config(&config, Some(&discovery)))
+    Ok(read_qqbot_channel_summary_from_config(
+        &config,
+        Some(&discovery),
+    ))
 }
 
 pub fn read_qqbot_channel_summary_from_config(
@@ -219,23 +222,26 @@ pub fn read_qqbot_channel_summary_from_config(
             })
         })
         .unwrap_or_else(|| {
-            bool_at_path(config, &["plugins", "entries", QQBOT_PLUGIN_ENTRY_ID, "enabled"])
-                .unwrap_or(false)
+            bool_at_path(
+                config,
+                &["plugins", "entries", QQBOT_PLUGIN_ENTRY_ID, "enabled"],
+            )
+            .unwrap_or(false)
         });
 
     let enabled = discovery
         .map(|entries| {
-            entries
-                .enabled_plugin_ids
-                .iter()
-                .any(|plugin_id| {
-                    plugin_id.eq_ignore_ascii_case(QQBOT_PLUGIN_ENTRY_ID)
-                        || plugin_id.eq_ignore_ascii_case(QQBOT_PLUGIN_ID)
-                })
+            entries.enabled_plugin_ids.iter().any(|plugin_id| {
+                plugin_id.eq_ignore_ascii_case(QQBOT_PLUGIN_ENTRY_ID)
+                    || plugin_id.eq_ignore_ascii_case(QQBOT_PLUGIN_ID)
+            })
         })
         .unwrap_or(false)
-        || bool_at_path(config, &["plugins", "entries", QQBOT_PLUGIN_ENTRY_ID, "enabled"])
-            .unwrap_or(false)
+        || bool_at_path(
+            config,
+            &["plugins", "entries", QQBOT_PLUGIN_ENTRY_ID, "enabled"],
+        )
+        .unwrap_or(false)
         || bool_at_channel_config_path(config, "enabled").unwrap_or(false);
 
     let configured = app_id
@@ -299,8 +305,7 @@ pub fn apply_qqbot_channel_setup(
 fn apply_qqbot_channel_setup_to_config(config: &mut Value, input: &QqbotChannelSetupInput) {
     let account_id = "default";
     let dm_policy = normalize_non_empty(input.dm_policy.as_deref(), Some("open".to_string()));
-    let group_policy =
-        normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
+    let group_policy = normalize_non_empty(input.group_policy.as_deref(), Some("open".to_string()));
     let allow_from = if dm_policy == "open" && input.allow_from.is_empty() {
         vec!["*".to_string()]
     } else {
@@ -353,7 +358,11 @@ fn apply_qqbot_channel_setup_to_config(config: &mut Value, input: &QqbotChannelS
     );
     set_value_at_path(
         config,
-        &["channels", QQBOT_CHANNEL_CONFIG_KEY, "defaultRequireMention"],
+        &[
+            "channels",
+            QQBOT_CHANNEL_CONFIG_KEY,
+            "defaultRequireMention",
+        ],
         Value::Bool(input.default_require_mention),
     );
     set_value_at_path(
@@ -379,7 +388,10 @@ fn apply_qqbot_channel_setup_to_config(config: &mut Value, input: &QqbotChannelS
             Value::String(client_secret),
         );
     } else {
-        remove_value_at_path(config, &["channels", QQBOT_CHANNEL_CONFIG_KEY, "clientSecret"]);
+        remove_value_at_path(
+            config,
+            &["channels", QQBOT_CHANNEL_CONFIG_KEY, "clientSecret"],
+        );
     }
 
     remove_value_at_path(config, &["channels", QQBOT_LEGACY_CHANNEL_CONFIG_KEY]);
@@ -406,11 +418,19 @@ pub fn apply_qqbot_channel_toggle(
     );
     set_value_at_path(
         &mut config,
-        &["channels", QQBOT_CHANNEL_CONFIG_KEY, "channelConfigUpdatedAt"],
+        &[
+            "channels",
+            QQBOT_CHANNEL_CONFIG_KEY,
+            "channelConfigUpdatedAt",
+        ],
         Value::String(chrono::Utc::now().to_rfc3339()),
     );
 
-    if value_at_path(&config, &["channels", QQBOT_CHANNEL_CONFIG_KEY, "defaultAccount"]).is_none()
+    if value_at_path(
+        &config,
+        &["channels", QQBOT_CHANNEL_CONFIG_KEY, "defaultAccount"],
+    )
+    .is_none()
     {
         set_value_at_path(
             &mut config,
@@ -433,7 +453,9 @@ pub fn apply_qqbot_channel_toggle(
 //  QQ 开放平台扫码登录（ptlogin2）
 // ============================================================================
 
-pub fn start_qqbot_login_qr(input: &QqbotLoginQrStartInput) -> anyhow::Result<QqbotLoginQrStartResult> {
+pub fn start_qqbot_login_qr(
+    input: &QqbotLoginQrStartInput,
+) -> anyhow::Result<QqbotLoginQrStartResult> {
     let session_key = "default".to_string();
     purge_expired_sessions();
 
@@ -479,7 +501,9 @@ pub fn start_qqbot_login_qr(input: &QqbotLoginQrStartInput) -> anyhow::Result<Qq
     })
 }
 
-pub fn wait_for_qqbot_login(input: &QqbotLoginQrWaitInput) -> anyhow::Result<QqbotLoginQrWaitResult> {
+pub fn wait_for_qqbot_login(
+    input: &QqbotLoginQrWaitInput,
+) -> anyhow::Result<QqbotLoginQrWaitResult> {
     let timeout_ms = input
         .timeout_ms
         .unwrap_or(QQBOT_DEFAULT_WAIT_TIMEOUT_MS)
@@ -556,8 +580,9 @@ fn step_qqbot_login_poll(session_key: &str) -> anyhow::Result<QqbotLoginQrWaitRe
             Ok(QqbotLoginQrWaitResult {
                 connected: true,
                 expired: false,
-                message: "QQ 开放平台登录成功！请前往机器人管理页创建机器人并获取 AppID / AppSecret。"
-                    .to_string(),
+                message:
+                    "QQ 开放平台登录成功！请前往机器人管理页创建机器人并获取 AppID / AppSecret。"
+                        .to_string(),
                 qr_data_url: None,
                 expires_in: None,
             })
@@ -605,8 +630,7 @@ fn fetch_qq_login_qrcode() -> anyhow::Result<QqLoginQr> {
         .header(reqwest::header::REFERER, "https://q.qq.com/")
         .send()
         .context("request ptlogin2 xlogin")?;
-    let pt_login_sig = extract_cookie_value(&xlogin_response, "pt_login_sig")
-        .unwrap_or_default();
+    let pt_login_sig = extract_cookie_value(&xlogin_response, "pt_login_sig").unwrap_or_default();
 
     // 2. 请求 ptqrshow 获取二维码 PNG + qrsig cookie
     let ptqrshow_url = format!(
@@ -741,19 +765,16 @@ fn extract_cookie_value_from_response(
 }
 
 fn parse_cookie(cookie_str: &str, name: &str) -> Option<String> {
-    cookie_str
-        .split(';')
-        .map(str::trim)
-        .find_map(|part| {
-            let mut iter = part.splitn(2, '=');
-            let key = iter.next()?.trim();
-            let value = iter.next()?.trim();
-            if key.eq_ignore_ascii_case(name) {
-                Some(value.to_string())
-            } else {
-                None
-            }
-        })
+    cookie_str.split(';').map(str::trim).find_map(|part| {
+        let mut iter = part.splitn(2, '=');
+        let key = iter.next()?.trim();
+        let value = iter.next()?.trim();
+        if key.eq_ignore_ascii_case(name) {
+            Some(value.to_string())
+        } else {
+            None
+        }
+    })
 }
 
 // ============================================================================
@@ -765,8 +786,13 @@ fn openclaw_cli_context(config_path: &Path) -> anyhow::Result<OpenClawCliContext
         .parent()
         .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
     let installed_manifest_path = openclaw_dir.join("installed-manifest.json");
-    let installed_manifest_raw = fs::read_to_string(&installed_manifest_path)
-        .with_context(|| format!("read installed manifest {}", installed_manifest_path.display()))?;
+    let installed_manifest_raw =
+        fs::read_to_string(&installed_manifest_path).with_context(|| {
+            format!(
+                "read installed manifest {}",
+                installed_manifest_path.display()
+            )
+        })?;
     let installed_manifest: crate::core::manifest::models::InstalledManifest =
         serde_json::from_str(&installed_manifest_raw).with_context(|| {
             format!(
@@ -865,9 +891,8 @@ fn bool_at_path(value: &Value, path: &[&str]) -> Option<bool> {
 }
 
 fn value_at_channel_config_path<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
-    value_at_path(value, &["channels", QQBOT_CHANNEL_CONFIG_KEY, key]).or_else(|| {
-        value_at_path(value, &["channels", QQBOT_LEGACY_CHANNEL_CONFIG_KEY, key])
-    })
+    value_at_path(value, &["channels", QQBOT_CHANNEL_CONFIG_KEY, key])
+        .or_else(|| value_at_path(value, &["channels", QQBOT_LEGACY_CHANNEL_CONFIG_KEY, key]))
 }
 
 fn string_at_channel_config_path(value: &Value, key: &str) -> Option<String> {

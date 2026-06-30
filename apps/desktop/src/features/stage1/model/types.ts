@@ -659,6 +659,7 @@ export type InstallationRecord = {
 
 export type AppBootstrapState = {
   screen: 'installer' | 'installedHome' | 'recovery';
+  defaultBaseDir: string;
   settings: {
     schemaVersion: number;
     lastSelectedBaseDir: string | null;

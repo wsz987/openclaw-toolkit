@@ -21,8 +21,8 @@ use crate::core::{
         parse_node_version,
     },
     openclaw_cli::{
-        OpenClawCliContext, inspect_plugin, list_installed_plugins, refresh_plugin_registry,
-        uninstall_plugin,
+        inspect_plugin, list_installed_plugins, refresh_plugin_registry, uninstall_plugin,
+        OpenClawCliContext,
     },
     openclaw_config::{
         apply_managed_node_command_env, ensure_plugins_allowlist_entry,
@@ -753,7 +753,9 @@ fn remove_plugin_from_installed_manifest(
         }
     }
 
-    updated.plugins.sort_by(|left, right| left.id.cmp(&right.id));
+    updated
+        .plugins
+        .sort_by(|left, right| left.id.cmp(&right.id));
     fs::write(manifest_path, serde_json::to_string_pretty(&updated)?)
         .with_context(|| format!("write installed manifest {}", manifest_path.display()))?;
     Ok(())

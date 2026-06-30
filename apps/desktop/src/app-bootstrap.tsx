@@ -175,7 +175,12 @@ export function AppBootstrap() {
         ) : null}
         <Stage1InstallerApp
           bootstrapState={null}
-          initialBaseDir={effectiveState?.settings.lastSelectedBaseDir ?? effectiveState?.activeInstallation?.baseDir ?? null}
+          initialBaseDir={
+            effectiveState?.settings.lastSelectedBaseDir ??
+            effectiveState?.activeInstallation?.baseDir ??
+            effectiveState?.defaultBaseDir ??
+            null
+          }
           initialWizardStep={debugFlowState.installerStep}
           onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
         />

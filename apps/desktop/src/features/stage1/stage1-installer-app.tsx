@@ -30,6 +30,7 @@ export function Stage1InstallerApp({
     initialBaseDir ??
       bootstrapState?.settings.lastSelectedBaseDir ??
       bootstrapState?.activeInstallation?.baseDir ??
+      bootstrapState?.defaultBaseDir ??
       null,
     bootstrapState?.activeInstallation?.configPath ?? null,
     shouldOpenInstalledHomeDirectly,
