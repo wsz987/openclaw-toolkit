@@ -1,0 +1,23 @@
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: apps/server/Dockerfile
+    image: openclaw-server:local
+    ports:
+      - "31421:31421"
+    environment:
+      NODE_ENV: production
+      PORT: "31421"
+      HOSTNAME: 0.0.0.0
+      SQLITE_DB_PATH: /data/server.sqlite
+      RELEASE_STORAGE_DIR: /data/releases
+      PUBLIC_SERVER_BASE_URL: https://openclaw.wsz987.xyz
+      OPENCLAW_UPDATE_CHANNEL: stable
+      SERVER_ADMIN_TOKEN: ${SERVER_ADMIN_TOKEN:?set SERVER_ADMIN_TOKEN in your environment}
+    volumes:
+      - server-data:/data
+    restart: unless-stopped
+
+volumes:
+  server-data:

@@ -4,12 +4,12 @@
 
 The desktop app uses the official Tauri v2 updater plugin. The app does not implement its own downloader or installer.
 
-The update service lives in `apps/update-server`:
+The server lives in `apps/server`:
 
 - Next route handlers for update checks, admin actions, and artifact downloads.
 - Drizzle with SQLite for release metadata and service settings.
-- Local artifact storage under `apps/update-server/storage/releases`.
-- Tailwind + small shadcn-style UI primitives for the admin page.
+- Local artifact storage under `apps/server/storage/releases`.
+- Tailwind + small shadcn-style UI primitives for the admin pages.
 
 Primary endpoint:
 
@@ -30,25 +30,25 @@ HTTP fallback is enabled through `dangerousInsecureTransportProtocol`. Prefer pu
 Default database path:
 
 ```text
-apps/update-server/data/update-server.sqlite
+apps/server/data/server.sqlite
 ```
 
 Docker database path:
 
 ```text
-/data/update-server.sqlite
+/data/server.sqlite
 ```
 
 Initialize or update schema:
 
 ```powershell
-pnpm --dir apps/update-server db:push
+pnpm --dir apps/server db:push
 ```
 
 Ignored runtime paths:
 
-- `apps/update-server/data/`
-- `apps/update-server/storage/`
+- `apps/server/data/`
+- `apps/server/storage/`
 - `*.sqlite`, `*.sqlite-shm`, `*.sqlite-wal`
 
 ## Docker
@@ -56,27 +56,27 @@ Ignored runtime paths:
 Build from the repository root:
 
 ```powershell
-docker build -f apps/update-server/Dockerfile -t openclaw-update-server:local .
+docker build -f apps/server/Dockerfile -t openclaw-server:local .
 ```
 
 Run with a named volume for SQLite and uploaded updater artifacts:
 
 ```powershell
-docker run -d --name openclaw-update-server `
+docker run -d --name openclaw-server `
   -p 31421:31421 `
-  -e PUBLIC_UPDATE_BASE_URL=https://openclaw.wsz987.xyz `
-  -e UPDATE_ADMIN_TOKEN=replace-with-a-long-random-token `
-  -e SQLITE_DB_PATH=/data/update-server.sqlite `
+  -e PUBLIC_SERVER_BASE_URL=https://openclaw.wsz987.xyz `
+  -e SERVER_ADMIN_TOKEN=replace-with-a-long-random-token `
+  -e SQLITE_DB_PATH=/data/server.sqlite `
   -e RELEASE_STORAGE_DIR=/data/releases `
-  -v openclaw-update-server-data:/data `
-  openclaw-update-server:local
+  -v openclaw-server-data:/data `
+  openclaw-server:local
 ```
 
 Or use:
 
 ```powershell
-$env:UPDATE_ADMIN_TOKEN="replace-with-a-long-random-token"
-docker compose -f apps/update-server/docker-compose.yml up -d --build
+$env:SERVER_ADMIN_TOKEN="replace-with-a-long-random-token"
+docker compose -f apps/server/docker-compose.yml up -d --build
 ```
 
 The container runs migrations on startup. Keep `/data` mounted; it contains both the SQLite database and uploaded update artifacts.
@@ -86,7 +86,7 @@ The container runs migrations on startup. Keep `/data` mounted; it contains both
 Open:
 
 ```text
-http://127.0.0.1:31422/admin/updates
+http://127.0.0.1:31421/admin/updates
 ```
 
 The page supports:
@@ -97,6 +97,53 @@ The page supports:
 - creating a version record;
 - enabling or disabling releases;
 - listing recent releases and platform assets.
+
+License management lives at:
+
+```text
+http://127.0.0.1:31421/admin/licenses
+```
+
+It supports company grouping, online activation code issuance, status management, optional activation limits, optional expiration dates, and optional offline `license.dat` fallback generation. Empty expiration dates are stored as `null` and mean no expiration limit.
+
+## License Validation Contract
+
+Applications validate online activation codes with:
+
+```http
+POST /api/v1/licenses/validate
+Content-Type: application/json
+
+{
+  "activationCode": "8F3K-29HD-Q7M2",
+  "machineId": "optional-stable-device-id",
+  "appVersion": "0.1.2"
+}
+```
+
+All new license APIs use a normalized envelope:
+
+```json
+{
+  "success": true,
+  "code": "OK",
+  "message": "激活成功",
+  "data": {
+    "license": {
+      "licenseId": "lic-...",
+      "companyName": "Example Co",
+      "tier": "stage-1",
+      "features": ["offline-install", "managed-node-runtime"],
+      "expiresAt": null,
+      "status": "active",
+      "maxActivations": null,
+      "activationCount": 1
+    }
+  }
+}
+```
+
+Validation failures return the same envelope with `success: false`. The app should display the `message` field directly, for example `激活码不存在，请检查后重试`, `激活码已过期`, or `激活数量已达上限`.
 
 ## Update Check Contract
 
@@ -143,6 +190,25 @@ When no update is available, the server returns `204 No Content`.
 
 - `publicBaseUrl`
 
+`companies` stores customer groups by company name.
+
+`license_keys` stores online activation keys:
+
+- `companyId`
+- `activationCodeHash`
+- `activationCodePreview`
+- `licenseId`
+- `tier`
+- `featuresJson`
+- `expiresAt`
+- `status`
+- `expiresAt` (`null` means no expiration limit)
+- `maxActivations` (`null` means unlimited)
+- `activationCount`
+- `offlineLicenseJson`
+
+`license_activation_events` stores validation attempts with hashed machine identifiers and app versions.
+
 The update selector only returns releases that are enabled, newer than the current version, on the requested channel, and have an enabled matching asset.
 
 ## Signing And Publishing
@@ -173,5 +239,5 @@ On Windows the updater is configured with `installMode: "passive"`, so after the
 ## Production Notes
 
 - Put HTTPS in front of the fallback host.
-- Add authentication before exposing `/admin/updates` publicly. The JSON admin API already supports `UPDATE_ADMIN_TOKEN`; the form page is intended for internal deployment until auth is added.
+- Add authentication before exposing `/admin/updates` or `/admin/licenses` publicly. The JSON admin API supports `SERVER_ADMIN_TOKEN`; the form pages are intended for internal deployment until auth is added.
 - Do not lose the updater private key; existing clients cannot install future signed updates without it.

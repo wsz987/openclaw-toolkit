@@ -25,9 +25,9 @@ artifacts/license.dat
 artifacts/tmp
 .reasonix
 apps/desktop/.tmp/
-apps/update-server/data/
-apps/update-server/storage/
-apps/update-server/.next/
+apps/server/data/
+apps/server/storage/
+apps/server/.next/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

@@ -26,7 +26,7 @@ pub struct LicensePayload {
     pub license_id: String,
     pub customer: String,
     pub tier: String,
-    pub expires_at: String,
+    pub expires_at: Option<String>,
     #[serde(default)]
     pub features: Vec<String>,
     #[serde(default)]
@@ -210,16 +210,24 @@ fn ensure_not_expired(license: &LicensePayload) -> anyhow::Result<()> {
         let expires_at = DateTime::<Utc>::from_timestamp(exp as i64, 0)
             .ok_or_else(|| anyhow!("授权 exp 字段无效"))?;
         if expires_at < now {
-            anyhow::bail!("授权已过期: {}", license.expires_at);
+            anyhow::bail!("授权已过期: {}", license_expiry_label(license));
         }
         return Ok(());
     }
 
-    let expires_at = parse_expiry_date(&license.expires_at)?;
+    let Some(expires_at_value) = license.expires_at.as_deref().filter(|value| !value.trim().is_empty()) else {
+        return Ok(());
+    };
+
+    let expires_at = parse_expiry_date(expires_at_value)?;
     if expires_at < now {
-        anyhow::bail!("授权已过期: {}", license.expires_at);
+        anyhow::bail!("授权已过期: {}", license_expiry_label(license));
     }
     Ok(())
+}
+
+fn license_expiry_label(license: &LicensePayload) -> &str {
+    license.expires_at.as_deref().unwrap_or("长期")
 }
 
 fn parse_expiry_date(value: &str) -> anyhow::Result<DateTime<Utc>> {
@@ -241,7 +249,7 @@ fn verify_dev_license() -> anyhow::Result<LicensePayload> {
         license_id: "dev-stage-1".to_string(),
         customer: "local-dev".to_string(),
         tier: "stage-1".to_string(),
-        expires_at: "2099-12-31".to_string(),
+        expires_at: None,
         features: vec![
             "offline-install".to_string(),
             "remote-artifact-install".to_string(),
@@ -274,7 +282,7 @@ mod tests {
             license_id: "lic-test".to_string(),
             customer: "Test Co".to_string(),
             tier: "stage-1".to_string(),
-            expires_at: "2099-12-31".to_string(),
+            expires_at: None,
             features: vec![
                 "offline-install".to_string(),
                 "managed-node-runtime".to_string(),
