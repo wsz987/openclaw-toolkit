@@ -107,22 +107,36 @@
       "label": "火山引擎 Ark 通用模型",
       "api": "openai-completions",
       "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
-      "defaultModel": "volcengine/doubao-seed-1-8-251228",
+      "defaultModel": "volcengine/doubao-seed-evolving",
       "apiKeyEnv": "VOLCANO_ENGINE_API_KEY",
       "aliases": [],
       "models": [
         {
-          "id": "doubao-seed-1-8-251228",
-          "name": "Doubao Seed 1.8",
-          "contextWindow": 256000,
-          "maxTokens": 32000,
+          "id": "doubao-seed-evolving",
+          "name": "Doubao Seed Evolving",
+          "contextWindow": 262144,
+          "maxTokens": 262144,
           "input": ["text", "image"]
         },
         {
-          "id": "doubao-seed-code-preview-251028",
-          "name": "Doubao Seed Code Preview",
-          "contextWindow": 256000,
-          "maxTokens": 32000,
+          "id": "doubao-seed-2-1-pro-260628",
+          "name": "Doubao Seed 2.1 Pro",
+          "contextWindow": 262144,
+          "maxTokens": 262144,
+          "input": ["text"]
+        },
+        {
+          "id": "doubao-seed-2-0-code-preview-260215",
+          "name": "Doubao Seed 2.0 Code Preview",
+          "contextWindow": 262144,
+          "maxTokens": 229376,
+          "input": ["text"]
+        },
+        {
+          "id": "doubao-seed-1-6-vision-250815",
+          "name": "Doubao Seed 1.6 Vision",
+          "contextWindow": 262144,
+          "maxTokens": 229376,
           "input": ["text", "image"]
         }
       ]
@@ -132,29 +146,36 @@
       "label": "阿里云百炼 Qwen",
       "api": "openai-completions",
       "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "defaultModel": "qwen/qwen3-coder-plus",
+      "defaultModel": "qwen/qwen3.7-max",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "aliases": ["dashscope"],
       "models": [
         {
-          "id": "qwen-plus",
-          "name": "Qwen Plus",
-          "contextWindow": 131072,
-          "maxTokens": 16384,
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max",
+          "contextWindow": 1000000,
+          "maxTokens": 32768,
           "input": ["text", "image"]
         },
         {
-          "id": "qwen3.5-plus",
-          "name": "Qwen 3.5 Plus",
-          "contextWindow": 131072,
+          "id": "qwen3.7-plus",
+          "name": "Qwen3.7 Plus",
+          "contextWindow": 1000000,
           "maxTokens": 16384,
           "input": ["text", "image"]
         },
         {
           "id": "qwen3-coder-plus",
           "name": "Qwen3 Coder Plus",
+          "contextWindow": 1000000,
+          "maxTokens": 65536,
+          "input": ["text"]
+        },
+        {
+          "id": "qwen3-max",
+          "name": "Qwen3 Max",
           "contextWindow": 262144,
-          "maxTokens": 32768,
+          "maxTokens": 16384,
           "input": ["text"]
         }
       ]
@@ -172,14 +193,14 @@
           "id": "deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
           "contextWindow": 1024000,
-          "maxTokens": 65536,
+          "maxTokens": 384000,
           "input": ["text"]
         },
         {
           "id": "deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
           "contextWindow": 1024000,
-          "maxTokens": 65536,
+          "maxTokens": 384000,
           "input": ["text"]
         }
       ]
@@ -189,23 +210,30 @@
       "label": "Moonshot Kimi",
       "api": "openai-completions",
       "baseUrl": "https://api.moonshot.cn/v1",
-      "defaultModel": "moonshot/kimi-k2.5",
+      "defaultModel": "moonshot/kimi-k2.7-code",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "aliases": ["kimi"],
       "models": [
         {
-          "id": "kimi-k2.5",
-          "name": "Kimi K2.5",
-          "contextWindow": 256000,
+          "id": "kimi-k2.7-code",
+          "name": "Kimi K2.7 Code",
+          "contextWindow": 262144,
           "maxTokens": 32000,
           "input": ["text", "image"]
         },
         {
-          "id": "kimi-k2-turbo-preview",
-          "name": "Kimi K2 Turbo Preview",
-          "contextWindow": 256000,
+          "id": "kimi-k2.6",
+          "name": "Kimi K2.6",
+          "contextWindow": 262144,
           "maxTokens": 32000,
-          "input": ["text"]
+          "input": ["text", "image"]
+        },
+        {
+          "id": "kimi-k2.5",
+          "name": "Kimi K2.5",
+          "contextWindow": 262144,
+          "maxTokens": 32000,
+          "input": ["text", "image"]
         }
       ]
     },
@@ -214,29 +242,36 @@
       "label": "智谱 GLM",
       "api": "openai-completions",
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-      "defaultModel": "zhipu/glm-4.5",
+      "defaultModel": "zhipu/glm-5.2",
       "apiKeyEnv": "ZHIPU_API_KEY",
       "aliases": ["bigmodel", "glm"],
       "models": [
         {
-          "id": "glm-4.5",
-          "name": "GLM 4.5",
-          "contextWindow": 128000,
-          "maxTokens": 16384,
-          "input": ["text"]
-        },
-        {
-          "id": "glm-4.5-air",
-          "name": "GLM 4.5 Air",
-          "contextWindow": 128000,
-          "maxTokens": 16384,
+          "id": "glm-5.2",
+          "name": "GLM 5.2",
+          "contextWindow": 1024000,
+          "maxTokens": 131072,
           "input": ["text"]
         },
         {
           "id": "glm-5.1",
           "name": "GLM 5.1",
           "contextWindow": 200000,
-          "maxTokens": 65536,
+          "maxTokens": 131072,
+          "input": ["text"]
+        },
+        {
+          "id": "glm-4.7",
+          "name": "GLM 4.7",
+          "contextWindow": 200000,
+          "maxTokens": 131072,
+          "input": ["text"]
+        },
+        {
+          "id": "glm-4.6",
+          "name": "GLM 4.6",
+          "contextWindow": 200000,
+          "maxTokens": 131072,
           "input": ["text"]
         }
       ]
@@ -253,6 +288,13 @@
         {
           "id": "gpt-5.5",
           "name": "GPT-5.5",
+          "contextWindow": 1050000,
+          "maxTokens": 128000,
+          "input": ["text", "image"]
+        },
+        {
+          "id": "gpt-5.5-pro",
+          "name": "GPT-5.5 Pro",
           "contextWindow": 1050000,
           "maxTokens": 128000,
           "input": ["text", "image"]
@@ -293,12 +335,13 @@
           "id": "mimo-v2.5-pro",
           "name": "MiMo V2.5 Pro",
           "contextWindow": 1048576,
-          "maxTokens": 128000,
+          "maxTokens": 131072,
           "input": ["text"]
         },
         {
           "id": "mimo-v2.5-pro-ultraspeed",
           "name": "MiMo V2.5 Pro UltraSpeed",
+          "contextWindow": 1048576,
           "maxTokens": 131072,
           "input": ["text"]
         },
@@ -306,15 +349,8 @@
           "id": "mimo-v2.5",
           "name": "MiMo V2.5",
           "contextWindow": 1048576,
-          "maxTokens": 128000,
+          "maxTokens": 131072,
           "input": ["text", "image", "audio", "video"]
-        },
-        {
-          "id": "mimo-v2-flash",
-          "name": "MiMo V2 Flash",
-          "contextWindow": 262144,
-          "maxTokens": 64000,
-          "input": ["text"]
         }
       ]
     },
@@ -330,18 +366,22 @@
         {
           "id": "MiniMax-M3",
           "name": "MiniMax M3",
+          "contextWindow": 1000000,
+          "maxTokens": 512000,
           "input": ["text", "image"]
         },
         {
           "id": "MiniMax-M2.7",
           "name": "MiniMax M2.7",
           "contextWindow": 204800,
+          "maxTokens": 128000,
           "input": ["text"]
         },
         {
           "id": "MiniMax-M2.5",
           "name": "MiniMax M2.5",
           "contextWindow": 204800,
+          "maxTokens": 128000,
           "input": ["text"]
         }
       ]
