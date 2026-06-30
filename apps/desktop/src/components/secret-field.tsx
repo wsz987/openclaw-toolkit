@@ -29,10 +29,13 @@ export function SecretField({ label, value, onChange, placeholder, description, 
         />
         <Input
           id={inputId}
-          type={visible ? 'text' : 'password'}
+          type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="pr-22 pl-9 font-mono tracking-[0.02em]"
+          className={cn(
+            'secret-field-input pr-22 pl-9 font-mono tracking-[0.02em]',
+            !visible && 'secret-field-input--masked'
+          )}
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}

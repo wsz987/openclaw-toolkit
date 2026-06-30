@@ -94,6 +94,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.secret-field-input--masked {
+  -webkit-text-security: disc;
+}
+
+.secret-field-input::-ms-reveal,
+.secret-field-input::-ms-clear {
+  display: none;
+}
+
 /* Scrollbar styles override */
 ::-webkit-scrollbar {
   width: 6px;
