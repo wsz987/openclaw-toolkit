@@ -17,17 +17,17 @@
           "input": ["text", "image"]
         },
         {
-          "id": "glm-5.1",
-          "name": "glm-5.1",
-          "contextWindow": 200000,
+          "id": "glm-5.2",
+          "name": "glm-5.2",
+          "contextWindow": 1024000,
           "maxTokens": 65536,
           "input": ["text"]
         },
         {
-          "id": "deepseek-v3.2",
-          "name": "deepseek-v3.2",
-          "contextWindow": 128000,
-          "maxTokens": 32000,
+          "id": "glm-latest",
+          "name": "glm-latest",
+          "contextWindow": 1024000,
+          "maxTokens": 65536,
           "input": ["text"]
         },
         {
@@ -80,11 +80,25 @@
           "input": ["text"]
         },
         {
+          "id": "minimax-m3",
+          "name": "minimax-m3",
+          "contextWindow": 512000,
+          "maxTokens": 65536,
+          "input": ["text", "image"]
+        },
+        {
           "id": "kimi-k2.6",
           "name": "kimi-k2.6",
           "contextWindow": 256000,
           "maxTokens": 32000,
           "input": ["text", "image"]
+        },
+        {
+          "id": "kimi-k2.7-code",
+          "name": "kimi-k2.7-code",
+          "contextWindow": 256000,
+          "maxTokens": 32000,
+          "input": ["text"]
         }
       ]
     },
@@ -92,7 +106,7 @@
       "id": "volcengine",
       "label": "火山引擎 Ark 通用模型",
       "api": "openai-completions",
-      "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+      "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3",
       "defaultModel": "volcengine/doubao-seed-1-8-251228",
       "apiKeyEnv": "VOLCANO_ENGINE_API_KEY",
       "aliases": [],

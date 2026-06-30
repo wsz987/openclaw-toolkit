@@ -864,18 +864,6 @@ fn bool_at_path(value: &Value, path: &[&str]) -> Option<bool> {
     value_at_path(value, path).and_then(Value::as_bool)
 }
 
-fn string_array_at_path(value: &Value, path: &[&str]) -> Vec<String> {
-    value_at_path(value, path)
-        .and_then(Value::as_array)
-        .map(|array| {
-            array
-                .iter()
-                .filter_map(|item| item.as_str().map(ToString::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 fn value_at_channel_config_path<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     value_at_path(value, &["channels", QQBOT_CHANNEL_CONFIG_KEY, key]).or_else(|| {
         value_at_path(value, &["channels", QQBOT_LEGACY_CHANNEL_CONFIG_KEY, key])
