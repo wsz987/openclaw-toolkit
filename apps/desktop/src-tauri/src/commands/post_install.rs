@@ -20,6 +20,12 @@ use crate::core::{
         install_plugin_from_manifest, uninstall_plugin_from_manifest, PluginInstallInput,
         PluginInstallProgress, PluginInstallResult, PluginUninstallInput, PluginUninstallResult,
     },
+    qqbot::{
+        apply_qqbot_channel_setup, apply_qqbot_channel_toggle, start_qqbot_login_qr,
+        wait_for_qqbot_login, QqbotChannelSetupInput, QqbotChannelSetupResult,
+        QqbotChannelToggleInput, QqbotChannelToggleResult, QqbotLoginQrStartInput,
+        QqbotLoginQrStartResult, QqbotLoginQrWaitInput, QqbotLoginQrWaitResult,
+    },
     runtime_host::{
         launch_openclaw_runtime as launch_runtime_via_host,
         stop_openclaw_runtime as stop_runtime_via_host, ManagedRuntimeLaunchResult,
@@ -241,6 +247,32 @@ pub async fn setup_openclaw_dingtalk_channel(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("setup_openclaw_dingtalk_channel join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn setup_openclaw_qqbot_channel(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: QqbotChannelSetupInput,
+) -> Result<QqbotChannelSetupResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_qqbot_channel_setup(&input)?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            "channels.qqbot",
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<QqbotChannelSetupResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("setup_openclaw_qqbot_channel join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)
@@ -482,6 +514,70 @@ pub async fn set_weixin_channel_enabled_command(
     .map_err(|error| {
         let rendered = error.to_string();
         eprintln!("set_weixin_channel_enabled_command join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn start_qqbot_login_qr_command(
+    input: QqbotLoginQrStartInput,
+) -> Result<QqbotLoginQrStartResult, String> {
+    tauri::async_runtime::spawn_blocking(move || start_qqbot_login_qr(&input))
+        .await
+        .map_err(|error| {
+            let rendered = error.to_string();
+            eprintln!("start_qqbot_login_qr_command join failed:\n{}", rendered);
+            rendered
+        })?
+        .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn wait_for_qqbot_login_qr_command(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: QqbotLoginQrWaitInput,
+) -> Result<QqbotLoginQrWaitResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = wait_for_qqbot_login(&input)?;
+        if result.connected {
+            let config_path = PathBuf::from(&input.config_path);
+            let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        }
+        Ok::<QqbotLoginQrWaitResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("wait_for_qqbot_login_qr_command join failed:\n{}", rendered);
+        rendered
+    })?
+    .map_err(render_error)
+}
+
+#[tauri::command]
+pub async fn set_qqbot_channel_enabled_command(
+    app: tauri::AppHandle,
+    watcher: tauri::State<'_, OpenClawStatusWatcher>,
+    input: QqbotChannelToggleInput,
+) -> Result<QqbotChannelToggleResult, String> {
+    watcher.watch_config_path(&input.config_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = apply_qqbot_channel_toggle(&input)?;
+        let _ = mark_runtime_action_required(
+            &PathBuf::from(&result.config_path),
+            "restart",
+            "channels.qqbot",
+        );
+        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&result.config_path));
+        Ok::<QqbotChannelToggleResult, anyhow::Error>(result)
+    })
+    .await
+    .map_err(|error| {
+        let rendered = error.to_string();
+        eprintln!("set_qqbot_channel_enabled_command join failed:\n{}", rendered);
         rendered
     })?
     .map_err(render_error)

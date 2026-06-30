@@ -76,6 +76,32 @@
         "usesManagedNodePath": true,
         "usesOpenClawCliContext": true
       }
+    },
+    {
+      "id": "qqbot",
+      "channelId": "qqbot",
+      "package": "@tencent-connect/openclaw-qqbot",
+      "version": "1.7.2",
+      "pluginEntryId": "openclaw-qqbot",
+      "aliases": [
+        "openclaw-qqbot",
+        "qqbot",
+        "qq"
+      ],
+      "openclawVersionRange": ">=2026.3.13",
+      "nodeVersionRange": ">=18",
+      "installType": "official-command",
+      "installCommand": {
+        "executable": "openclaw",
+        "args": [
+          "plugins",
+          "install",
+          "@tencent-connect/openclaw-qqbot"
+        ],
+        "env": [],
+        "usesManagedNodePath": true,
+        "usesOpenClawCliContext": true
+      }
     }
   ],
   "channels": [
@@ -118,6 +144,20 @@
         "ding"
       ],
       "notes": "钉钉官方 OpenClaw 通道插件（dingtalk-openclaw-connector），Stream 模式企业内部机器人，支持 AI Card 流式响应。"
+    },
+    {
+      "id": "qqbot",
+      "name": "QQ Bot",
+      "status": "active",
+      "pluginId": "qqbot",
+      "package": "@tencent-connect/openclaw-qqbot",
+      "pluginEntryId": "openclaw-qqbot",
+      "aliases": [
+        "openclaw-qqbot",
+        "qqbot",
+        "qq"
+      ],
+      "notes": "腾讯 QQ 官方 OpenClaw 通道插件，支持 C2C 私聊、群聊、频道，WebSocket/Webhook 双传输，富媒体消息。"
     }
   ]
 }

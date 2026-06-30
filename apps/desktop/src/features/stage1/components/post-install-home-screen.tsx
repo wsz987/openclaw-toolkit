@@ -109,6 +109,8 @@ export function PostInstallHomeScreen({
           feishuSetupResult={controller.feishuSetupResult}
           dingtalkSetupLoading={controller.dingtalkSetupLoading}
           dingtalkSetupResult={controller.dingtalkSetupResult}
+          qqbotSetupLoading={controller.qqbotSetupLoading}
+          qqbotSetupResult={controller.qqbotSetupResult}
           pluginInstallResult={controller.pluginInstallResult}
           skillCatalog={controller.skillCatalog}
           skillCatalogLoading={controller.skillCatalogLoading}
@@ -126,6 +128,7 @@ export function PostInstallHomeScreen({
           onProviderSetup={controller.handleProviderSetup}
           onFeishuChannelSetup={controller.handleFeishuChannelSetup}
           onDingtalkChannelSetup={controller.handleDingtalkChannelSetup}
+          onQqbotChannelSetup={controller.handleQqbotChannelSetup}
           onReloadSkillCatalog={controller.loadSkillCatalog}
           onSkillToggle={controller.handleSkillToggle}
           onLaunchRuntime={controller.handleLaunchRuntime}

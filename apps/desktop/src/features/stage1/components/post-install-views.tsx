@@ -2,6 +2,8 @@ import { AlertIcon } from '../../../components/icons';
 import type {
   OpenClawDingtalkChannelSetupPayload,
   OpenClawDingtalkChannelSetupResult,
+  OpenClawQqbotChannelSetupPayload,
+  OpenClawQqbotChannelSetupResult,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallResult,
@@ -31,6 +33,8 @@ type PostInstallHomeViewProps = {
   feishuSetupResult: OpenClawFeishuChannelSetupResult | null;
   dingtalkSetupLoading: boolean;
   dingtalkSetupResult: OpenClawDingtalkChannelSetupResult | null;
+  qqbotSetupLoading: boolean;
+  qqbotSetupResult: OpenClawQqbotChannelSetupResult | null;
   pluginInstallResult: OpenClawPluginInstallResult | null;
   skillCatalog: ManagedSkillCatalog | null;
   skillCatalogLoading: boolean;
@@ -50,6 +54,9 @@ type PostInstallHomeViewProps = {
   onDingtalkChannelSetup: (
     input: OpenClawDingtalkChannelSetupPayload
   ) => Promise<OpenClawDingtalkChannelSetupResult | null>;
+  onQqbotChannelSetup: (
+    input: OpenClawQqbotChannelSetupPayload
+  ) => Promise<OpenClawQqbotChannelSetupResult | null>;
   onReloadSkillCatalog: (configPath: string) => Promise<ManagedSkillCatalog | null>;
   onSkillToggle: (input: OpenClawSkillTogglePayload) => Promise<unknown>;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
@@ -84,6 +91,8 @@ export function PostInstallHomeView({
   feishuSetupResult,
   dingtalkSetupLoading,
   dingtalkSetupResult,
+  qqbotSetupLoading,
+  qqbotSetupResult,
   pluginInstallResult,
   skillCatalog,
   skillCatalogLoading,
@@ -101,6 +110,7 @@ export function PostInstallHomeView({
   onProviderSetup,
   onFeishuChannelSetup,
   onDingtalkChannelSetup,
+  onQqbotChannelSetup,
   onReloadSkillCatalog,
   onSkillToggle,
   onLaunchRuntime,
@@ -193,9 +203,12 @@ export function PostInstallHomeView({
             feishuSetupResult={feishuSetupResult}
             dingtalkSetupLoading={dingtalkSetupLoading}
             dingtalkSetupResult={dingtalkSetupResult}
+            qqbotSetupLoading={qqbotSetupLoading}
+            qqbotSetupResult={qqbotSetupResult}
             pluginInstallResult={pluginInstallResult}
             onFeishuChannelSetup={onFeishuChannelSetup}
             onDingtalkChannelSetup={onDingtalkChannelSetup}
+            onQqbotChannelSetup={onQqbotChannelSetup}
           />
         ) : activeTab === 'skills' ? (
           <SkillsManagementPanel

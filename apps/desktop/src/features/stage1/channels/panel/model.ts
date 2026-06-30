@@ -1,4 +1,4 @@
-export type ChannelId = 'feishu' | 'telegram' | 'slack' | 'wechat' | 'dingtalk' | 'webhook';
+export type ChannelId = 'feishu' | 'qqbot' | 'slack' | 'wechat' | 'dingtalk' | 'webhook';
 
 export type ChannelItem = {
   id: ChannelId;
@@ -63,25 +63,20 @@ export const CHANNELS_LIST: ChannelItem[] = [
     badgeText: 'text-orange-500'
   },
   {
-    id: 'telegram',
-    name: 'Telegram Bot',
-    type: '扩展通道 (规划中)',
-    iconName: 'telegram',
-    description: '通过 Telegram Bot API 对接，支持接收/回复个人会话及频道群组消息。',
-    drawerDescription: '查看规划功能并为它投票排期。',
-    isUpcoming: true,
-    colorClass: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
-    badgeBg: 'bg-sky-500/10 border border-sky-500/20',
-    badgeText: 'text-sky-500'
+    id: 'qqbot',
+    name: 'QQ Bot',
+    type: '官方通道',
+    iconName: 'qqbot',
+    description: '腾讯 QQ 官方 OpenClaw 通道插件，支持私聊、群聊、频道及富媒体消息。',
+    drawerDescription: '安装 QQ Bot 插件后，打开 QQ 开放平台获取并配置 AppID / AppSecret。',
+    isUpcoming: false,
+    colorClass: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+    badgeBg: 'bg-blue-500/10 border border-blue-500/20',
+    badgeText: 'text-blue-500'
   }
 ];
 
 export const UPCOMING_CHANNEL_FEATURES: Partial<Record<ChannelId, UpcomingFeature[]>> = {
-  telegram: [
-    { title: '全球代理支持', desc: '支持配置 Socks5、HTTP 代理，确保在各种服务器网络环境中皆可完美连通服务。' },
-    { title: '流式实时输出', desc: '适配 Telegram 文本消息机制，支持把回答以字符流方式增量输出，减少交互迟滞感。' },
-    { title: '多模态消息收发', desc: '支持接收与发送图片、音频、文档、地理位置等多种消息类型，极大拓宽交互边界。' }
-  ],
   slack: [
     { title: 'Block Kit 交互组件', desc: '全面适配 Slack App Block Kit，支持丰富的原生按钮、表单、下拉框等组件交互。' },
     { title: '线程楼中楼 (Threads)', desc: '支持跟踪 Slack 里的多条回复线程，提供独立且精准的多会话上下文关联。' },

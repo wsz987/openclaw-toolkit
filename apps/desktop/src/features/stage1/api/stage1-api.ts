@@ -17,6 +17,8 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawDingtalkChannelSetupPayload,
   OpenClawDingtalkChannelSetupResult,
+  OpenClawQqbotChannelSetupPayload,
+  OpenClawQqbotChannelSetupResult,
   OpenClawPluginInstallPayload,
   OpenClawPluginInstallResult,
   OpenClawPluginUninstallPayload,
@@ -32,6 +34,12 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   ExecuteUninstallPayload,
+  QqbotChannelTogglePayload,
+  QqbotChannelToggleResult,
+  QqbotLoginQrStartPayload,
+  QqbotLoginQrStartResult,
+  QqbotLoginQrWaitPayload,
+  QqbotLoginQrWaitResult,
   Stage1CheckState,
   Stage1Dashboard,
   Stage1InstallPayload,
@@ -260,6 +268,30 @@ export async function setWeixinChannelEnabled(
   input: WeixinChannelTogglePayload
 ): Promise<WeixinChannelToggleResult> {
   return invoke<WeixinChannelToggleResult>('set_weixin_channel_enabled_command', { input });
+}
+
+export async function setupOpenClawQqbotChannel(
+  input: OpenClawQqbotChannelSetupPayload
+): Promise<OpenClawQqbotChannelSetupResult> {
+  return invoke<OpenClawQqbotChannelSetupResult>('setup_openclaw_qqbot_channel', { input });
+}
+
+export async function startQqbotLoginQr(
+  input: QqbotLoginQrStartPayload
+): Promise<QqbotLoginQrStartResult> {
+  return invoke<QqbotLoginQrStartResult>('start_qqbot_login_qr_command', { input });
+}
+
+export async function waitForQqbotLoginQr(
+  input: QqbotLoginQrWaitPayload
+): Promise<QqbotLoginQrWaitResult> {
+  return invoke<QqbotLoginQrWaitResult>('wait_for_qqbot_login_qr_command', { input });
+}
+
+export async function setQqbotChannelEnabled(
+  input: QqbotChannelTogglePayload
+): Promise<QqbotChannelToggleResult> {
+  return invoke<QqbotChannelToggleResult>('set_qqbot_channel_enabled_command', { input });
 }
 
 export async function inspectUninstallPlan(installationId: string): Promise<UninstallPlan> {

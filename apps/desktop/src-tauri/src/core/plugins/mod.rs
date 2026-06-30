@@ -612,7 +612,7 @@ fn resolve_install_command_args(
     let package_with_version = format!("{}@{}", plugin.package, plugin.version);
     let npm_package_with_version = format!("npm:{}", package_with_version);
     let npm_package = format!("npm:{}", plugin.package);
-    install_command
+    let mut args = install_command
         .args
         .iter()
         .map(|arg| {
@@ -624,7 +624,29 @@ fn resolve_install_command_args(
                 arg.clone()
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    if should_force_unsafe_install_for_known_official_plugin(plugin, install_command, &args)
+        && !args
+            .iter()
+            .any(|arg| arg == "--dangerously-force-unsafe-install")
+    {
+        args.push("--dangerously-force-unsafe-install".to_string());
+    }
+
+    args
+}
+
+fn should_force_unsafe_install_for_known_official_plugin(
+    plugin: &PluginArtifact,
+    install_command: &PluginInstallCommand,
+    args: &[String],
+) -> bool {
+    plugin.package == "@tencent-connect/openclaw-qqbot"
+        && install_command.uses_openclaw_cli_context
+        && args.len() >= 3
+        && args[0] == "plugins"
+        && args[1] == "install"
 }
 
 fn resolve_install_command_program(
@@ -928,4 +950,76 @@ fn shorten_plugin_progress_line(line: &str) -> String {
     let mut shortened = line.chars().take(MAX_CHARS).collect::<String>();
     shortened.push_str("...");
     shortened
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{resolve_install_command_args, summarize_resolved_install_command};
+    use crate::core::manifest::models::{PluginArtifact, PluginInstallCommand};
+
+    fn plugin(id: &str, package: &str, version: &str) -> PluginArtifact {
+        PluginArtifact {
+            id: id.to_string(),
+            package: package.to_string(),
+            version: version.to_string(),
+            plugin_entry_id: id.to_string(),
+            aliases: Vec::new(),
+            openclaw_version_range: None,
+            node_version_range: None,
+            channel_id: None,
+            install_type: None,
+            install_command: None,
+        }
+    }
+
+    fn openclaw_install_command(args: &[&str]) -> PluginInstallCommand {
+        PluginInstallCommand {
+            executable: "openclaw".to_string(),
+            args: args.iter().map(|arg| (*arg).to_string()).collect(),
+            env: Vec::new(),
+            uses_managed_node_path: true,
+            uses_openclaw_cli_context: true,
+        }
+    }
+
+    #[test]
+    fn qqbot_install_command_forces_known_official_package_past_code_safety_scan() {
+        let plugin = plugin("qqbot", "@tencent-connect/openclaw-qqbot", "1.7.2");
+        let install_command =
+            openclaw_install_command(&["plugins", "install", "@tencent-connect/openclaw-qqbot"]);
+
+        let args = resolve_install_command_args(&plugin, &install_command);
+
+        assert_eq!(
+            args,
+            vec![
+                "plugins",
+                "install",
+                "@tencent-connect/openclaw-qqbot@1.7.2",
+                "--dangerously-force-unsafe-install",
+            ]
+        );
+        assert_eq!(
+            summarize_resolved_install_command(&plugin, &install_command),
+            "openclaw plugins install @tencent-connect/openclaw-qqbot@1.7.2 --dangerously-force-unsafe-install"
+        );
+    }
+
+    #[test]
+    fn non_qqbot_install_command_does_not_gain_force_unsafe_flag() {
+        let plugin = plugin("wechat", "@tencent-weixin/openclaw-weixin", "2.4.4");
+        let install_command =
+            openclaw_install_command(&["plugins", "install", "@tencent-weixin/openclaw-weixin"]);
+
+        let args = resolve_install_command_args(&plugin, &install_command);
+
+        assert_eq!(
+            args,
+            vec![
+                "plugins",
+                "install",
+                "@tencent-weixin/openclaw-weixin@2.4.4",
+            ]
+        );
+    }
 }

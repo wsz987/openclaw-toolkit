@@ -11,11 +11,14 @@ function FeishuIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function TelegramIcon(props: React.SVGProps<SVGSVGElement>) {
+function QqbotIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <circle cx="12" cy="12" r="11.5" fill="#26A5E4" stroke="#26A5E4" />
-      <path d="M17.15 8.27l-2.45 11.5c-.17.78-.63.97-1.29.6l-3.73-2.75-1.8 1.73c-.2.2-.36.37-.74.37l.27-3.79 6.9-6.22c.3-.27-.07-.42-.47-.15L6.5 14.86l-3.67-1.15c-.8-.25-.81-.8.17-1.18L17.2 4.95c.65-.25 1.25.16.95 1.48" fill="#FFF" />
+      <rect width="24" height="24" rx="6" fill="#12B7F5" />
+      <path d="M12 3.4c-3.1 0-5.6 2.9-5.6 6.5 0 1.7.55 3.24 1.47 4.4l-.64 2.48c-.08.32.24.58.53.43l2.25-1.13c.62.2 1.29.31 1.99.31s1.37-.1 1.99-.31l2.25 1.13c.3.15.61-.11.53-.43l-.64-2.48c.92-1.16 1.47-2.7 1.47-4.4 0-3.6-2.5-6.5-5.6-6.5z" fill="#fff" />
+      <circle cx="9.5" cy="9.6" r="1" fill="#12B7F5" />
+      <circle cx="14.5" cy="9.6" r="1" fill="#12B7F5" />
+      <path d="M9.4 13.2c.62.55 1.47.88 2.6.88s1.98-.33 2.6-.88" stroke="#12B7F5" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -67,8 +70,8 @@ export function getChannelIcon(iconName: string, className?: string) {
   switch (iconName) {
     case 'feishu':
       return <FeishuIcon className={className} />;
-    case 'telegram':
-      return <TelegramIcon className={className} />;
+    case 'qqbot':
+      return <QqbotIcon className={className} />;
     case 'slack':
       return <SlackIcon className={className} />;
     case 'wechat':

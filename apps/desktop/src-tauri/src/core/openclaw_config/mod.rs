@@ -56,6 +56,7 @@ pub struct OpenClawStatusSummary {
     pub feishu_channel: FeishuChannelSummary,
     pub weixin_channel: WeixinChannelSummary,
     pub dingtalk_channel: DingtalkChannelSummary,
+    pub qqbot_channel: crate::core::qqbot::QqbotChannelSummary,
     pub skills_installed: Vec<String>,
     pub plugins_enabled: Vec<String>,
     pub installed_plugins: Vec<InstalledPlugin>,
@@ -572,6 +573,10 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
     let weixin_channel =
         crate::core::weixin::read_weixin_channel_summary(&config, Some(&plugin_discovery), config_path);
     let dingtalk_channel = read_dingtalk_channel_summary(&config);
+    let qqbot_channel = crate::core::qqbot::read_qqbot_channel_summary_from_config(
+        &config,
+        Some(&plugin_discovery),
+    );
 
     Ok(OpenClawStatusSummary {
         openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
@@ -600,6 +605,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         feishu_channel,
         weixin_channel,
         dingtalk_channel,
+        qqbot_channel,
         skills_installed: enabled_skill_ids(&config),
         plugins_enabled: plugin_discovery.enabled_plugin_ids,
         installed_plugins: plugin_discovery.installed_plugins,

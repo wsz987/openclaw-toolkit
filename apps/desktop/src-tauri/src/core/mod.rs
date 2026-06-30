@@ -13,6 +13,7 @@ pub mod openclaw_config;
 pub mod permissions;
 pub mod plugins;
 pub mod process;
+pub mod qqbot;
 pub mod remote;
 pub mod runtime;
 pub mod runtime_host;

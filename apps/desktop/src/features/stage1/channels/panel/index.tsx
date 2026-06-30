@@ -7,6 +7,7 @@ import { PluginUninstallDialog } from '../../channels/shared/components/plugin-u
 import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../../channels/feishu/components/feishu-plugin-panel';
 import { WechatPluginPanel } from '../../channels/wechat/components/wechat-plugin-panel';
 import { DingtalkPluginPanel } from '../../channels/dingtalk/components/dingtalk-plugin-panel';
+import { QqbotPluginPanel } from '../../channels/qqbot/components/qqbot-plugin-panel';
 import { ChannelsPanelCard } from './card';
 import { getChannelIcon } from './icons';
 import { CHANNELS_FILTER_TABS, useChannelsPanelState, type ChannelsPanelStateProps } from './state';
@@ -63,6 +64,26 @@ export function ChannelsPanel(props: ChannelsPanelProps) {
         hideInternalEnableToggle
         forceEnabled={state.dingtalkControl.forceEnabled}
         onForceEnabledHandled={state.dingtalkControl.markForceEnabledHandled}
+      />
+    ),
+    qqbot: () => (
+      <QqbotPluginPanel
+        result={props.result}
+        status={props.status}
+        statusLoading={props.statusLoading}
+        qqbotSetupLoading={props.qqbotSetupLoading}
+        qqbotSetupResult={props.qqbotSetupResult}
+        pluginInstallResult={props.pluginInstallResult}
+        onQqbotChannelSetup={async (input) => {
+          const response = await props.onQqbotChannelSetup(input);
+          if (response) {
+            state.setIsDrawerOpen(false);
+          }
+          return response;
+        }}
+        hideInternalEnableToggle
+        forceEnabled={state.qqbotControl.forceEnabled}
+        onForceEnabledHandled={state.qqbotControl.markForceEnabledHandled}
       />
     )
   } as const;

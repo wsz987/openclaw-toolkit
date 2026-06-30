@@ -106,6 +106,7 @@ export type OpenClawPostInstallStatus = {
   feishuChannel: FeishuChannelStatus;
   weixinChannel: WeixinChannelStatus;
   dingtalkChannel: DingtalkChannelStatus;
+  qqbotChannel: QqbotChannelStatus;
   skillsInstalled: string[];
   pluginsEnabled: string[];
   installedPlugins: InstalledPluginStatus[];
@@ -166,6 +167,21 @@ export type DingtalkChannelStatus = {
   typingIndicator: boolean;
   resolveSenderNames: boolean;
   groupReplyMode: 'aicard' | 'text' | 'markdown' | string;
+};
+
+export type QqbotChannelStatus = {
+  installed: boolean;
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
+  appId: string | null;
+  clientSecretConfigured: boolean;
+  dmPolicy: 'open' | 'pairing' | 'allowlist' | string;
+  allowFrom: string[];
+  groupPolicy: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  defaultRequireMention: boolean;
+  transport: 'websocket' | 'webhook' | string;
 };
 
 export type ProviderCatalogModelEntry = {
@@ -274,6 +290,65 @@ export type OpenClawDingtalkChannelSetupResult = {
   enabled: boolean;
   configured: boolean;
   clientId: string | null;
+};
+
+export type OpenClawQqbotChannelSetupPayload = {
+  configPath: string;
+  enabled: boolean;
+  appId?: string;
+  clientSecret?: string;
+  dmPolicy?: 'open' | 'pairing' | 'allowlist' | string;
+  allowFrom: string[];
+  groupPolicy?: 'open' | 'allowlist' | 'disabled' | string;
+  groupAllowFrom: string[];
+  defaultRequireMention: boolean;
+  transport?: 'websocket' | 'webhook' | string;
+};
+
+export type OpenClawQqbotChannelSetupResult = {
+  configPath: string;
+  enabled: boolean;
+  configured: boolean;
+  appId: string | null;
+};
+
+export type QqbotLoginQrStartPayload = {
+  configPath: string;
+  force?: boolean;
+};
+
+export type QqbotLoginQrStartResult = {
+  sessionKey: string;
+  qrDataUrl: string | null;
+  qrLoginUrl: string | null;
+  message: string;
+  expiresIn: number;
+};
+
+export type QqbotLoginQrWaitPayload = {
+  configPath: string;
+  sessionKey: string;
+  timeoutMs?: number;
+};
+
+export type QqbotLoginQrWaitResult = {
+  connected: boolean;
+  expired: boolean;
+  message: string;
+  qrDataUrl: string | null;
+  expiresIn: number | null;
+};
+
+export type QqbotChannelTogglePayload = {
+  configPath: string;
+  enabled: boolean;
+};
+
+export type QqbotChannelToggleResult = {
+  configPath: string;
+  enabled: boolean;
+  configured: boolean;
+  accountId: string;
 };
 
 export type PluginInstallProgress = {

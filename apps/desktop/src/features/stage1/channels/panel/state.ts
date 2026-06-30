@@ -8,7 +8,9 @@ import { useWechatChannelControl } from '../../channels/wechat/hooks/use-wechat-
 import { findInstalledWechatPlugin } from '../../channels/wechat/model/wechat-channel';
 import { useDingtalkChannelControl } from '../../channels/dingtalk/hooks/use-dingtalk-channel-control';
 import { findInstalledDingtalkPlugin } from '../../channels/dingtalk/model/dingtalk-channel';
-import type { OpenClawDingtalkChannelSetupPayload, OpenClawDingtalkChannelSetupResult } from '../../model/types';
+import { useQqbotChannelControl } from '../../channels/qqbot/hooks/use-qqbot-channel-control';
+import { findInstalledQqbotPlugin } from '../../channels/qqbot/model/qqbot-channel';
+import type { OpenClawDingtalkChannelSetupPayload, OpenClawDingtalkChannelSetupResult, OpenClawQqbotChannelSetupPayload, OpenClawQqbotChannelSetupResult } from '../../model/types';
 import type { ChannelController } from '../../channels/shared/model/channel-controller';
 import type { UsePluginOperationResult } from '../../channels/shared/hooks/use-plugin-install';
 import {
@@ -41,7 +43,7 @@ function resolveActivePluginInstallState(
   return activeChannelId ? channelPluginInstallStates[activeChannelId] : undefined;
 }
 
-const MANAGED_CHANNEL_IDS = ['feishu', 'wechat', 'dingtalk'] as const;
+const MANAGED_CHANNEL_IDS = ['feishu', 'wechat', 'dingtalk', 'qqbot'] as const;
 type ManagedChannelId = (typeof MANAGED_CHANNEL_IDS)[number];
 
 function isManagedChannelId(channelId: ChannelId | null): channelId is ManagedChannelId {
@@ -54,6 +56,11 @@ export type ChannelsPanelStateProps = FeishuPluginPanelProps & {
   onDingtalkChannelSetup: (
     input: OpenClawDingtalkChannelSetupPayload
   ) => Promise<OpenClawDingtalkChannelSetupResult | null>;
+  qqbotSetupLoading: boolean;
+  qqbotSetupResult: OpenClawQqbotChannelSetupResult | null;
+  onQqbotChannelSetup: (
+    input: OpenClawQqbotChannelSetupPayload
+  ) => Promise<OpenClawQqbotChannelSetupResult | null>;
 };
 
 export function useChannelsPanelState(props: ChannelsPanelStateProps) {
@@ -64,7 +71,7 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
   const [uninstallDialogChannelId, setUninstallDialogChannelId] = useState<ChannelId | null>(null);
   const [uninstallDialogState, setUninstallDialogState] = useState<PluginUninstallDialogState>('confirm');
   const [votes, setVotes] = useState<Record<string, number>>({
-    telegram: 42,
+    qqbot: 42,
     slack: 28,
     wechat: 35,
     dingtalk: 19,
@@ -88,14 +95,24 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
     pluginInstallResult: props.pluginInstallResult,
     onDingtalkChannelSetup: props.onDingtalkChannelSetup
   });
+  const qqbotControl = useQqbotChannelControl({
+    result: props.result,
+    status: props.status,
+    statusLoading: props.statusLoading,
+    qqbotSetupLoading: props.qqbotSetupLoading,
+    qqbotSetupResult: props.qqbotSetupResult,
+    pluginInstallResult: props.pluginInstallResult,
+    onQqbotChannelSetup: props.onQqbotChannelSetup
+  });
 
   const channelControllers = useMemo<Partial<Record<ChannelId, ChannelController>>>(
     () => ({
       feishu: feishuControl.controller,
       wechat: wechatControl.controller,
-      dingtalk: dingtalkControl.controller
+      dingtalk: dingtalkControl.controller,
+      qqbot: qqbotControl.controller
     }),
-    [feishuControl.controller, wechatControl.controller, dingtalkControl.controller]
+    [feishuControl.controller, wechatControl.controller, dingtalkControl.controller, qqbotControl.controller]
   );
 
   const channelActionStates = useMemo<Partial<Record<ChannelId, ChannelActionState>>>(
@@ -123,6 +140,14 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
         onPluginUninstall: async () => {
           await dingtalkControl.handlePluginUninstall('钉钉 (DingTalk)');
         }
+      },
+      qqbot: {
+        pluginInstalled: Boolean(findInstalledQqbotPlugin(props.status?.installedPlugins)),
+        pluginInstalling: qqbotControl.pluginInstall.installing,
+        pluginUninstalling: qqbotControl.pluginUninstall.installing,
+        onPluginUninstall: async () => {
+          await qqbotControl.handlePluginUninstall('QQ Bot');
+        }
       }
     }),
     [
@@ -135,7 +160,10 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
       wechatControl.pluginUninstall.installing,
       dingtalkControl.handlePluginUninstall,
       dingtalkControl.pluginInstall.installing,
-      dingtalkControl.pluginUninstall.installing
+      dingtalkControl.pluginUninstall.installing,
+      qqbotControl.handlePluginUninstall,
+      qqbotControl.pluginInstall.installing,
+      qqbotControl.pluginUninstall.installing
     ]
   );
 
@@ -143,9 +171,10 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
     () => ({
       feishu: feishuControl.pluginInstall,
       wechat: wechatControl.pluginInstall,
-      dingtalk: dingtalkControl.pluginInstall
+      dingtalk: dingtalkControl.pluginInstall,
+      qqbot: qqbotControl.pluginInstall
     }),
-    [feishuControl.pluginInstall, wechatControl.pluginInstall, dingtalkControl.pluginInstall]
+    [feishuControl.pluginInstall, wechatControl.pluginInstall, dingtalkControl.pluginInstall, qqbotControl.pluginInstall]
   );
 
   const activePluginInstallState = useMemo(
@@ -166,6 +195,10 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
       dingtalk: {
         pluginName: '钉钉 (DingTalk)',
         control: dingtalkControl
+      },
+      qqbot: {
+        pluginName: 'QQ Bot',
+        control: qqbotControl
       }
     }) satisfies Record<
       ManagedChannelId,
@@ -181,7 +214,7 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
         };
       }
     >,
-    [dingtalkControl, feishuControl, wechatControl]
+    [dingtalkControl, feishuControl, qqbotControl, wechatControl]
   );
 
   const activeManagedUninstallContext = isManagedChannelId(uninstallDialogChannelId)
@@ -214,6 +247,15 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
     setActiveChannelId('dingtalk');
     setIsDrawerOpen(true);
   }, [dingtalkControl.forceEnabled]);
+
+  useEffect(() => {
+    if (!qqbotControl.forceEnabled) {
+      return;
+    }
+
+    setActiveChannelId('qqbot');
+    setIsDrawerOpen(true);
+  }, [qqbotControl.forceEnabled]);
 
   useEffect(() => {
     const anyPluginUninstalling = Object.values(managedChannelControls).some(
@@ -366,6 +408,7 @@ export function useChannelsPanelState(props: ChannelsPanelStateProps) {
     feishuControl,
     wechatControl,
     dingtalkControl,
+    qqbotControl,
     activeChannel,
     activeChannelId,
     activePluginInstallState,
