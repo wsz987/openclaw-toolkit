@@ -3,7 +3,7 @@ import {
   readInstallerDebugFlowState,
   writeInstallerDebugFlowState,
   type InstallerDebugFlowState
-} from '../src/features/stage1/model/debug-flow';
+} from '../src/features/installer/model/debug-flow';
 
 function createLocalStorageMock() {
   const values = new Map<string, string>();

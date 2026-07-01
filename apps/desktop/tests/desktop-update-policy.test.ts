@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUpdateCheckFailure } from '../src/features/stage1/hooks/desktop-update-policy';
+import { buildUpdateCheckFailure } from '../src/features/installer/hooks/desktop-update-policy';
 
 describe('buildUpdateCheckFailure', () => {
   it('logs manual check failures while showing no available update to users', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { bootstrapAppState } from './features/stage1/api/stage1-api';
-import { OpenClawInstallerApp } from './features/stage1/stage1-installer-app';
+import { bootstrapAppState } from './features/installer/api/installer-api';
+import { OpenClawInstallerApp } from './features/installer/openclaw-installer-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import {
@@ -13,15 +13,15 @@ import {
   AlertDialogTitle
 } from './components/ui/alert-dialog';
 import { SpinnerIcon } from './components/icons';
-import type { AppBootstrapState } from './features/stage1/model/types';
-import { hasMissingInstallationRecord } from './features/stage1/model/app-flow';
-import { DebugFlowPanel } from './features/stage1/components/debug-flow-panel';
+import type { AppBootstrapState } from './features/installer/model/types';
+import { hasMissingInstallationRecord } from './features/installer/model/app-flow';
+import { DebugFlowPanel } from './features/installer/components/debug-flow-panel';
 import {
   canForceInstalledHome,
   getEffectiveBootstrapState,
   readInstallerDebugFlowState,
   writeInstallerDebugFlowState
-} from './features/stage1/model/debug-flow';
+} from './features/installer/model/debug-flow';
 
 export function AppBootstrap() {
   const [state, setState] = useState<AppBootstrapState | null>(null);
