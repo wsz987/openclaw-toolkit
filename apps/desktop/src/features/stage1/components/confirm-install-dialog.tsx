@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../../../components/ui/alert-dialog';
-import type { Stage1Dashboard } from '../model/types';
+import type { InstallDashboard } from '../model/types';
 import { AlertTriangle, Folder, Cpu, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
 
 type Props = {
@@ -16,9 +16,9 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   loading: boolean;
   confirmationDescription: string;
-  systemOpenclaw: Stage1Dashboard['systemOpenclaw'];
+  systemOpenclaw: InstallDashboard['systemOpenclaw'];
   confirmationTargetVersion: string;
-  installPlan: Stage1Dashboard['installPlan'];
+  installPlan: InstallDashboard['installPlan'];
   installActionLabel: string;
   onConfirm: () => void;
 };

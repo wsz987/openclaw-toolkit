@@ -4,10 +4,10 @@ import { Stage1Shell } from './stage1-shell';
 import { Stage1Stepper } from './stage1-stepper';
 import { InstallerWorkflowView } from './installer-workflow-view';
 import type { InstallerWorkflowScreen } from '../model/app-flow';
-import type { Stage1InstallerController } from '../hooks/use-stage1-installer';
+import type { OpenClawInstallerController } from '../hooks/use-stage1-installer';
 
 type InstallerWorkflowScreenProps = {
-  controller: Stage1InstallerController;
+  controller: OpenClawInstallerController;
   screen: InstallerWorkflowScreen;
 };
 

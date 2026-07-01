@@ -2,12 +2,12 @@ import type { ChannelController } from '../../shared/model/channel-controller';
 import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPostInstallStatus,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 import { buildFeishuChannelSetupPayloadFromStatus } from './feishu-channel';
 
 type CreateFeishuChannelControllerOptions = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   loading: boolean;
   ensureReady: () => Promise<boolean>;

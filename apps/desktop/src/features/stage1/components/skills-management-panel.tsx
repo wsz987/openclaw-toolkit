@@ -9,11 +9,11 @@ import { cn } from '../../../lib/utils';
 import type {
   ManagedSkillCatalog,
   OpenClawSkillTogglePayload,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../model/types';
 
 type SkillsManagementPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   catalog: ManagedSkillCatalog | null;
   loading: boolean;
   toggleLoadingIds: string[];

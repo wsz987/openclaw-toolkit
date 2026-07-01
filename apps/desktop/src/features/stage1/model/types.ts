@@ -1,7 +1,10 @@
 export type InstallMode = 'local' | 'remote' | 'npm';
-export type Stage1Phase = 'precheck' | 'running' | 'succeeded' | 'failed';
-export type Stage1StepState = 'done' | 'current' | 'pending' | 'failed';
-export type Stage1CheckState = 'ok' | 'warn' | 'error';
+export type InstallPhase = 'precheck' | 'running' | 'succeeded' | 'failed';
+export type InstallStepState = 'done' | 'current' | 'pending' | 'failed';
+export type InstallCheckState = 'ok' | 'warn' | 'error';
+export type Stage1Phase = InstallPhase;
+export type Stage1StepState = InstallStepState;
+export type Stage1CheckState = InstallCheckState;
 export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills' | 'settings' | 'uninstall';
 
 export type InstallStep =
@@ -21,31 +24,31 @@ export type InstallStep =
   | 'configureBrowser'
   | 'verifyRuntime';
 
-export type Stage1EnvironmentCheck = {
+export type InstallEnvironmentCheck = {
   id: string;
   label: string;
-  state: Stage1CheckState;
+  state: InstallCheckState;
   detail: string;
 };
 
-export type Stage1StepSnapshot = {
+export type InstallStepSnapshot = {
   id: InstallStep;
   title: string;
   description: string;
-  state: Stage1StepState;
+  state: InstallStepState;
 };
 
-export type Stage1Dashboard = {
+export type InstallDashboard = {
   workflowId: string | null;
-  phase: Stage1Phase;
+  phase: InstallPhase;
   currentStep: InstallStep | null;
   currentStepLabel: string;
   progress: number;
   completedSteps: InstallStep[];
   failedStep: InstallStep | null;
   message: string | null;
-  steps: Stage1StepSnapshot[];
-  environment: Stage1EnvironmentCheck[];
+  steps: InstallStepSnapshot[];
+  environment: InstallEnvironmentCheck[];
   installMode: InstallMode;
   selectedVersion: string;
   openclawVersion: string | null;
@@ -72,7 +75,7 @@ export type Stage1Dashboard = {
   };
 };
 
-export type Stage1InstallResult = {
+export type OpenClawInstallResult = {
   workflowId: string;
   installationId?: string | null;
   status: string;
@@ -82,6 +85,11 @@ export type Stage1InstallResult = {
   nodeDir: string;
   configPath: string;
 };
+
+export type Stage1EnvironmentCheck = InstallEnvironmentCheck;
+export type Stage1StepSnapshot = InstallStepSnapshot;
+export type Stage1Dashboard = InstallDashboard;
+export type Stage1InstallResult = OpenClawInstallResult;
 
 export type OpenClawPostInstallStatus = {
   openclawDir: string;
@@ -623,12 +631,14 @@ export type VersionCatalogResult = {
 
 export type DirectoryPickerResponse = string | null;
 
-export type Stage1InstallPayload = {
+export type OpenClawInstallPayload = {
   baseDir: string;
   licenseKey: string;
   installMode: InstallMode;
   selectedVersion: string;
 };
+
+export type Stage1InstallPayload = OpenClawInstallPayload;
 
 export type InstallationRecord = {
   installationId: string;
@@ -692,14 +702,17 @@ export interface StepDiagnostic {
 
 export type DiagnosticTaskStatus = 'checked' | 'pending' | 'waiting';
 
-export type Stage1DiagnosticsInfo = {
+export type InstallDiagnosticsInfo = {
   title: string;
   description: string;
   tasks: Array<StepDiagnosticTask & { status: DiagnosticTaskStatus }>;
 };
 
-export type Stage1InstallLogTail = {
+export type InstallLogTail = {
   path: string;
   lines: string[];
   truncated: boolean;
 };
+
+export type Stage1DiagnosticsInfo = InstallDiagnosticsInfo;
+export type Stage1InstallLogTail = InstallLogTail;

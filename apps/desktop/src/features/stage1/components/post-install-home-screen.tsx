@@ -3,7 +3,7 @@ import { BrandSpike } from './brand-spike';
 import { PostInstallHomeView } from './post-install-views';
 import { PostInstallMenu } from './post-install-menu';
 import { Stage1Shell } from './stage1-shell';
-import { createInstallResultFromRecord, type Stage1InstallerController } from '../hooks/use-stage1-installer';
+import { createInstallResultFromRecord, type OpenClawInstallerController } from '../hooks/use-stage1-installer';
 import { useDesktopUpdater } from '../hooks/use-desktop-updater';
 import type { AppBootstrapState, PostInstallTab } from '../model/types';
 import { getRecoveredInstallationMode } from '../model/app-flow';
@@ -11,7 +11,7 @@ import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 type PostInstallHomeScreenProps = {
   bootstrapState?: AppBootstrapState | null;
-  controller: Stage1InstallerController;
+  controller: OpenClawInstallerController;
   onExitInstalledHome?: () => void;
 };
 

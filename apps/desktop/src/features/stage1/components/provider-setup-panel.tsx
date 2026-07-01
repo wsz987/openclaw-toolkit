@@ -26,13 +26,13 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   ProviderCatalogEntry,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../model/types';
 import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 import { ProviderBrandIcon } from './provider-brand-icons';
 
 type ProviderSetupPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   providerSetupLoading: boolean;
   runtimeLaunchLoading: boolean;

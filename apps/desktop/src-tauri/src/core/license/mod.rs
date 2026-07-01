@@ -19,6 +19,9 @@ const ED25519_PUBLIC_KEY_DER_PREFIX: &[u8] = &[
 ];
 const ED25519_SIGNATURE_LEN: usize = 64;
 const CODE_ALPHABET: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const BASIC_TIER: &str = "basic";
+const PRO_TIER: &str = "pro";
+const ENTERPRISE_TIER: &str = "enterprise";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,18 +173,8 @@ pub fn ensure_license_feature(license: &LicensePayload, feature: &str) -> anyhow
     anyhow::bail!("当前授权不包含 {} 能力", feature)
 }
 
-pub fn ensure_install_mode_allowed(
-    license: &LicensePayload,
-    install_mode: &str,
-) -> anyhow::Result<()> {
-    let required_feature = match install_mode {
-        "local" => "offline-install",
-        "remote" => "remote-artifact-install",
-        "npm" => "official-npm-install",
-        other => anyhow::bail!("未知安装模式: {}", other),
-    };
-
-    ensure_license_feature(license, required_feature)
+fn is_supported_license_tier(tier: &str) -> bool {
+    matches!(tier, BASIC_TIER | PRO_TIER | ENTERPRISE_TIER)
 }
 
 fn validate_license_payload(license: &LicensePayload) -> anyhow::Result<()> {
@@ -191,12 +184,8 @@ fn validate_license_payload(license: &LicensePayload) -> anyhow::Result<()> {
     if license.customer.trim().is_empty() {
         anyhow::bail!("授权缺少 customer");
     }
-    match license.tier.as_str() {
-        "stage-1" | "stage-2" => {}
-        other => anyhow::bail!("未知授权等级: {}", other),
-    }
-    if license.features.is_empty() {
-        anyhow::bail!("授权未包含任何功能能力");
+    if !is_supported_license_tier(license.tier.as_str()) {
+        anyhow::bail!("未知授权等级: {}", license.tier);
     }
 
     ensure_not_expired(license)?;
@@ -246,19 +235,11 @@ fn parse_expiry_date(value: &str) -> anyhow::Result<DateTime<Utc>> {
 #[cfg(debug_assertions)]
 fn verify_dev_license() -> anyhow::Result<LicensePayload> {
     Ok(LicensePayload {
-        license_id: "dev-stage-1".to_string(),
+        license_id: "dev-basic".to_string(),
         customer: "local-dev".to_string(),
-        tier: "stage-1".to_string(),
+        tier: BASIC_TIER.to_string(),
         expires_at: None,
-        features: vec![
-            "offline-install".to_string(),
-            "remote-artifact-install".to_string(),
-            "official-npm-install".to_string(),
-            "managed-node-runtime".to_string(),
-            "local-skills".to_string(),
-            "browser-control".to_string(),
-            "feishu-plugin".to_string(),
-        ],
+        features: Vec::new(),
         activation_hash: None,
         iat: None,
         exp: None,
@@ -281,12 +262,9 @@ mod tests {
         LicensePayload {
             license_id: "lic-test".to_string(),
             customer: "Test Co".to_string(),
-            tier: "stage-1".to_string(),
+            tier: BASIC_TIER.to_string(),
             expires_at: None,
-            features: vec![
-                "offline-install".to_string(),
-                "managed-node-runtime".to_string(),
-            ],
+            features: Vec::new(),
             activation_hash: Some(activation_code_hash(
                 normalize_activation_code(TEST_CODE).unwrap().as_str(),
             )),
@@ -325,7 +303,7 @@ mod tests {
             verify_signed_license_file(&license_file, &normalized_code, &public_key_der).unwrap();
 
         assert_eq!(license.customer, "Test Co");
-        ensure_license_feature(&license, "managed-node-runtime").unwrap();
+        assert!(license.features.is_empty());
     }
 
     #[test]
@@ -351,14 +329,44 @@ mod tests {
     fn rejects_missing_feature() {
         let license = base_license();
 
-        assert!(ensure_license_feature(&license, "feishu-plugin").is_err());
+        assert!(ensure_license_feature(&license, "advanced-provider-management").is_err());
     }
 
     #[test]
-    fn checks_install_mode_features() {
-        let license = base_license();
+    fn accepts_basic_tier_with_no_features() {
+        let mut license = base_license();
+        license.tier = "basic".to_string();
+        license.features = Vec::new();
 
-        ensure_install_mode_allowed(&license, "local").unwrap();
-        assert!(ensure_install_mode_allowed(&license, "remote").is_err());
+        validate_license_payload(&license).unwrap();
+    }
+
+    #[test]
+    fn accepts_supported_commercial_tiers() {
+        for tier in ["basic", "pro", "enterprise"] {
+            let mut license = base_license();
+            license.tier = tier.to_string();
+            license.features = Vec::new();
+
+            validate_license_payload(&license).unwrap();
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_tier() {
+        let mut license = base_license();
+        license.tier = "stage-3".to_string();
+
+        assert!(validate_license_payload(&license).is_err());
+    }
+
+    #[test]
+    fn accepts_extra_feature_when_present() {
+        let mut license = base_license();
+        license
+            .features
+            .push("advanced-provider-management".to_string());
+
+        ensure_license_feature(&license, "advanced-provider-management").unwrap();
     }
 }

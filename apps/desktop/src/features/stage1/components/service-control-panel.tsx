@@ -3,7 +3,7 @@ import { SpinnerIcon } from '../../../components/icons';
 import type {
   OpenClawPostInstallStatus,
   OpenClawStopResult,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../model/types';
 
 // Custom premium inline SVG icons
@@ -93,7 +93,7 @@ const KeyIcon = ({ className }: { className?: string }) => (
 );
 
 type ServiceControlPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   runtimeLaunchLoading: boolean;

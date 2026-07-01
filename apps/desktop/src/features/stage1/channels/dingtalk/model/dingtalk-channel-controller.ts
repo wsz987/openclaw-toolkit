@@ -2,12 +2,12 @@ import type { ChannelController } from '../../shared/model/channel-controller';
 import type {
   OpenClawDingtalkChannelSetupResult,
   OpenClawPostInstallStatus,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 import { buildDingtalkChannelSetupPayloadFromStatus } from './dingtalk-channel';
 
 type CreateDingtalkChannelControllerOptions = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   loading: boolean;
   ensureReady: () => Promise<boolean>;

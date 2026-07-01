@@ -12,14 +12,14 @@ import {
 import { toast } from 'sonner';
 import type {
   OpenClawPostInstallStatus,
-  Stage1InstallLogTail,
-  Stage1InstallResult
+  InstallLogTail,
+  OpenClawInstallResult
 } from '../model/types';
 import { readOpenClawRuntimeLogTail } from '../api/stage1-api';
 import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
 type RuntimeOperationsPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   runtimeLaunchLoading: boolean;
@@ -58,7 +58,7 @@ export function RuntimeOperationsPanel({
   onNavigateToProvider
 }: RuntimeOperationsPanelProps) {
   const [copied, setCopied] = useState(false);
-  const [logTail, setLogTail] = useState<Stage1InstallLogTail | null>(null);
+  const [logTail, setLogTail] = useState<InstallLogTail | null>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result.configPath);
   const resolvedStatus = subscribedStatus ?? status;

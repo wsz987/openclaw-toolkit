@@ -19,7 +19,7 @@ import {
 import type {
   OpenClawPostInstallStatus,
   OpenClawPluginInstallResult,
-  Stage1InstallResult,
+  OpenClawInstallResult,
   WeixinLoginQrWaitResult,
   WeixinLoginStatus
 } from '../../../model/types';
@@ -27,7 +27,7 @@ import { resolveWechatChannel } from '../model/wechat-channel';
 import { WechatLoginQrDialog } from './wechat-login-qr-dialog';
 
 export type WechatPluginPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   pluginInstallResult?: OpenClawPluginInstallResult | null;

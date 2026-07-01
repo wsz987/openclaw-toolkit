@@ -15,7 +15,7 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 
 type SecretVisibilityState = {
@@ -25,7 +25,7 @@ type SecretVisibilityState = {
 };
 
 export type FeishuPluginPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   feishuSetupLoading: boolean;

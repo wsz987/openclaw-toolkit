@@ -22,11 +22,11 @@ import {
 import { stage1Steps } from '../model/graph';
 import type {
   InstallMode,
-  Stage1Dashboard,
-  Stage1DiagnosticsInfo,
-  Stage1EnvironmentCheck,
-  Stage1InstallLogTail,
-  Stage1StepSnapshot,
+  InstallDashboard,
+  InstallDiagnosticsInfo,
+  InstallEnvironmentCheck,
+  InstallLogTail,
+  InstallStepSnapshot,
   VersionCatalogOption,
   VersionCatalogResult
 } from '../model/types';
@@ -34,7 +34,7 @@ import type {
 type ChecksCardProps = {
   title: string;
   description: string;
-  items: Stage1EnvironmentCheck[];
+  items: InstallEnvironmentCheck[];
   ready: boolean;
 };
 
@@ -126,7 +126,7 @@ export function ErrorStateView({ errorMessage, failedStepLabel, onBack }: ErrorS
 
 type PrecheckStepViewProps = {
   baseDir: string;
-  step1Checks: Stage1EnvironmentCheck[];
+  step1Checks: InstallEnvironmentCheck[];
   step1Ready: boolean;
   dashboardLoading: boolean;
   onBaseDirChange: (value: string) => void;
@@ -247,12 +247,12 @@ type ConfigStepViewProps = {
   versionCatalogLoading: boolean;
   versionCatalog: VersionCatalogResult | null;
   selectedVersionOption: VersionCatalogOption | null;
-  systemOpenclaw: Stage1Dashboard['systemOpenclaw'];
+  systemOpenclaw: InstallDashboard['systemOpenclaw'];
   installActionLabel: string;
   confirmationTargetVersion: string;
   loading: boolean;
   canStartInstall: boolean;
-  step2Checks: Stage1EnvironmentCheck[];
+  step2Checks: InstallEnvironmentCheck[];
   onLicenseKeyChange: (value: string) => void;
   onInstallModeChange: (value: InstallMode) => void;
   onSelectedVersionChange: (value: string) => void;
@@ -443,9 +443,9 @@ type ProgressStageViewProps = {
   progressValue: number;
   currentStepLabel: string;
   completedCount: number;
-  timelineItems: Stage1StepSnapshot[];
-  installLogTail: Stage1InstallLogTail | null;
-  diagnosticsInfo: Stage1DiagnosticsInfo | null;
+  timelineItems: InstallStepSnapshot[];
+  installLogTail: InstallLogTail | null;
+  diagnosticsInfo: InstallDiagnosticsInfo | null;
   timelineContainerRef: RefObject<HTMLDivElement | null>;
   animated?: boolean;
 };

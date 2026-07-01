@@ -34,19 +34,19 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   ExecuteUninstallPayload,
+  InstallCheckState,
+  InstallDashboard,
+  OpenClawInstallPayload,
+  InstallLogTail,
   QqbotChannelTogglePayload,
   QqbotChannelToggleResult,
   QqbotLoginQrStartPayload,
   QqbotLoginQrStartResult,
   QqbotLoginQrWaitPayload,
   QqbotLoginQrWaitResult,
-  Stage1CheckState,
-  Stage1Dashboard,
-  Stage1InstallPayload,
-  Stage1InstallLogTail,
-  Stage1InstallResult,
+  OpenClawInstallResult,
   ManagedSkillCatalog,
-  Stage1StepState,
+  InstallStepState,
   WeixinChannelTogglePayload,
   WeixinChannelToggleResult,
   WeixinLoginQrStartPayload,
@@ -59,7 +59,7 @@ import type {
   VersionCatalogResult
 } from '../model/types';
 
-function normalizeDashboard(response: Stage1Dashboard): Stage1Dashboard {
+function normalizeDashboard(response: InstallDashboard): InstallDashboard {
   return {
     ...response,
     currentStep: response.currentStep && isInstallStep(response.currentStep) ? response.currentStep : null,
@@ -68,11 +68,11 @@ function normalizeDashboard(response: Stage1Dashboard): Stage1Dashboard {
     steps: response.steps.map((step) => ({
       ...step,
       id: isInstallStep(step.id) ? step.id : 'loadManifest',
-      state: step.state as Stage1StepState
+      state: step.state as InstallStepState
     })),
     environment: response.environment.map((check) => ({
       ...check,
-      state: check.state as Stage1CheckState
+      state: check.state as InstallCheckState
     })),
     installMode: response.installMode as InstallMode
   };
@@ -94,17 +94,17 @@ export async function importInstallationFromPath(path: string): Promise<AppBoots
   return invoke<AppBootstrapState>('import_installation_from_path_command', { path });
 }
 
-export async function inspectStage1Dashboard(input: Stage1InstallPayload): Promise<Stage1Dashboard> {
-  const response = await invoke<Stage1Dashboard>('inspect_stage1_dashboard_command', { input });
+export async function inspectStage1Dashboard(input: OpenClawInstallPayload): Promise<InstallDashboard> {
+  const response = await invoke<InstallDashboard>('inspect_install_dashboard_command', { input });
   return normalizeDashboard(response);
 }
 
-export async function startStage1Install(input: Stage1InstallPayload): Promise<Stage1InstallResult> {
-  return invoke<Stage1InstallResult>('start_stage1_install', { input });
+export async function startStage1Install(input: OpenClawInstallPayload): Promise<OpenClawInstallResult> {
+  return invoke<OpenClawInstallResult>('start_openclaw_install', { input });
 }
 
-export async function readStage1InstallLogTail(baseDir: string, maxLines = 200): Promise<Stage1InstallLogTail> {
-  return invoke<Stage1InstallLogTail>('read_stage1_install_log_tail_command', {
+export async function readStage1InstallLogTail(baseDir: string, maxLines = 200): Promise<InstallLogTail> {
+  return invoke<InstallLogTail>('read_install_log_tail_command', {
     baseDir,
     maxLines
   });
@@ -207,8 +207,8 @@ export async function restartOpenClawRuntime(
 export async function readOpenClawRuntimeLogTail(
   logPath: string,
   maxLines = 200
-): Promise<Stage1InstallLogTail> {
-  return invoke<Stage1InstallLogTail>('read_openclaw_runtime_log_tail', {
+): Promise<InstallLogTail> {
+  return invoke<InstallLogTail>('read_openclaw_runtime_log_tail', {
     logPath,
     maxLines
   });

@@ -6,27 +6,27 @@ import {
   isInstallerWorkflowScreen,
   isPostInstallScreen,
   isRecoveredInstallationState,
-  resolveStage1Screen
+  resolveInstallerScreen
 } from './model/app-flow';
-import { useStage1Installer } from './hooks/use-stage1-installer';
+import { useOpenClawInstaller } from './hooks/use-stage1-installer';
 import type { AppBootstrapState } from './model/types';
 
-type Stage1InstallerAppProps = {
+type OpenClawInstallerAppProps = {
   bootstrapState?: AppBootstrapState | null;
   onExitInstalledHome?: () => void;
   initialBaseDir?: string | null;
   initialWizardStep?: 0 | 1 | 2 | 3;
 };
 
-export function Stage1InstallerApp({
+export function OpenClawInstallerApp({
   bootstrapState,
   onExitInstalledHome,
   initialBaseDir,
   initialWizardStep
-}: Stage1InstallerAppProps) {
+}: OpenClawInstallerAppProps) {
   const shouldOpenInstalledHomeDirectly = isRecoveredInstallationState(bootstrapState);
 
-  const controller = useStage1Installer(
+  const controller = useOpenClawInstaller(
     initialBaseDir ??
       bootstrapState?.settings.lastSelectedBaseDir ??
       bootstrapState?.activeInstallation?.baseDir ??
@@ -37,7 +37,7 @@ export function Stage1InstallerApp({
     initialWizardStep
   );
 
-  const screen = resolveStage1Screen({
+  const screen = resolveInstallerScreen({
     bootstrapState,
     hasError: Boolean(controller.error),
     hasInstallResult: Boolean(controller.result),
@@ -86,3 +86,5 @@ export function Stage1InstallerApp({
 
   return null;
 }
+
+export const Stage1InstallerApp = OpenClawInstallerApp;

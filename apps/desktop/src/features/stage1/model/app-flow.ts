@@ -1,6 +1,6 @@
-import type { AppBootstrapState, Stage1Phase } from './types';
+import type { AppBootstrapState, InstallPhase } from './types';
 
-export type Stage1Screen =
+export type InstallerScreen =
   | 'installed-home'
   | 'install-failed'
   | 'post-install-entry'
@@ -9,22 +9,24 @@ export type Stage1Screen =
   | 'config'
   | 'progress-deps'
   | 'progress-verify';
+export type Stage1Screen = InstallerScreen;
 
 export type InstallerWizardStep = 0 | 1 | 2 | 3;
 export type InstallerWorkflowScreen = Extract<
-  Stage1Screen,
+  InstallerScreen,
   'precheck' | 'config' | 'progress-deps' | 'progress-verify'
 >;
-export type PostInstallScreen = Extract<Stage1Screen, 'installed-home' | 'post-install-home'>;
+export type PostInstallScreen = Extract<InstallerScreen, 'installed-home' | 'post-install-home'>;
 
-type ResolveStage1ScreenInput = {
+export type ResolveInstallerScreenInput = {
   bootstrapState?: AppBootstrapState | null;
   hasError: boolean;
   hasInstallResult: boolean;
-  phase: Stage1Phase;
+  phase: InstallPhase;
   showPostInstallHome: boolean;
   wizardStep: InstallerWizardStep;
 };
+export type ResolveStage1ScreenInput = ResolveInstallerScreenInput;
 
 export function hasMissingInstallationRecord(state?: AppBootstrapState | null): boolean {
   return Boolean(state?.message?.includes('安装记录丢失'));
@@ -44,14 +46,14 @@ export function getRecoveredInstallationMode(
   return state?.screen === 'recovery' ? 'recovery' : 'installed';
 }
 
-export function resolveStage1Screen({
+export function resolveInstallerScreen({
   bootstrapState,
   hasError,
   hasInstallResult,
   phase,
   showPostInstallHome,
   wizardStep
-}: ResolveStage1ScreenInput): Stage1Screen {
+}: ResolveInstallerScreenInput): InstallerScreen {
   if (isRecoveredInstallationState(bootstrapState)) {
     return 'installed-home';
   }
@@ -79,12 +81,14 @@ export function resolveStage1Screen({
   return 'progress-verify';
 }
 
-export function shouldShowInstallerChrome(screen: Stage1Screen): boolean {
+export const resolveStage1Screen = resolveInstallerScreen;
+
+export function shouldShowInstallerChrome(screen: InstallerScreen): boolean {
   return isInstallerWorkflowScreen(screen);
 }
 
 export function isInstallerWorkflowScreen(
-  screen: Stage1Screen
+  screen: InstallerScreen
 ): screen is InstallerWorkflowScreen {
   return (
     screen === 'precheck' ||
@@ -94,6 +98,6 @@ export function isInstallerWorkflowScreen(
   );
 }
 
-export function isPostInstallScreen(screen: Stage1Screen): screen is PostInstallScreen {
+export function isPostInstallScreen(screen: InstallerScreen): screen is PostInstallScreen {
   return screen === 'installed-home' || screen === 'post-install-home';
 }

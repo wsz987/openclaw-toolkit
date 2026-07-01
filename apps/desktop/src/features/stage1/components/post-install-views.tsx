@@ -13,7 +13,7 @@ import type {
   ManagedSkillCatalog,
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
-  Stage1InstallResult,
+  OpenClawInstallResult,
   UninstallPlan,
   UninstallResult
 } from '../model/types';
@@ -28,7 +28,7 @@ import type { DesktopUpdateStatus, DesktopVersionInfo } from '../hooks/use-deskt
 import type { Update } from '@tauri-apps/plugin-updater';
 
 type PostInstallHomeViewProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   providerSetupLoading: boolean;

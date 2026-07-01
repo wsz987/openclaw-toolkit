@@ -15,7 +15,7 @@ import type {
   OpenClawDingtalkChannelSetupResult,
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 
 type SecretVisibilityState = {
@@ -25,7 +25,7 @@ type SecretVisibilityState = {
 const DINGTALK_QR_DISPLAY_TTL_SECS = 300;
 
 export type DingtalkPluginPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   dingtalkSetupLoading: boolean;

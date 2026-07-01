@@ -15,7 +15,7 @@ use crate::core::{
     background_process::process_friendly_path_string,
     browser::configure_browser_runtime,
     environment::{validate_windows_environment, windows_environment_status},
-    license::{ensure_install_mode_allowed, ensure_license_feature, verify_offline_license},
+    license::verify_offline_license,
     manifest::{
         load_provider_catalog, load_toolkit_manifest, load_toolkit_settings,
         models::{InstalledManifest, ReleaseArtifact, ToolkitManifest},
@@ -378,26 +378,6 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         || verify_offline_license(input.license_key.as_deref(), &project_root),
     )?;
 
-    if let Err(error) = ensure_license_feature(&license, "managed-node-runtime") {
-        fail_stage1(
-            &base_dir,
-            &mut progress,
-            InstallStep::ValidateLicense,
-            &error.to_string(),
-        )?;
-        return Err(error);
-    }
-
-    if let Err(error) = ensure_install_mode_allowed(&license, &install_mode) {
-        fail_stage1(
-            &base_dir,
-            &mut progress,
-            InstallStep::ValidateLicense,
-            &error.to_string(),
-        )?;
-        return Err(error);
-    }
-
     run_step(
         &base_dir,
         &mut progress,
@@ -720,24 +700,6 @@ fn run_step<T>(
             Err(error)
         }
     }
-}
-
-fn fail_stage1(
-    base_dir: &Path,
-    progress: &mut Stage1ProgressState,
-    step: InstallStep,
-    message: &str,
-) -> anyhow::Result<()> {
-    append_install_log(
-        base_dir,
-        &format!("安装中断：{}。{}", step_title(step), message),
-    )?;
-    progress.phase = Stage1Phase::Failed;
-    progress.current_step = Some(step);
-    progress.failed_step = Some(step);
-    progress.message = Some(message.to_string());
-    progress.updated_at = Utc::now().to_rfc3339();
-    write_stage1_progress(base_dir, progress)
 }
 
 fn update_step_message(base_dir: &Path, step: InstallStep, message: &str) -> anyhow::Result<()> {
@@ -1503,7 +1465,7 @@ fn step_title(step: InstallStep) -> &'static str {
 fn step_description(step: InstallStep) -> &'static str {
     match step {
         InstallStep::LoadManifest => "读取工具包和制品清单",
-        InstallStep::ValidateLicense => "校验离线激活码、授权文件和功能范围",
+        InstallStep::ValidateLicense => "校验离线激活码、授权文件、授权等级和有效期",
         InstallStep::CheckEnvironment => "确认当前系统满足安装前提",
         InstallStep::SelectInstallMode => "确认本地、远程或 npm 安装模式",
         InstallStep::ResolveOpenClawVersion => "选出当前要安装的 OpenClaw 版本",

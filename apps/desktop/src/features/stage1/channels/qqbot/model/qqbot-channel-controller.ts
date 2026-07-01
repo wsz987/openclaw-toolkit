@@ -2,12 +2,12 @@ import type { ChannelController } from '../../shared/model/channel-controller';
 import type {
   OpenClawPostInstallStatus,
   OpenClawQqbotChannelSetupResult,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 import { buildQqbotChannelSetupPayloadFromStatus } from './qqbot-channel';
 
 export type CreateQqbotChannelControllerOptions = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   loading: boolean;
   ensureReady: () => Promise<boolean>;

@@ -1,10 +1,10 @@
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { CheckIcon, ChevronRightIcon } from '../../../components/icons';
-import type { Stage1InstallResult } from '../model/types';
+import type { OpenClawInstallResult } from '../model/types';
 import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
 
-function InstallationSummaryGrid({ result }: { result: Stage1InstallResult }) {
+function InstallationSummaryGrid({ result }: { result: OpenClawInstallResult }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
       <div className="bg-[hsl(var(--surface-soft))] border border-[hsl(var(--hairline))] p-4 rounded-lg flex flex-col gap-1">
@@ -36,7 +36,7 @@ function InstallationSummaryGrid({ result }: { result: Stage1InstallResult }) {
 }
 
 type PostInstallEntryViewProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   onContinue: () => void;
   onBack: () => void;
   title?: string;

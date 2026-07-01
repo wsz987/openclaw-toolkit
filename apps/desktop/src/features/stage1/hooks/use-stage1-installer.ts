@@ -39,10 +39,10 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   OpenClawStopResult,
-  Stage1Dashboard,
-  Stage1InstallLogTail,
-  Stage1InstallPayload,
-  Stage1InstallResult,
+  InstallDashboard,
+  InstallLogTail,
+  OpenClawInstallPayload,
+  OpenClawInstallResult,
   UninstallPlan,
   UninstallResult,
   VersionCatalogResult
@@ -88,7 +88,7 @@ function normalizePickedBaseDir(path: string) {
   return `${driveRoot[1].toUpperCase()}:\\${DEFAULT_TOOLKIT_INSTALL_DIR_NAME}`;
 }
 
-export function useStage1Installer(
+export function useOpenClawInstaller(
   initialBaseDir?: string | null,
   initialConfigPath?: string | null,
   initialShowPostInstallHome = false,
@@ -103,11 +103,11 @@ export function useStage1Installer(
   const [selectedVersion, setSelectedVersion] = useState('latest');
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [dashboard, setDashboard] = useState<Stage1Dashboard | null>(null);
+  const [dashboard, setDashboard] = useState<InstallDashboard | null>(null);
   const [versionCatalogLoading, setVersionCatalogLoading] = useState(false);
   const [versionCatalog, setVersionCatalog] = useState<VersionCatalogResult | null>(null);
-  const [result, setResult] = useState<Stage1InstallResult | null>(null);
-  const [installLogTail, setInstallLogTail] = useState<Stage1InstallLogTail | null>(null);
+  const [result, setResult] = useState<OpenClawInstallResult | null>(null);
+  const [installLogTail, setInstallLogTail] = useState<InstallLogTail | null>(null);
   const [postInstallStatus, setPostInstallStatus] = useState<OpenClawPostInstallStatus | null>(null);
   const [postInstallLoading, setPostInstallLoading] = useState(false);
   const [providerSetupLoading, setProviderSetupLoading] = useState(false);
@@ -157,7 +157,7 @@ export function useStage1Installer(
   const uninstallPlanRequestGuard = useLatestRequestGuard();
   const uninstallExecuteRequestGuard = useLatestRequestGuard();
 
-  const payload = useMemo<Stage1InstallPayload>(
+  const payload = useMemo<OpenClawInstallPayload>(
     () => ({
       baseDir,
       licenseKey,
@@ -207,7 +207,7 @@ export function useStage1Installer(
     }
   }
 
-  async function loadDashboard(input: Stage1InstallPayload) {
+  async function loadDashboard(input: OpenClawInstallPayload) {
     const requestId = dashboardRequestGuard.begin();
     setError(null);
     setDashboardLoading(true);
@@ -1096,9 +1096,11 @@ export function useStage1Installer(
   };
 }
 
-export type Stage1InstallerController = ReturnType<typeof useStage1Installer>;
+export const useStage1Installer = useOpenClawInstaller;
+export type OpenClawInstallerController = ReturnType<typeof useOpenClawInstaller>;
+export type Stage1InstallerController = OpenClawInstallerController;
 
-export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): Stage1InstallResult {
+export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): OpenClawInstallResult {
   return {
     workflowId: record.installationId,
     installationId: record.installationId,

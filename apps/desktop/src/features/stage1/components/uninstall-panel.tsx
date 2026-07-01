@@ -29,12 +29,12 @@ import { Input } from '../../../components/ui/input';
 import type {
   UninstallDeletionTarget,
   UninstallPlan,
-  Stage1InstallResult,
+  OpenClawInstallResult,
   UninstallResult
 } from '../model/types';
 
 type UninstallPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   plan: UninstallPlan | null;
   planLoading: boolean;
   executing: boolean;

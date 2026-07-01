@@ -132,8 +132,8 @@ All new license APIs use a normalized envelope:
     "license": {
       "licenseId": "lic-...",
       "companyName": "Example Co",
-      "tier": "stage-1",
-      "features": ["offline-install", "managed-node-runtime"],
+      "tier": "basic",
+      "features": [],
       "expiresAt": null,
       "status": "active",
       "maxActivations": null,

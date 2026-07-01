@@ -1,10 +1,10 @@
 import { CheckIcon } from '../../../components/icons';
 import { masterPhases } from '../model/graph';
-import type { Stage1Phase } from '../model/types';
+import type { InstallPhase } from '../model/types';
 import type { InstallerWizardStep } from '../model/app-flow';
 
 type Props = {
-  phase: Stage1Phase;
+  phase: InstallPhase;
   wizardStep: InstallerWizardStep;
   onStepSelect: (index: InstallerWizardStep) => void;
   layout?: 'horizontal' | 'vertical';

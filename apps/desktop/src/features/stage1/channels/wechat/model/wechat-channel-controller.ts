@@ -1,9 +1,9 @@
 import type { ChannelController } from '../../shared/model/channel-controller';
-import type { OpenClawPostInstallStatus, Stage1InstallResult } from '../../../model/types';
+import type { OpenClawPostInstallStatus, OpenClawInstallResult } from '../../../model/types';
 import { setWeixinChannelEnabled } from '../../../api/stage1-api';
 
 type CreateWechatChannelControllerOptions = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   loading: boolean;
   ensureReady: () => Promise<boolean>;

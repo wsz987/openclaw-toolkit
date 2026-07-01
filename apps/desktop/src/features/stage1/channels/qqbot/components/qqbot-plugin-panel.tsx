@@ -7,7 +7,7 @@ import type {
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   OpenClawQqbotChannelSetupResult,
-  Stage1InstallResult
+  OpenClawInstallResult
 } from '../../../model/types';
 import { buildQqbotChannelSetupPayload, createQqbotChannelFormState, resolveQqbotChannel } from '../model/qqbot-channel';
 import { getQqbotConsoleLinks, QQBOT_TROUBLESHOOTING } from '../model/qqbot-docs';
@@ -16,7 +16,7 @@ import { QqbotDocLinksCard } from './qqbot-doc-links-card';
 import { QqbotHelpDialog } from './qqbot-help-dialog';
 
 export type QqbotPluginPanelProps = {
-  result: Stage1InstallResult;
+  result: OpenClawInstallResult;
   status: OpenClawPostInstallStatus | null;
   statusLoading: boolean;
   qqbotSetupLoading: boolean;

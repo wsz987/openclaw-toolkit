@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -35,6 +36,7 @@
     "@tauri-apps/cli": "^2.5.0",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
-    "tailwindcss": "^4.3.0"
+    "tailwindcss": "^4.3.0",
+    "vitest": "^3.2.0"
   }
 }

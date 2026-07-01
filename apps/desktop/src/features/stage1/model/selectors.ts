@@ -1,25 +1,25 @@
 import { STEP3_SPLIT_INDEX, stage1Steps, stepDiagnosticsMap } from './graph';
 import type { InstallerWizardStep } from './app-flow';
 import type {
+  InstallCheckState,
+  InstallDashboard,
+  InstallDiagnosticsInfo,
+  InstallEnvironmentCheck,
+  InstallPhase,
   InstallStep,
-  Stage1CheckState,
-  Stage1Dashboard,
-  Stage1DiagnosticsInfo,
-  Stage1EnvironmentCheck,
-  Stage1Phase,
-  Stage1StepSnapshot,
+  InstallStepSnapshot,
   VersionCatalogOption,
   VersionCatalogResult
 } from './types';
 
-export function createPendingStepProgress(): Stage1StepSnapshot[] {
+export function createPendingStepProgress(): InstallStepSnapshot[] {
   return stage1Steps.map((step) => ({
     ...step,
     state: 'pending'
   }));
 }
 
-export function getStepChecks(environmentItems: Stage1EnvironmentCheck[], ids: string[]) {
+export function getStepChecks(environmentItems: InstallEnvironmentCheck[], ids: string[]) {
   return environmentItems.filter((check) => ids.includes(check.id));
 }
 
@@ -34,7 +34,7 @@ export function isVersionListReady(versionCatalog: VersionCatalogResult | null) 
   return Boolean(versionCatalog?.sourceReady && versionCatalog.options.length > 0);
 }
 
-export function getSystemOpenClaw(dashboard: Stage1Dashboard | null): Stage1Dashboard['systemOpenclaw'] {
+export function getSystemOpenClaw(dashboard: InstallDashboard | null): InstallDashboard['systemOpenclaw'] {
   return dashboard?.systemOpenclaw ?? {
     detected: false,
     executable: null,
@@ -44,9 +44,9 @@ export function getSystemOpenClaw(dashboard: Stage1Dashboard | null): Stage1Dash
 }
 
 export function getInstallPlan(
-  dashboard: Stage1Dashboard | null,
+  dashboard: InstallDashboard | null,
   selectedVersionOption: VersionCatalogOption | null
-): Stage1Dashboard['installPlan'] {
+): InstallDashboard['installPlan'] {
   return dashboard?.installPlan ?? {
     targetOpenclawVersion: selectedVersionOption?.actualVersion ?? dashboard?.openclawVersion ?? null,
     targetNodeVersion: dashboard?.nodeVersion ?? null,
@@ -68,33 +68,33 @@ export function getInstallActionLabel(action: string) {
 }
 
 export function getConfirmationDescription(
-  systemOpenclaw: Stage1Dashboard['systemOpenclaw'],
+  systemOpenclaw: InstallDashboard['systemOpenclaw'],
   installActionLabel: string
 ) {
   return '检测到您系统已安装 OpenClaw。为避免运行冲突，本工具将为您部署在完全隔离的专属受管目录中。';
 }
 
 export function getConfirmationTargetVersion(
-  installPlan: Stage1Dashboard['installPlan'],
-  dashboard: Stage1Dashboard | null
+  installPlan: InstallDashboard['installPlan'],
+  dashboard: InstallDashboard | null
 ) {
   return installPlan.targetOpenclawVersion ?? dashboard?.openclawVersion ?? '待解析';
 }
 
-export function getReadyCheckCount(environmentItems: Stage1EnvironmentCheck[]) {
+export function getReadyCheckCount(environmentItems: InstallEnvironmentCheck[]) {
   return environmentItems.filter((item) => item.state === 'ok').length;
 }
 
-export function getPhase(dashboard: Stage1Dashboard | null): Stage1Phase {
+export function getPhase(dashboard: InstallDashboard | null): InstallPhase {
   return dashboard?.phase ?? 'precheck';
 }
 
 export function buildDiagnosticsInfo(params: {
-  activeStep: Stage1StepSnapshot | undefined;
-  dashboard: Stage1Dashboard | null;
-  environmentItems: Stage1EnvironmentCheck[];
-  phase: Stage1Phase;
-}): Stage1DiagnosticsInfo | null {
+  activeStep: InstallStepSnapshot | undefined;
+  dashboard: InstallDashboard | null;
+  environmentItems: InstallEnvironmentCheck[];
+  phase: InstallPhase;
+}): InstallDiagnosticsInfo | null {
   const { activeStep, dashboard, environmentItems, phase } = params;
   const stepId = activeStep?.id || dashboard?.currentStep || dashboard?.failedStep || 'loadManifest';
   const diag = stepDiagnosticsMap[stepId];
@@ -103,7 +103,7 @@ export function buildDiagnosticsInfo(params: {
     return null;
   }
 
-  const envCheckStates = new Map<string, Stage1CheckState>();
+  const envCheckStates = new Map<string, InstallCheckState>();
   environmentItems.forEach((item) => {
     envCheckStates.set(item.id, item.state);
   });
@@ -128,7 +128,7 @@ export function buildDiagnosticsInfo(params: {
 }
 
 export function deriveWizardStepFromDashboard(
-  dashboard: Stage1Dashboard | null
+  dashboard: InstallDashboard | null
 ): InstallerWizardStep | null {
   if (!dashboard) {
     return null;

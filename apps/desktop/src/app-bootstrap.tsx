@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bootstrapAppState } from './features/stage1/api/stage1-api';
-import { Stage1InstallerApp } from './features/stage1/stage1-installer-app';
+import { OpenClawInstallerApp } from './features/stage1/stage1-installer-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import {
@@ -19,8 +19,8 @@ import { DebugFlowPanel } from './features/stage1/components/debug-flow-panel';
 import {
   canForceInstalledHome,
   getEffectiveBootstrapState,
-  readStage1DebugFlowState,
-  writeStage1DebugFlowState
+  readInstallerDebugFlowState,
+  writeInstallerDebugFlowState
 } from './features/stage1/model/debug-flow';
 
 export function AppBootstrap() {
@@ -29,7 +29,7 @@ export function AppBootstrap() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [recoveryAlertOpen, setRecoveryAlertOpen] = useState(true);
-  const [debugFlowState, setDebugFlowState] = useState(() => readStage1DebugFlowState());
+  const [debugFlowState, setDebugFlowState] = useState(() => readInstallerDebugFlowState());
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +61,7 @@ export function AppBootstrap() {
   }, [refreshKey]);
 
   useEffect(() => {
-    writeStage1DebugFlowState(debugFlowState);
+    writeInstallerDebugFlowState(debugFlowState);
   }, [debugFlowState]);
 
   function handleEnterInstaller() {
@@ -173,7 +173,7 @@ export function AppBootstrap() {
             onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
           />
         ) : null}
-        <Stage1InstallerApp
+        <OpenClawInstallerApp
           bootstrapState={null}
           initialBaseDir={
             effectiveState?.settings.lastSelectedBaseDir ??
@@ -216,7 +216,7 @@ export function AppBootstrap() {
           onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
         />
       ) : null}
-      <Stage1InstallerApp
+      <OpenClawInstallerApp
         bootstrapState={effectiveState}
         initialWizardStep={debugFlowState.installerStep}
         onExitInstalledHome={() => setRefreshKey((value) => value + 1)}

@@ -10,22 +10,33 @@ use crate::core::workflow::{
 };
 
 #[tauri::command]
+pub async fn inspect_install_dashboard_command(
+    input: Stage1InstallInput,
+) -> Result<Stage1Dashboard, String> {
+    inspect_install_dashboard("inspect_install_dashboard_command", input).await
+}
+
+#[tauri::command]
 pub async fn inspect_stage1_dashboard_command(
+    input: Stage1InstallInput,
+) -> Result<Stage1Dashboard, String> {
+    inspect_install_dashboard("inspect_stage1_dashboard_command", input).await
+}
+
+async fn inspect_install_dashboard(
+    command_name: &'static str,
     input: Stage1InstallInput,
 ) -> Result<Stage1Dashboard, String> {
     tauri::async_runtime::spawn_blocking(move || inspect_stage1_dashboard(input))
         .await
         .map_err(|error| {
             let rendered = error.to_string();
-            eprintln!(
-                "inspect_stage1_dashboard_command join failed:\n{}",
-                rendered
-            );
+            eprintln!("{command_name} join failed:\n{rendered}");
             rendered
         })?
         .map_err(|error| {
             let rendered = render_error_chain(&error);
-            eprintln!("inspect_stage1_dashboard_command failed:\n{}", rendered);
+            eprintln!("{command_name} failed:\n{rendered}");
             rendered
         })
 }
@@ -49,25 +60,60 @@ pub async fn inspect_version_catalog_command(
 }
 
 #[tauri::command]
+pub async fn start_openclaw_install(
+    input: Stage1InstallInput,
+) -> Result<Stage1InstallResult, String> {
+    start_install("start_openclaw_install", input).await
+}
+
+#[tauri::command]
 pub async fn start_stage1_install(
+    input: Stage1InstallInput,
+) -> Result<Stage1InstallResult, String> {
+    start_install("start_stage1_install", input).await
+}
+
+async fn start_install(
+    command_name: &'static str,
     input: Stage1InstallInput,
 ) -> Result<Stage1InstallResult, String> {
     tauri::async_runtime::spawn_blocking(move || run_stage1_install(input))
         .await
         .map_err(|error| {
             let rendered = error.to_string();
-            eprintln!("start_stage1_install join failed:\n{}", rendered);
+            eprintln!("{command_name} join failed:\n{rendered}");
             rendered
         })?
         .map_err(|error| {
             let rendered = render_error_chain(&error);
-            eprintln!("start_stage1_install failed:\n{}", rendered);
+            eprintln!("{command_name} failed:\n{rendered}");
             rendered
         })
 }
 
 #[tauri::command]
+pub async fn read_install_log_tail_command(
+    base_dir: String,
+    max_lines: Option<usize>,
+) -> Result<Stage1InstallLogTail, String> {
+    read_install_log_tail("read_install_log_tail_command", base_dir, max_lines).await
+}
+
+#[tauri::command]
 pub async fn read_stage1_install_log_tail_command(
+    base_dir: String,
+    max_lines: Option<usize>,
+) -> Result<Stage1InstallLogTail, String> {
+    read_install_log_tail(
+        "read_stage1_install_log_tail_command",
+        base_dir,
+        max_lines,
+    )
+    .await
+}
+
+async fn read_install_log_tail(
+    command_name: &'static str,
     base_dir: String,
     max_lines: Option<usize>,
 ) -> Result<Stage1InstallLogTail, String> {
@@ -77,15 +123,12 @@ pub async fn read_stage1_install_log_tail_command(
     .await
     .map_err(|error| {
         let rendered = error.to_string();
-        eprintln!(
-            "read_stage1_install_log_tail_command join failed:\n{}",
-            rendered
-        );
+        eprintln!("{command_name} join failed:\n{rendered}");
         rendered
     })?
     .map_err(|error| {
         let rendered = render_error_chain(&error);
-        eprintln!("read_stage1_install_log_tail_command failed:\n{}", rendered);
+        eprintln!("{command_name} failed:\n{rendered}");
         rendered
     })
 }

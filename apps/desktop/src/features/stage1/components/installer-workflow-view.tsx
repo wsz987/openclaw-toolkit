@@ -1,10 +1,10 @@
 import { findStepTitle } from '../model/selectors';
 import type { InstallerWorkflowScreen } from '../model/app-flow';
-import type { Stage1InstallerController } from '../hooks/use-stage1-installer';
+import type { OpenClawInstallerController } from '../hooks/use-stage1-installer';
 import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './stage1-views';
 
 type InstallerWorkflowViewProps = {
-  controller: Stage1InstallerController;
+  controller: OpenClawInstallerController;
   screen: InstallerWorkflowScreen | 'install-failed';
 };
 
