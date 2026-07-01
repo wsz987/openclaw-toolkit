@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DEFAULT_LICENSE_FEATURES } from '@/lib/license-input';
+import { DEFAULT_LICENSE_FEATURES, DEFAULT_LICENSE_TIER } from '@/lib/license-input';
 import { issueLicenseKeyAction } from './actions';
 import type { listCompaniesWithLicenseCounts } from '@/lib/license-repository';
 
@@ -33,7 +33,7 @@ export function LicenseIssueForm({ companies }: { companies: CompanyRows }) {
               <Input name="companyName" placeholder="例如：杭州某某科技有限公司" />
             </Field>
             <Field label="授权等级">
-              <Input name="tier" defaultValue="stage-1" />
+              <Input name="tier" defaultValue={DEFAULT_LICENSE_TIER} />
             </Field>
           </div>
 
@@ -53,6 +53,7 @@ export function LicenseIssueForm({ companies }: { companies: CompanyRows }) {
             <Textarea
               name="features"
               defaultValue={DEFAULT_LICENSE_FEATURES.join('\n')}
+              placeholder="额外授权能力；基础安装能力无需填写"
               className="min-h-36 font-mono"
             />
           </Field>
@@ -65,23 +66,6 @@ export function LicenseIssueForm({ companies }: { companies: CompanyRows }) {
               <Input name="note" placeholder="合同、交付批次或内部说明" />
             </Field>
           </div>
-
-          <details className="rounded-md border border-neutral-200 bg-neutral-50 p-4">
-            <summary className="cursor-pointer text-sm font-medium text-neutral-800">离线兜底授权</summary>
-            <div className="mt-4 grid gap-3">
-              <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                <input name="issueOfflineLicense" type="checkbox" className="size-4 rounded border-neutral-300" />
-                同时生成离线 license.dat
-              </label>
-              <Field label="Ed25519 签名私钥 PEM">
-                <Textarea
-                  name="offlineSigningPrivateKeyPem"
-                  placeholder="仅用于本次签名，不会写入数据库"
-                  className="min-h-32 font-mono"
-                />
-              </Field>
-            </div>
-          </details>
 
           <div>
             <Button type="submit">生成密钥</Button>

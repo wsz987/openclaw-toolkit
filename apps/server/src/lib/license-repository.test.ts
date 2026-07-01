@@ -31,10 +31,9 @@ describe('license-repository', () => {
     const { issueLicenseKey, validateLicenseKey } = await loadRepository();
     const issued = await issueLicenseKey({
       companyName: 'Example Co',
-      tier: 'stage-1',
-      features: ['offline-install', 'managed-node-runtime'],
-      maxActivations: null,
-      issueOfflineLicense: false
+      tier: 'basic',
+      features: [],
+      maxActivations: null
     });
 
     const result = await validateLicenseKey({
@@ -60,10 +59,9 @@ describe('license-repository', () => {
     const { issueLicenseKey, validateLicenseKey } = await loadRepository();
     const issued = await issueLicenseKey({
       companyName: 'Limited Co',
-      tier: 'stage-1',
-      features: ['offline-install'],
-      maxActivations: 1,
-      issueOfflineLicense: false
+      tier: 'basic',
+      features: [],
+      maxActivations: 1
     });
 
     const first = await validateLicenseKey({ activationCode: issued.activationCode, machineId: 'machine-a' });
@@ -80,21 +78,20 @@ describe('license-repository', () => {
     });
   });
 
-  it('auto-applies license migrations when an existing update database has no license tables', async () => {
+  it('does not rerun regenerated migrations when the schema already exists without migration bookkeeping', async () => {
     const dbPath = process.env.SQLITE_DB_PATH;
     if (!dbPath) {
       throw new Error('SQLITE_DB_PATH is not set');
     }
     rmSync(dbPath, { force: true });
-    migrateOne(dbPath, '0000_long_gorilla_man.sql');
+    migrateAll(dbPath);
 
     const { issueLicenseKey, validateLicenseKey } = await loadRepository();
     const issued = await issueLicenseKey({
       companyName: 'Migrated Co',
-      tier: 'stage-1',
-      features: ['offline-install'],
-      maxActivations: null,
-      issueOfflineLicense: false
+      tier: 'basic',
+      features: [],
+      maxActivations: null
     });
     const result = await validateLicenseKey({ activationCode: issued.activationCode, machineId: 'machine-a' });
 
@@ -108,12 +105,6 @@ function migrateAll(dbPath: string) {
   for (const migration of readdirSync(join(process.cwd(), 'drizzle')).filter((name) => name.endsWith('.sql')).sort()) {
     execMigration(db, migration);
   }
-  db.close();
-}
-
-function migrateOne(dbPath: string, migration: string) {
-  const db = new Database(dbPath);
-  execMigration(db, migration);
   db.close();
 }
 

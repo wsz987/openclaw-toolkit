@@ -36,14 +36,9 @@ const DEFAULT_CODE_LENGTH = 12;
 const CODE_GROUP_SIZE = 4;
 const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
-const DEFAULT_FEATURES = [
-  'offline-install',
-  'remote-artifact-install',
-  'official-npm-install',
-  'managed-node-runtime',
-  'local-skills',
-  'browser-control'
-];
+const DEFAULT_TIER = 'basic';
+const DEFAULT_FEATURES = [];
+const VALID_TIERS = new Set(['basic', 'pro', 'enterprise']);
 
 const DEFAULT_CUSTOMER = 'OpenClaw Customer';
 const COMPACT_DURATION_PATTERN = /^(\d+)([dwmy])$/i;
@@ -62,7 +57,7 @@ function usage() {
 
 Usage:
   node scripts/license.mjs generate-keys [--out-dir license-keys] [--install-public-key]
-  node scripts/license.mjs issue --tier <stage-1|stage-2> (--expires-in <duration> | --expires-at <YYYY-MM-DD>) [options]
+  node scripts/license.mjs issue [--tier <basic|pro|enterprise>] (--expires-in <duration> | --expires-at <YYYY-MM-DD>) [options]
 
 Commands:
   generate-keys              Create internal Ed25519 signing private key and client DER public key.
@@ -156,12 +151,6 @@ function normalizeFeatures(options) {
     if (normalized) {
       features.add(normalized);
     }
-  }
-
-  if (options.tier === 'stage-2') {
-    features.add('cloud-providers');
-    features.add('provider-verification');
-    features.add('feishu-plugin');
   }
 
   return [...features].sort();
@@ -386,10 +375,10 @@ function generateKeys(options) {
 }
 
 function issueLicense(options) {
-  assertRequired(options, ['tier']);
+  options.tier = String(options.tier ?? DEFAULT_TIER).trim();
 
-  if (!['stage-1', 'stage-2'].includes(options.tier)) {
-    throw new Error('--tier must be stage-1 or stage-2');
+  if (!VALID_TIERS.has(options.tier)) {
+    throw new Error('--tier must be basic, pro, or enterprise');
   }
 
   const customer = String(options.customer ?? DEFAULT_CUSTOMER).trim();

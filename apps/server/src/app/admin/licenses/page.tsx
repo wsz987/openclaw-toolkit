@@ -10,7 +10,6 @@ type PageProps = {
     issuedCode?: string;
     licenseId?: string;
     company?: string;
-    offlinePath?: string;
   }>;
 };
 
@@ -35,7 +34,7 @@ export default async function LicensesAdminPage({ searchParams }: PageProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Licenses</p>
           <h1 className="text-3xl font-semibold tracking-tight">激活码管理</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-600">
-            按公司分组签发联网激活码，默认不限制激活数量；离线 license.dat 作为断网兜底材料保留。
+            按公司分组签发联网激活码，默认不限制激活数量。
           </p>
         </div>
       </header>
@@ -49,7 +48,6 @@ export default async function LicensesAdminPage({ searchParams }: PageProps) {
           <div className="font-semibold">密钥已生成：{params.issuedCode}</div>
           <div className="mt-1 text-emerald-800">
             公司：{params.company ?? '-'}；License ID：{params.licenseId ?? '-'}
-            {params.offlinePath ? `；离线兜底文件：${params.offlinePath}` : ''}
           </div>
         </div>
       ) : null}

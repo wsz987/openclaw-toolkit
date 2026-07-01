@@ -3,9 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { getDb } from '@/db/client';
 import { companies, licenseActivationEvents, licenseKeys } from '@/db/schema';
 import { activationCodeHash, activationCodePreview, generateActivationCode } from './license-code';
-import { buildSignedLicenseFile } from './license-signing';
 import type { CreateCompanyInput, CreateLicenseKeyInput, ValidateLicenseKeyInput } from './license-input';
-import type { SignedLicenseFile } from './license-signing';
 
 export type LicenseValidationResult = {
   valid: boolean;
@@ -116,24 +114,6 @@ export async function issueLicenseKey(input: CreateLicenseKeyInput) {
   const hash = activationCodeHash(activationCode);
   const licenseId = `lic-${randomUUID()}`;
   const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
-  let offlineLicense: SignedLicenseFile | null = null;
-
-  if (input.issueOfflineLicense) {
-    if (!input.offlineSigningPrivateKeyPem) {
-      throw new Error('生成离线兜底授权需要提供签名私钥');
-    }
-    const now = Math.floor(Date.now() / 1000);
-    offlineLicense = buildSignedLicenseFile({
-      licenseId,
-      customer: company.name,
-      tier: input.tier,
-      expiresAt: expiresAt?.toISOString() ?? null,
-      features: input.features,
-      activationHash: hash,
-      iat: now,
-      exp: expiresAt ? Math.floor(expiresAt.getTime() / 1000) : undefined
-    }, input.offlineSigningPrivateKeyPem);
-  }
 
   const [row] = getDb()
     .insert(licenseKeys)
@@ -148,7 +128,6 @@ export async function issueLicenseKey(input: CreateLicenseKeyInput) {
       expiresAt,
       status: 'active',
       maxActivations: input.maxActivations ?? null,
-      offlineLicenseJson: offlineLicense ? JSON.stringify(offlineLicense) : null,
       note: nullable(input.note),
       issuedBy: nullable(input.issuedBy)
     })
@@ -158,8 +137,7 @@ export async function issueLicenseKey(input: CreateLicenseKeyInput) {
   return {
     licenseKey: row,
     company,
-    activationCode,
-    offlineLicense
+    activationCode
   };
 }
 
@@ -180,8 +158,7 @@ export async function listLicenseKeys() {
       note: licenseKeys.note,
       issuedBy: licenseKeys.issuedBy,
       issuedAt: licenseKeys.issuedAt,
-      lastValidatedAt: licenseKeys.lastValidatedAt,
-      hasOfflineLicense: licenseKeys.offlineLicenseJson
+      lastValidatedAt: licenseKeys.lastValidatedAt
     })
     .from(licenseKeys)
     .innerJoin(companies, eq(companies.id, licenseKeys.companyId))
@@ -193,8 +170,7 @@ export async function listLicenseKeys() {
     features: parseFeatures(row.featuresJson),
     expiresAt: toIso(row.expiresAt),
     issuedAt: row.issuedAt.toISOString(),
-    lastValidatedAt: toIso(row.lastValidatedAt),
-    hasOfflineLicense: Boolean(row.hasOfflineLicense)
+    lastValidatedAt: toIso(row.lastValidatedAt)
   }));
 }
 

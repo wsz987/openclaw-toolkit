@@ -65,7 +65,6 @@ export function LicenseKeyTable({ rows }: { rows: LicenseRows }) {
                 <th className="px-5 py-3">状态</th>
                 <th className="px-5 py-3">激活数</th>
                 <th className="px-5 py-3">过期</th>
-                <th className="px-5 py-3">离线兜底</th>
                 <th className="px-5 py-3">操作</th>
               </tr>
             </thead>
@@ -83,7 +82,6 @@ export function LicenseKeyTable({ rows }: { rows: LicenseRows }) {
                     {row.activationCount} / {row.maxActivations ?? '不限'}
                   </td>
                   <td className="px-5 py-3 text-neutral-600">{row.expiresAt ?? '长期'}</td>
-                  <td className="px-5 py-3 text-neutral-600">{row.hasOfflineLicense ? '已生成' : '-'}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-2">
                       <StatusButton id={row.id} status={row.status === 'active' ? 'disabled' : 'active'}>

@@ -1,11 +1,9 @@
 'use server';
 
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { issueLicenseKey, setLicenseKeyStatus } from '@/lib/license-repository';
-import { DEFAULT_LICENSE_FEATURES } from '@/lib/license-input';
+import { DEFAULT_LICENSE_FEATURES, DEFAULT_LICENSE_TIER } from '@/lib/license-input';
 
 function stringValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -15,10 +13,6 @@ function stringValue(formData: FormData, key: string) {
 function optionalString(formData: FormData, key: string) {
   const value = stringValue(formData, key);
   return value || null;
-}
-
-function booleanValue(formData: FormData, key: string) {
-  return formData.get(key) === 'on' || formData.get(key) === 'true';
 }
 
 function dateValue(formData: FormData, key: string) {
@@ -46,31 +40,18 @@ function numberValue(formData: FormData, key: string) {
 export async function issueLicenseKeyAction(formData: FormData) {
   const companyId = optionalString(formData, 'companyId');
   const companyName = optionalString(formData, 'companyName');
-  const issueOfflineLicense = booleanValue(formData, 'issueOfflineLicense');
-  const offlineSigningPrivateKeyPem = stringValue(formData, 'offlineSigningPrivateKeyPem');
 
   const issued = await issueLicenseKey({
     companyId: companyId ?? undefined,
     companyName: companyName ?? undefined,
-    tier: stringValue(formData, 'tier') || 'stage-1',
+    tier: stringValue(formData, 'tier') || DEFAULT_LICENSE_TIER,
     features: featuresValue(formData),
     expiresAt: dateValue(formData, 'expiresAt'),
     maxActivations: numberValue(formData, 'maxActivations'),
     activationCode: optionalString(formData, 'activationCode') ?? undefined,
     note: optionalString(formData, 'note'),
-    issuedBy: optionalString(formData, 'issuedBy'),
-    issueOfflineLicense,
-    offlineSigningPrivateKeyPem: offlineSigningPrivateKeyPem || undefined
+    issuedBy: optionalString(formData, 'issuedBy')
   });
-
-  let offlinePath: string | null = null;
-  if (issued.offlineLicense) {
-    const bundleDir = resolve(process.cwd(), 'data', 'license-bundles', issued.licenseKey.licenseId);
-    mkdirSync(bundleDir, { recursive: true });
-    writeFileSync(resolve(bundleDir, 'activation-code.txt'), `${issued.activationCode}\n`);
-    writeFileSync(resolve(bundleDir, 'license.dat'), `${JSON.stringify(issued.offlineLicense, null, 2)}\n`);
-    offlinePath = bundleDir;
-  }
 
   revalidatePath('/admin/licenses');
   const params = new URLSearchParams({
@@ -78,9 +59,6 @@ export async function issueLicenseKeyAction(formData: FormData) {
     licenseId: issued.licenseKey.licenseId,
     company: issued.company.name
   });
-  if (offlinePath) {
-    params.set('offlinePath', offlinePath);
-  }
   redirect(`/admin/licenses?${params.toString()}`);
 }
 

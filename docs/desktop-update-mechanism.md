@@ -205,7 +205,6 @@ When no update is available, the server returns `204 No Content`.
 - `expiresAt` (`null` means no expiration limit)
 - `maxActivations` (`null` means unlimited)
 - `activationCount`
-- `offlineLicenseJson`
 
 `license_activation_events` stores validation attempts with hashed machine identifiers and app versions.
 

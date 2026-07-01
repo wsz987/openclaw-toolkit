@@ -270,11 +270,18 @@ load settings
 - 生成端使用 Ed25519 私钥签名 `license.dat`
 - 客户端 Rust Core 内置 Ed25519 DER 公钥
 - Rust Core 离线验签并校验短码与 `activationHash` 绑定关系
-- license payload 决定 tier、features 和过期时间
+- license payload 决定 tier、额外 features 和过期时间
 - 当前签发端先使用 `scripts/license.mjs` 内部 CLI，后续可平移为带审计和 KMS/HSM 的授权后台
 
-Stage 1 features：
+授权等级：
 
+- `basic`：基础产品授权，包含默认安装和管理能力。
+- `pro`：预留高级授权等级。
+- `enterprise`：预留企业授权等级。
+
+基础能力默认开放，不写入 features：
+
+- feishu-plugin
 - offline-install
 - remote-artifact-install
 - official-npm-install
@@ -282,11 +289,7 @@ Stage 1 features：
 - local-skills
 - browser-control
 
-Stage 2 features：
-
-- cloud-providers
-- provider-verification
-- feishu-plugin
+`features` 只记录额外授权能力，例如后续企业策略、审计、私有模型网关或高级 provider 管理。
 
 ## 权限设计
 

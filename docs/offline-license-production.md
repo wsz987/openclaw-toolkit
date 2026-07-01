@@ -39,7 +39,7 @@ pnpm license:init-signing-keys -- --install-public-key
 ```bash
 pnpm license:issue-key -- \
   --customer "Acme Corp" \
-  --tier stage-1 \
+  --tier basic \
   --expires-in 1y
 ```
 
@@ -59,7 +59,7 @@ license.dat           放进客户专属离线包的授权文件位置，开发�
 
 ```bash
 pnpm license:issue-key -- \
-  --tier stage-1 \
+  --tier basic \
   --expires-in 1y \
   --install-license-file
 ```
@@ -72,16 +72,9 @@ pnpm license:issue-key -- \
 {
   "licenseId": "lic-...",
   "customer": "Acme Corp",
-  "tier": "stage-1",
+  "tier": "basic",
   "expiresAt": "2027-12-31",
-  "features": [
-    "offline-install",
-    "remote-artifact-install",
-    "official-npm-install",
-    "managed-node-runtime",
-    "local-skills",
-    "browser-control"
-  ],
+  "features": [],
   "activationHash": "sha256:...",
   "iat": 1780000000,
   "exp": 1800000000
@@ -90,14 +83,17 @@ pnpm license:issue-key -- \
 
 `activationHash` 绑定客户输入的短激活码。客户端会先验 `license.dat` 签名，再比较短码哈希，避免用户随便填一个 UUID 也能通过。
 
-当前 OpenClaw 安装流程会使用这些功能开关：
+`tier` 表示客户购买的授权等级；`features` 只表示额外授权能力。基础安装能力默认开放，不再写入 features，也不作为授权 gating 条件：
 
-- `managed-node-runtime`：Stage 1 安装主流程必须包含。
-- `offline-install`：安装模式为 `local` 时必须包含。
-- `remote-artifact-install`：安装模式为 `remote` 时必须包含。
-- `official-npm-install`：安装模式为 `npm` 时必须包含。
+- `offline-install`
+- `remote-artifact-install`
+- `official-npm-install`
+- `managed-node-runtime`
+- `local-skills`
+- `browser-control`
+- `feishu-plugin`
 
-安装完成后的插件安装不再校验授权。离线授权只在 OpenClaw 主安装流程中校验。
+安装模式、插件安装和浏览器控制由用户在界面中手动触发。离线授权只负责验证授权有效性、等级、额外能力和过期时间。
 
 ## 内部签发 CLI
 
@@ -130,11 +126,11 @@ license-keys/openclaw-license-public.der
 
 `licenseId` 仍然是 `lic-<uuid>`，用于后台记录、重签、撤销和审计。它不是客户激活码。单独 UUID 无法离线防伪，客户端必须验证签名后的授权文件。
 
-签发 Stage 1 授权：
+签发基础授权：
 
 ```bash
 pnpm license:issue-key -- \
-  --tier stage-1 \
+  --tier basic \
   --expires-in 1y
 ```
 
@@ -157,7 +153,7 @@ License bundle: license-keys/issued/lic-...
 
 ```bash
 pnpm license:issue-key -- \
-  --tier stage-1 \
+  --tier basic \
   --expires-in 1y \
   --install-license-file
 ```
@@ -165,7 +161,7 @@ pnpm license:issue-key -- \
 常用参数：
 
 - `--customer`：可选客户名称，会写入 license payload。
-- `--tier`：授权等级。当前支持 `stage-1` 和 `stage-2`。
+- `--tier`：授权等级。当前支持 `basic`、`pro` 和 `enterprise`，默认是 `basic`。
 - `--expires-in`：授权有效期，从签发当天按日历日期计算。支持 `30d`、`2w`、`1m`、`1y`，也支持 ISO-8601 duration。
 - `--expires-at`：绝对过期日期，格式为 `YYYY-MM-DD`。`--expires-at` 和 `--expires-in` 二选一。
 - `--activation-code`：指定短码，适合重签或客服补发。
@@ -175,11 +171,12 @@ pnpm license:issue-key -- \
 - `--license-file`：额外写出 `license.dat` 到指定路径。
 - `--install-license-file`：复制 `license.dat` 到 `licenses/license.dat`。
 
-签发 Stage 2 授权：
+签发带额外能力的企业授权：
 
 ```bash
 pnpm license:issue-key -- \
-  --tier stage-2 \
+  --tier enterprise \
+  --feature advanced-provider-management \
   --expires-in 1y
 ```
 
@@ -192,7 +189,7 @@ pnpm license:issue-key -- \
 - `license.dat` 签名是否正确；
 - 短激活码是否匹配 `license.dat`；
 - 是否过期；
-- 是否包含安装所需 features。
+- 授权等级和额外 features 是否满足需要。
 
 客户端目前不校验机器指纹，不记录激活次数，也不会联网扣次数。所以同一个未过期的授权包可以重复安装，也可以复制到另一台机器上使用。
 

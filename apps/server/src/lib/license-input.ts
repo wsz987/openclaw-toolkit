@@ -1,14 +1,7 @@
 import { z } from 'zod';
 
-export const DEFAULT_LICENSE_FEATURES = [
-  'offline-install',
-  'remote-artifact-install',
-  'official-npm-install',
-  'managed-node-runtime',
-  'local-skills',
-  'browser-control',
-  'feishu-plugin'
-];
+export const DEFAULT_LICENSE_TIER = 'basic';
+export const DEFAULT_LICENSE_FEATURES: string[] = [];
 
 export const createCompanySchema = z.object({
   name: z.string().trim().min(1),
@@ -20,15 +13,13 @@ export const createCompanySchema = z.object({
 export const createLicenseKeySchema = z.object({
   companyId: z.string().uuid().optional(),
   companyName: z.string().trim().min(1).optional(),
-  tier: z.string().trim().min(1).default('stage-1'),
+  tier: z.string().trim().min(1).default(DEFAULT_LICENSE_TIER),
   features: z.array(z.string().trim().min(1)).default(DEFAULT_LICENSE_FEATURES),
   expiresAt: z.string().datetime().optional().nullable(),
   maxActivations: z.number().int().positive().optional().nullable(),
   activationCode: z.string().trim().optional(),
   note: z.string().trim().optional().nullable(),
-  issuedBy: z.string().trim().optional().nullable(),
-  issueOfflineLicense: z.boolean().default(false),
-  offlineSigningPrivateKeyPem: z.string().trim().optional()
+  issuedBy: z.string().trim().optional().nullable()
 }).refine((value) => Boolean(value.companyId || value.companyName), {
   message: 'companyId or companyName is required'
 });

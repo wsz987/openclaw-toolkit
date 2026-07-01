@@ -40,8 +40,7 @@ export async function POST(request: Request) {
         expiresAt: issued.licenseKey.expiresAt?.toISOString() ?? null,
         maxActivations: issued.licenseKey.maxActivations,
         activationCode: issued.activationCode,
-        activationCodePreview: issued.licenseKey.activationCodePreview,
-        offlineLicense: issued.offlineLicense
+        activationCodePreview: issued.licenseKey.activationCodePreview
       }
     }, '密钥已签发', { status: 201 });
   } catch (err) {
