@@ -1,11 +1,10 @@
 import { PostInstallEntryView } from './components/post-install-entry-view';
 import { InstallerWorkflowScreen } from './components/installer-workflow-screen';
 import { InstallerWorkflowView } from './components/installer-workflow-view';
-import { PostInstallHomeScreen } from './components/post-install-home-screen';
+import { DashboardApp } from '../dashboard/dashboard-app';
 import {
   isInstallerWorkflowScreen,
   isPostInstallScreen,
-  isRecoveredInstallationState,
   resolveInstallerScreen
 } from './model/app-flow';
 import { useOpenClawInstaller } from './hooks/use-openclaw-installer';
@@ -24,8 +23,6 @@ export function OpenClawInstallerApp({
   initialBaseDir,
   initialWizardStep
 }: OpenClawInstallerAppProps) {
-  const shouldOpenInstalledHomeDirectly = isRecoveredInstallationState(bootstrapState);
-
   const controller = useOpenClawInstaller(
     initialBaseDir ??
       bootstrapState?.settings.lastSelectedBaseDir ??
@@ -33,7 +30,7 @@ export function OpenClawInstallerApp({
       bootstrapState?.defaultBaseDir ??
       null,
     bootstrapState?.activeInstallation?.configPath ?? null,
-    shouldOpenInstalledHomeDirectly,
+    false,
     initialWizardStep
   );
 
@@ -46,9 +43,11 @@ export function OpenClawInstallerApp({
     wizardStep: controller.wizardStep
   });
 
-  if (isPostInstallScreen(screen)) {
+  // 安装完成进入"安装后首页"阶段：交由 Dashboard feature 接管，
+  // 传入当前控制器以保留安装结果（result），避免重新拉取状态的竞态。
+  if (isPostInstallScreen(screen) || controller.showPostInstallHome) {
     return (
-      <PostInstallHomeScreen
+      <DashboardApp
         bootstrapState={bootstrapState}
         controller={controller}
         onExitInstalledHome={onExitInstalledHome}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bootstrapAppState } from './features/installer/api/installer-api';
 import { OpenClawInstallerApp } from './features/installer/openclaw-installer-app';
+import { DashboardApp } from './features/dashboard/dashboard-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import {
@@ -14,7 +15,7 @@ import {
 } from './components/ui/alert-dialog';
 import { SpinnerIcon } from './components/icons';
 import type { AppBootstrapState } from './features/installer/model/types';
-import { hasMissingInstallationRecord } from './features/installer/model/app-flow';
+import { hasMissingInstallationRecord, isRecoveredInstallationState } from './features/installer/model/app-flow';
 import { DebugFlowPanel } from './features/installer/components/debug-flow-panel';
 import {
   canForceInstalledHome,
@@ -216,11 +217,18 @@ export function AppBootstrap() {
           onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
         />
       ) : null}
-      <OpenClawInstallerApp
-        bootstrapState={effectiveState}
-        initialWizardStep={debugFlowState.installerStep}
-        onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
-      />
+      {isRecoveredInstallationState(effectiveState) ? (
+        <DashboardApp
+          bootstrapState={effectiveState}
+          onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
+        />
+      ) : (
+        <OpenClawInstallerApp
+          bootstrapState={effectiveState}
+          initialWizardStep={debugFlowState.installerStep}
+          onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
+        />
+      )}
     </>
   );
 }
