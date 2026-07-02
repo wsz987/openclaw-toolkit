@@ -177,7 +177,7 @@ fn is_supported_license_tier(tier: &str) -> bool {
     matches!(tier, BASIC_TIER | PRO_TIER | ENTERPRISE_TIER)
 }
 
-fn validate_license_payload(license: &LicensePayload) -> anyhow::Result<()> {
+pub fn validate_license_payload(license: &LicensePayload) -> anyhow::Result<()> {
     if license.license_id.trim().is_empty() {
         anyhow::bail!("授权缺少 licenseId");
     }
@@ -204,7 +204,11 @@ fn ensure_not_expired(license: &LicensePayload) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let Some(expires_at_value) = license.expires_at.as_deref().filter(|value| !value.trim().is_empty()) else {
+    let Some(expires_at_value) = license
+        .expires_at
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+    else {
         return Ok(());
     };
 

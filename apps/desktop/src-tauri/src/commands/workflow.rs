@@ -104,12 +104,7 @@ pub async fn read_stage1_install_log_tail_command(
     base_dir: String,
     max_lines: Option<usize>,
 ) -> Result<Stage1InstallLogTail, String> {
-    read_install_log_tail(
-        "read_stage1_install_log_tail_command",
-        base_dir,
-        max_lines,
-    )
-    .await
+    read_install_log_tail("read_stage1_install_log_tail_command", base_dir, max_lines).await
 }
 
 async fn read_install_log_tail(

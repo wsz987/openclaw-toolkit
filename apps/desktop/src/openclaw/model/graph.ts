@@ -2,7 +2,7 @@ import type { InstallStep, MasterPhase, StepDiagnostic } from './types';
 
 export const installerSteps: Array<{ id: InstallStep; title: string; description: string }> = [
   { id: 'loadManifest', title: '加载 Manifest', description: '读取工具包和制品清单' },
-  { id: 'validateLicense', title: '验证授权', description: '校验离线激活码和功能范围' },
+  { id: 'validateLicense', title: '验证授权', description: '校验激活码和功能范围' },
   { id: 'checkEnvironment', title: '检查环境', description: '确认当前系统满足安装前提' },
   { id: 'selectInstallMode', title: '选择安装模式', description: '确认本地、远程或 npm 安装模式' },
   { id: 'resolveOpenClawVersion', title: '解析 OpenClaw 版本', description: '选出当前要安装的 OpenClaw 版本' },
@@ -57,10 +57,10 @@ export const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
     ]
   },
   validateLicense: {
-    title: '校验离线授权',
-    description: '通过安全签名校验，核对当前使用的产品密钥效期与核心能力范围...',
+    title: '校验授权激活',
+    description: '激活码有效性检测...',
     tasks: [
-      { label: '验证激活码与授权文件', key: 'license' },
+      { label: '验证激活码与授权状态', key: 'license' },
       { label: '核查是否支持受管 Node Runtime 能力', key: 'license' }
     ]
   },

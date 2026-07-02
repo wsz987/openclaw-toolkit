@@ -1,3 +1,4 @@
+pub mod activation;
 pub mod app_state;
 pub mod artifact;
 pub mod background_process;
@@ -17,6 +18,7 @@ pub mod qqbot;
 pub mod remote;
 pub mod runtime;
 pub mod runtime_host;
+pub mod service_endpoints;
 pub mod skills;
 pub mod status_events;
 pub mod status_watcher;

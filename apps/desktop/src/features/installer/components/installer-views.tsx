@@ -294,7 +294,7 @@ export function ConfigStepView({
 
             <div className="flex flex-col gap-4 mt-1">
               <SecretField
-                label="离线激活码"
+                label="激活码"
                 value={licenseKey}
                 onChange={onLicenseKeyChange}
                 placeholder="8F3K-29HD-Q7M2"
@@ -519,7 +519,7 @@ export function ProgressStageView({
       return '下载并安全安装 OpenClaw 执行所需的第三方核心算法依赖库。';
     }
     if (lbl.includes('授权') || lbl.includes('密钥') || lbl.includes('激活') || lbl.includes('license')) {
-      return '使用内置公钥在本机校验离线授权文件、激活码、效期和功能范围。';
+      return '激活码验证。';
     }
     if (lbl.includes('拉取') || lbl.includes('包') || lbl.includes('分发') || lbl.includes('下载')) {
       return '从安全节点获取主运行引擎程序，解压释放至工作目录。';

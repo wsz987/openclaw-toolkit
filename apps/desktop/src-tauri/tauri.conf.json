@@ -28,7 +28,7 @@
     "createUpdaterArtifacts": true,
     "resources": {
       "../../../artifacts": "artifacts",
-      "../../../licenses": "licenses"
+      "../../../licenses/license.dat": "licenses/license.dat"
     },
     "windows": {
       "nsis": {

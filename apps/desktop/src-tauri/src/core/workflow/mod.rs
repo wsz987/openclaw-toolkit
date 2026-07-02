@@ -8,6 +8,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
+    activation::{precheck_activation_code, verify_activation_code},
     app_state::{
         default_base_dir, derive_installation_id, prepare_installation_target,
         register_successful_install, remember_last_selected_base_dir,
@@ -15,7 +16,6 @@ use crate::core::{
     background_process::process_friendly_path_string,
     browser::configure_browser_runtime,
     environment::{validate_windows_environment, windows_environment_status},
-    license::verify_offline_license,
     manifest::{
         load_provider_catalog, load_toolkit_manifest, load_toolkit_settings,
         models::{InstalledManifest, ReleaseArtifact, ToolkitManifest},
@@ -224,7 +224,10 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         .clone()
         .unwrap_or_else(|| "latest".to_string());
     let toolkit_manifest = load_toolkit_manifest(&project_root).ok();
-    let license = verify_offline_license(input.license_key.as_deref(), &project_root).ok();
+    let license_result = precheck_activation_code(input.license_key.as_deref(), &project_root);
+    let license_error = license_result.as_ref().err().map(format_error_chain);
+    let license = license_result.ok();
+    let license_ok = license.is_some();
     let version_catalog = build_version_catalog(&project_root, install_mode.as_str());
     let release_manifest_available = version_catalog.source_ready;
     let resolved_release = resolve_release_for_install(
@@ -236,7 +239,6 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
     let environment = build_environment_checks(
         &project_root,
         &base_dir,
-        input.license_key.as_deref(),
         input.install_mode.as_deref(),
         input.selected_version.as_deref(),
         install_mode.as_str(),
@@ -244,13 +246,15 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         toolkit_manifest.as_ref(),
         resolved_release.as_ref(),
         release_manifest_available,
+        license_ok,
+        license_error.as_deref(),
     );
     let precheck_step = infer_precheck_step(
         &project_root,
-        input.license_key.as_deref(),
         input.install_mode.as_deref(),
         toolkit_manifest.as_ref(),
         release_manifest_available,
+        license_ok,
     );
 
     if let Some(progress) = read_stage1_progress(&base_dir)? {
@@ -375,7 +379,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         &mut progress,
         InstallStep::ValidateLicense,
         Some(InstallStep::CheckEnvironment),
-        || verify_offline_license(input.license_key.as_deref(), &project_root),
+        || verify_activation_code(input.license_key.as_deref(), &project_root),
     )?;
 
     run_step(
@@ -835,7 +839,6 @@ fn build_dashboard(
 fn build_environment_checks(
     project_root: &Path,
     base_dir: &Path,
-    license_key: Option<&str>,
     install_mode_override: Option<&str>,
     selected_version_override: Option<&str>,
     install_mode: &str,
@@ -843,6 +846,8 @@ fn build_environment_checks(
     toolkit_manifest: Option<&ToolkitManifest>,
     resolved_release: Option<&ReleaseArtifact>,
     release_manifest_available: bool,
+    license_ok: bool,
+    license_error: Option<&str>,
 ) -> Vec<Stage1EnvironmentCheck> {
     let toolkit_manifest_path = project_root.join("artifacts").join("toolkit-manifest.json");
     let release_manifest_path = project_root.join("artifacts").join("manifest.json");
@@ -856,7 +861,6 @@ fn build_environment_checks(
         .map(|dir| dir.join("installed-manifest.json"));
     let config_path = openclaw_dir.as_ref().map(|dir| dir.join("openclaw.json"));
     let windows_status = windows_environment_status(toolkit_manifest);
-    let license_ok = verify_offline_license(license_key, project_root).is_ok();
     let node_runtime_check = build_node_runtime_check(node_dir.as_deref(), resolved_release);
     let system_node_check = build_system_node_check(resolved_release);
     let system_openclaw_check = build_system_openclaw_check();
@@ -904,7 +908,7 @@ fn build_environment_checks(
         },
         Stage1EnvironmentCheck {
             id: "license".to_string(),
-            label: "离线授权".to_string(),
+            label: "授权激活".to_string(),
             state: if license_ok {
                 Stage1CheckState::Ok
             } else {
@@ -913,7 +917,7 @@ fn build_environment_checks(
             detail: if license_ok {
                 "授权校验通过".to_string()
             } else {
-                "激活码或授权文件尚未通过离线验签".to_string()
+                license_error.unwrap_or("激活码尚未验证").to_string()
             },
         },
         Stage1EnvironmentCheck {
@@ -1133,9 +1137,19 @@ fn build_system_node_check(resolved_release: Option<&ReleaseArtifact>) -> Stage1
                     Stage1CheckState::Warn
                 },
                 detail: if satisfies {
-                    format!("检测到系统 Node：{}，版本 {}，满足要求 {}。安装流程仍优先使用受管 Node Runtime。", executable.display(), version, range)
+                    format!(
+                        "检测到系统 Node：{}，版本 {}，满足要求 {}。安装流程仍优先使用受管 Node Runtime。",
+                        executable.display(),
+                        version,
+                        range
+                    )
                 } else {
-                    format!("检测到系统 Node：{}，版本 {}，不满足要求 {}。安装流程将继续安装受管 Node Runtime。", executable.display(), version, range)
+                    format!(
+                        "检测到系统 Node：{}，版本 {}，不满足要求 {}。安装流程将继续安装受管 Node Runtime。",
+                        executable.display(),
+                        version,
+                        range
+                    )
                 },
             }
         }
@@ -1241,10 +1255,10 @@ fn build_install_plan(
 
 fn infer_precheck_step(
     project_root: &Path,
-    license_key: Option<&str>,
     install_mode: Option<&str>,
     toolkit_manifest: Option<&ToolkitManifest>,
     release_manifest_available: bool,
+    license_ok: bool,
 ) -> Option<InstallStep> {
     let Some(toolkit_manifest) = toolkit_manifest else {
         return Some(InstallStep::LoadManifest);
@@ -1258,7 +1272,7 @@ fn infer_precheck_step(
         return Some(InstallStep::LoadManifest);
     }
 
-    if verify_offline_license(license_key, project_root).is_err() {
+    if !license_ok {
         return Some(InstallStep::ValidateLicense);
     }
 
@@ -1465,7 +1479,7 @@ fn step_title(step: InstallStep) -> &'static str {
 fn step_description(step: InstallStep) -> &'static str {
     match step {
         InstallStep::LoadManifest => "读取工具包和制品清单",
-        InstallStep::ValidateLicense => "校验离线激活码、授权文件、授权等级和有效期",
+        InstallStep::ValidateLicense => "校验激活码、授权等级和有效期",
         InstallStep::CheckEnvironment => "确认当前系统满足安装前提",
         InstallStep::SelectInstallMode => "确认本地、远程或 npm 安装模式",
         InstallStep::ResolveOpenClawVersion => "选出当前要安装的 OpenClaw 版本",
