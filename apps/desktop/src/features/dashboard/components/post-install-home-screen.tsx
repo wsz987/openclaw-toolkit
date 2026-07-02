@@ -3,11 +3,11 @@ import { BrandSpike } from './brand-spike';
 import { PostInstallHomeView } from './post-install-views';
 import { PostInstallMenu } from './post-install-menu';
 import { InstallerShell } from './installer-shell';
-import { createInstallResultFromRecord, type OpenClawInstallerController } from '../../installer/hooks/use-openclaw-installer';
-import { useDesktopUpdater } from '../../installer/hooks/use-desktop-updater';
-import type { AppBootstrapState, PostInstallTab } from '../../installer/model/types';
-import { getRecoveredInstallationMode } from '../../installer/model/app-flow';
-import { useOpenClawStatusSubscription } from '../../installer/model/openclaw-status-store';
+import { createInstallResultFromRecord, type OpenClawInstallerController } from '@/openclaw/hooks/use-openclaw-installer';
+import { useDesktopUpdater } from '@/hooks/use-desktop-updater';
+import type { AppBootstrapState, PostInstallTab } from '@/openclaw/model/types';
+import { getRecoveredInstallationMode } from '@/openclaw/model/app-flow';
+import { useOpenClawStatusSubscription } from '@/openclaw/model/status-store';
 
 type PostInstallHomeScreenProps = {
   bootstrapState?: AppBootstrapState | null;

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { PostInstallHomeScreen } from './components/post-install-home-screen';
-import { useOpenClawInstaller, type OpenClawInstallerController } from '../installer/hooks/use-openclaw-installer';
-import { isRecoveredInstallationState } from '../installer/model/app-flow';
-import type { AppBootstrapState } from '../installer/model/types';
+import { useOpenClawInstaller, type OpenClawInstallerController } from '@/openclaw/hooks/use-openclaw-installer';
+import { isRecoveredInstallationState } from '@/openclaw/model/app-flow';
+import type { AppBootstrapState } from '@/openclaw/model/types';
 
 type DashboardAppProps = {
   bootstrapState?: AppBootstrapState | null;

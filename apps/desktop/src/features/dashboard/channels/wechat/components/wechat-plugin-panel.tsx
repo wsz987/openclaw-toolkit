@@ -9,20 +9,20 @@ import {
   Unplug
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '../../../../../components/ui/button';
-import { ScrollArea } from '../../../../../components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   inspectWeixinLoginStatus,
   startWeixinLoginQr,
   waitForWeixinLoginQr
-} from '../../../../installer/api/installer-api';
+} from '@/openclaw/api/client';
 import type {
   OpenClawPostInstallStatus,
   OpenClawPluginInstallResult,
   OpenClawInstallResult,
   WeixinLoginQrWaitResult,
   WeixinLoginStatus
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 import { resolveWechatChannel } from '../model/wechat-channel';
 import { WechatLoginQrDialog } from './wechat-login-qr-dialog';
 

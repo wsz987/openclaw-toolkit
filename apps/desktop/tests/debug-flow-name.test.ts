@@ -3,7 +3,7 @@ import {
   readInstallerDebugFlowState,
   writeInstallerDebugFlowState,
   type InstallerDebugFlowState
-} from '../src/features/installer/model/debug-flow';
+} from '../src/openclaw/model/debug-flow';
 
 function createLocalStorageMock() {
   const values = new Map<string, string>();

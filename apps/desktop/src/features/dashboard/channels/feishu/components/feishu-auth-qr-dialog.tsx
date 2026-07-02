@@ -9,9 +9,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../../../components/ui/alert-dialog';
-import { Button } from '../../../../../components/ui/button';
-import type { FeishuAuthQrResult } from '../../../../installer/model/types';
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import type { FeishuAuthQrResult } from '@/openclaw/model/types';
 
 type FeishuAuthQrDialogProps = {
   open: boolean;

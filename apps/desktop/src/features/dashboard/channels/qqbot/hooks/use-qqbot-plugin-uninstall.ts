@@ -1,4 +1,4 @@
-import { inspectOpenClawStatus, uninstallOpenClawPlugin } from '../../../../installer/api/installer-api';
+import { inspectOpenClawStatus, uninstallOpenClawPlugin } from '@/openclaw/api/client';
 import { findInstalledQqbotPlugin } from '../model/qqbot-channel';
 import { usePluginOperation } from '../../shared/hooks/use-plugin-operation';
 import { OPENCLAW_PLUGIN_UNINSTALL_PROGRESS_EVENT } from '../../shared/hooks/use-plugin-install';

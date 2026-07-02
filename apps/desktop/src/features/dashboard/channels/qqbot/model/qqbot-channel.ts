@@ -3,7 +3,7 @@ import type {
   OpenClawPostInstallStatus,
   OpenClawQqbotChannelSetupPayload,
   QqbotChannelStatus
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 export const QQBOT_PLUGIN_PACKAGE = '@tencent-connect/openclaw-qqbot';
 export const QQBOT_PLUGIN_IDS = new Set(['qqbot', 'openclaw-qqbot', 'qq']);

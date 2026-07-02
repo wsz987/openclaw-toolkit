@@ -1,8 +1,8 @@
-import { Button } from '../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
-import { CheckIcon, ChevronRightIcon } from '../../../components/icons';
-import type { OpenClawInstallResult } from '../model/types';
-import { useOpenClawStatusSubscription } from '../model/openclaw-status-store';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckIcon, ChevronRightIcon } from '@/components/icons';
+import type { OpenClawInstallResult } from '@/openclaw/model/types';
+import { useOpenClawStatusSubscription } from '@/openclaw/model/status-store';
 
 function InstallationSummaryGrid({ result }: { result: OpenClawInstallResult }) {
   return (

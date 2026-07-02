@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Activity, Terminal, Key, Radio, Component, Settings, Trash2 } from 'lucide-react';
-import type { PostInstallTab } from '../../installer/model/types';
+import type { PostInstallTab } from '@/openclaw/model/types';
 
 type MenuIconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>;
 

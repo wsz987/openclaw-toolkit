@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Toaster } from '../../../components/ui/sonner';
-import { cn } from '../../../lib/utils';
+import { Toaster } from '@/components/ui/sonner';
+import { cn } from '@/lib/utils';
 
 type InstallerShellProps = {
   sidebar: ReactNode;

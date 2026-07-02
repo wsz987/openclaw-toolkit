@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useDebouncedValue } from '../../../hooks/use-debounced-value';
-import { useLatestRequestGuard } from '../../../hooks/use-latest-request-guard';
-import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '../model/graph';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useLatestRequestGuard } from '@/hooks/use-latest-request-guard';
+import { STEP1_CHECK_IDS, STEP2_CHECK_IDS, STEP3_SPLIT_INDEX } from '@/openclaw/model/graph';
 import {
   installerSteps,
   isInstallStep,
-} from '../model/graph';
-import type { InstallerWizardStep } from '../model/app-flow';
+} from '@/openclaw/model/graph';
+import type { InstallerWizardStep } from '@/openclaw/model/app-flow';
 import {
   buildDiagnosticsInfo,
   createPendingStepProgress,
@@ -21,7 +21,7 @@ import {
   getStepChecks,
   getSystemOpenClaw,
   isVersionListReady
-} from '../model/selectors';
+} from '@/openclaw/model/selectors';
 import type {
   InstallMode,
   OpenClawFeishuChannelSetupPayload,
@@ -46,7 +46,7 @@ import type {
   UninstallPlan,
   UninstallResult,
   VersionCatalogResult
-} from '../model/types';
+} from '@/openclaw/model/types';
 import {
   executeUninstall,
   importInstallationFromPath,
@@ -70,11 +70,11 @@ import {
   setupOpenClawProvider,
   stopOpenClawRuntime,
   startOpenClawInstall
-} from '../api/installer-api';
+} from '@/openclaw/api/client';
 import {
   isOpenClawStatusEventAvailable,
   refreshOpenClawStatus
-} from '../model/openclaw-status-store';
+} from '@/openclaw/model/status-store';
 
 const DEFAULT_TOOLKIT_INSTALL_DIR_NAME = 'OpenClaw Toolkit';
 
@@ -1098,7 +1098,7 @@ export function useOpenClawInstaller(
 
 export type OpenClawInstallerController = ReturnType<typeof useOpenClawInstaller>;
 
-export function createInstallResultFromRecord(record: import('../model/types').InstallationRecord): OpenClawInstallResult {
+export function createInstallResultFromRecord(record: import('@/openclaw/model/types').InstallationRecord): OpenClawInstallResult {
   return {
     workflowId: record.installationId,
     installationId: record.installationId,

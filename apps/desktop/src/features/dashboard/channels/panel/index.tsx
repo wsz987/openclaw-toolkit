@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react';
-import { Input } from '../../../../components/ui/input';
-import { ScrollArea } from '../../../../components/ui/scroll-area';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../../components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { PluginInstallDialog } from '../../channels/shared/components/plugin-install-dialog';
 import { PluginUninstallDialog } from '../../channels/shared/components/plugin-uninstall-dialog';
 import { FeishuPluginPanel, type FeishuPluginPanelProps } from '../../channels/feishu/components/feishu-plugin-panel';

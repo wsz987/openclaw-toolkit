@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, BookOpen, Check, ExternalLink, RefreshCw, Shield } from 'lucide-react';
-import { Button } from '../../../../../components/ui/button';
-import { ScrollArea } from '../../../../../components/ui/scroll-area';
-import { openExternalUrl } from '../../../../installer/api/installer-api';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { openExternalUrl } from '@/openclaw/api/client';
 import type {
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   OpenClawQqbotChannelSetupResult,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 import { buildQqbotChannelSetupPayload, createQqbotChannelFormState, resolveQqbotChannel } from '../model/qqbot-channel';
 import { getQqbotConsoleLinks, QQBOT_TROUBLESHOOTING } from '../model/qqbot-docs';
 import { QqbotChannelForm } from './qqbot-channel-form';

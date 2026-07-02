@@ -1,5 +1,5 @@
 import { ChevronRight, Loader2, Settings, ThumbsUp, Trash2 } from 'lucide-react';
-import { Button } from '../../../../components/ui/button';
+import { Button } from '@/components/ui/button';
 import { getChannelIcon } from './icons';
 import type { ChannelActionState, ChannelItem } from './model';
 import type { ChannelController } from '../../channels/shared/model/channel-controller';

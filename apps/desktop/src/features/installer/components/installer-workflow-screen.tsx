@@ -3,8 +3,8 @@ import { InstallerHeader } from './installer-header';
 import { InstallerShell } from './installer-shell';
 import { InstallerStepper } from './installer-stepper';
 import { InstallerWorkflowView } from './installer-workflow-view';
-import type { InstallerWorkflowScreen } from '../model/app-flow';
-import type { OpenClawInstallerController } from '../hooks/use-openclaw-installer';
+import type { InstallerWorkflowScreen } from '@/openclaw/model/app-flow';
+import type { OpenClawInstallerController } from '@/openclaw/hooks/use-openclaw-installer';
 
 type InstallerWorkflowScreenProps = {
   controller: OpenClawInstallerController;

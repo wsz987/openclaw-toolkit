@@ -1,10 +1,10 @@
-import { Button } from '../../../components/ui/button';
-import { SpinnerIcon } from '../../../components/icons';
+import { Button } from '@/components/ui/button';
+import { SpinnerIcon } from '@/components/icons';
 import type {
   OpenClawPostInstallStatus,
   OpenClawStopResult,
   OpenClawInstallResult
-} from '../../installer/model/types';
+} from '@/openclaw/model/types';
 
 // Custom premium inline SVG icons
 const PlayIcon = ({ className }: { className?: string }) => (

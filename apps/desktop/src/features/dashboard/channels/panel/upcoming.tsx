@@ -1,5 +1,5 @@
 import { Check, Heart, Sparkles, Star, ThumbsUp } from 'lucide-react';
-import { Button } from '../../../../components/ui/button';
+import { Button } from '@/components/ui/button';
 import type { ChannelItem } from './model';
 import { UPCOMING_CHANNEL_FEATURES } from './model';
 

@@ -3,7 +3,7 @@ import {
   inspectInstallDashboard,
   readInstallLogTail,
   startOpenClawInstall
-} from '../src/features/installer/api/installer-api';
+} from '../src/openclaw/api/client';
 
 const invokeMock = vi.hoisted(() => vi.fn());
 

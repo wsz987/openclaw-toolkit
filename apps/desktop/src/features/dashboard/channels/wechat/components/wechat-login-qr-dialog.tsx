@@ -7,9 +7,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../../../components/ui/alert-dialog';
-import { Button } from '../../../../../components/ui/button';
-import { Input } from '../../../../../components/ui/input';
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useQrCodeDisplay } from '../../shared/hooks/use-qr-code-display';
 
 type WechatLoginQrDialogProps = {

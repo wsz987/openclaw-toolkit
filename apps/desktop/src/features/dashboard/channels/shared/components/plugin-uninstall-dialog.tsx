@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../../../components/ui/alert-dialog';
-import { Progress } from '../../../../../components/ui/progress';
+} from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -16,7 +16,7 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
-import type { PluginInstallProgress } from '../../../../installer/model/types';
+import type { PluginInstallProgress } from '@/openclaw/model/types';
 
 export type PluginUninstallDialogState = 'confirm' | 'loading' | 'error' | 'success';
 

@@ -23,15 +23,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../components/ui/alert-dialog';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type {
   UninstallDeletionTarget,
   UninstallPlan,
   OpenClawInstallResult,
   UninstallResult
-} from '../../installer/model/types';
+} from '@/openclaw/model/types';
 
 type UninstallPanelProps = {
   result: OpenClawInstallResult;

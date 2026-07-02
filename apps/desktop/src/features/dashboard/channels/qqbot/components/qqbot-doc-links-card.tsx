@@ -1,5 +1,5 @@
 import { BookOpen, ExternalLink, HelpCircle } from 'lucide-react';
-import { Button } from '../../../../../components/ui/button';
+import { Button } from '@/components/ui/button';
 import { getQqbotConsoleLinks } from '../model/qqbot-docs';
 
 type QqbotDocLinksCardProps = {

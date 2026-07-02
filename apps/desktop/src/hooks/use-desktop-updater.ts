@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getName, getTauriVersion, getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
-import { buildUpdateCheckFailure } from './desktop-update-policy';
+import { buildUpdateCheckFailure } from '@/hooks/desktop-update-policy';
 
 const PERIODIC_UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
 

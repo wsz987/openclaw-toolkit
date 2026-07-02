@@ -2,7 +2,7 @@ import type {
   InstalledPluginStatus,
   OpenClawPostInstallStatus,
   WeixinChannelStatus
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 export const WECHAT_PLUGIN_PACKAGE = '@tencent-weixin/openclaw-weixin';
 export const WECHAT_PLUGIN_IDS = new Set(['wechat', 'openclaw-weixin', 'weixin', 'wechat-claw']);

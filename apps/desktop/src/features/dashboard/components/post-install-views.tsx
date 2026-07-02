@@ -1,4 +1,4 @@
-import { AlertIcon } from '../../../components/icons';
+import { AlertIcon } from '@/components/icons';
 import type {
   OpenClawDingtalkChannelSetupPayload,
   OpenClawDingtalkChannelSetupResult,
@@ -16,7 +16,7 @@ import type {
   OpenClawInstallResult,
   UninstallPlan,
   UninstallResult
-} from '../../installer/model/types';
+} from '@/openclaw/model/types';
 import { ProviderSetupPanel } from './provider-setup-panel';
 import { RuntimeOperationsPanel } from './runtime-operations-panel';
 import { ChannelsPanel } from '../channels/panel';
@@ -24,7 +24,7 @@ import { ServiceControlPanel } from './service-control-panel';
 import { SkillsManagementPanel } from './skills-management-panel';
 import { SettingsPanel } from './settings-panel';
 import { UninstallPanel } from './uninstall-panel';
-import type { DesktopUpdateStatus, DesktopVersionInfo } from '../../installer/hooks/use-desktop-updater';
+import type { DesktopUpdateStatus, DesktopVersionInfo } from '@/hooks/use-desktop-updater';
 import type { Update } from '@tauri-apps/plugin-updater';
 
 type PostInstallHomeViewProps = {

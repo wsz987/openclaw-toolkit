@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnsiLogLine } from '../../../components/ansi-log-line';
-import { Button } from '../../../components/ui/button';
+import { AnsiLogLine } from '@/components/ansi-log-line';
+import { Button } from '@/components/ui/button';
 import {
   ChevronRightIcon,
   EyeIcon,
@@ -8,15 +8,15 @@ import {
   MonitorIcon,
   PlayIcon,
   SpinnerIcon
-} from '../../../components/icons';
+} from '@/components/icons';
 import { toast } from 'sonner';
 import type {
   OpenClawPostInstallStatus,
   InstallLogTail,
   OpenClawInstallResult
-} from '../../installer/model/types';
-import { readOpenClawRuntimeLogTail } from '../../installer/api/installer-api';
-import { useOpenClawStatusSubscription } from '../../installer/model/openclaw-status-store';
+} from '@/openclaw/model/types';
+import { readOpenClawRuntimeLogTail } from '@/openclaw/api/client';
+import { useOpenClawStatusSubscription } from '@/openclaw/model/status-store';
 
 type RuntimeOperationsPanelProps = {
   result: OpenClawInstallResult;

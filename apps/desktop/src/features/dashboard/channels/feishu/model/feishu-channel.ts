@@ -2,7 +2,7 @@ import type {
   FeishuChannelStatus,
   InstalledPluginStatus,
   OpenClawFeishuChannelSetupPayload
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 export const FEISHU_PLUGIN_PACKAGE = '@larksuite/openclaw-lark';
 export const FEISHU_PLUGIN_IDS = new Set(['feishu', 'openclaw-lark']);

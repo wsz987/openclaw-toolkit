@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, ExternalLink, LifeBuoy, Shield, Check } from 'lucide-react';
-import { Button } from '../../../../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DINGTALK_PERMISSION_TROUBLESHOOTING,
   DINGTALK_PLUGIN_GUIDE_URL,

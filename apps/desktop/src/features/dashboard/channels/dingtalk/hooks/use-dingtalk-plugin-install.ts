@@ -1,4 +1,4 @@
-import { inspectOpenClawStatus, installOpenClawPlugin } from '../../../../installer/api/installer-api';
+import { inspectOpenClawStatus, installOpenClawPlugin } from '@/openclaw/api/client';
 import { findInstalledDingtalkPlugin } from '../model/dingtalk-channel';
 import { OPENCLAW_PLUGIN_INSTALL_PROGRESS_EVENT, usePluginInstall } from '../../shared/hooks/use-plugin-install';
 

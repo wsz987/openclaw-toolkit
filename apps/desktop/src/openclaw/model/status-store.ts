@@ -1,6 +1,6 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useEffect, useSyncExternalStore } from 'react';
-import { inspectOpenClawStatus } from '../api/installer-api';
+import { inspectOpenClawStatus } from '@/openclaw/api/client';
 import type { OpenClawPostInstallStatus } from './types';
 
 const OPENCLAW_STATUS_CHANGED_EVENT = 'openclaw://status-changed';

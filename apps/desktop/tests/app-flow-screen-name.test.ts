@@ -4,7 +4,7 @@ import {
   isPostInstallScreen,
   resolveInstallerScreen,
   type InstallerScreen
-} from '../src/features/installer/model/app-flow';
+} from '../src/openclaw/model/app-flow';
 
 describe('installer app flow screen names', () => {
   it('exports neutral installer screen APIs', () => {

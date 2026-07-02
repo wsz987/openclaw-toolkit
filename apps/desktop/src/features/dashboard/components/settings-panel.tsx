@@ -1,8 +1,8 @@
 import { Download, RefreshCw, ShieldCheck, Info, AlertCircle, CheckCircle2, Cpu, Package, AppWindow } from 'lucide-react';
-import { Button } from '../../../components/ui/button';
-import { Progress } from '../../../components/ui/progress';
-import { SpinnerIcon } from '../../../components/icons';
-import type { DesktopUpdateStatus, DesktopVersionInfo } from '../../installer/hooks/use-desktop-updater';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { SpinnerIcon } from '@/components/icons';
+import type { DesktopUpdateStatus, DesktopVersionInfo } from '@/hooks/use-desktop-updater';
 import type { Update } from '@tauri-apps/plugin-updater';
 
 type SettingsPanelProps = {

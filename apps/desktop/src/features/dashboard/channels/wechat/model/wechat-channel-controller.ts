@@ -1,6 +1,6 @@
 import type { ChannelController } from '../../shared/model/channel-controller';
-import type { OpenClawPostInstallStatus, OpenClawInstallResult } from '../../../../installer/model/types';
-import { setWeixinChannelEnabled } from '../../../../installer/api/installer-api';
+import type { OpenClawPostInstallStatus, OpenClawInstallResult } from '@/openclaw/model/types';
+import { setWeixinChannelEnabled } from '@/openclaw/api/client';
 
 type CreateWechatChannelControllerOptions = {
   result: OpenClawInstallResult;

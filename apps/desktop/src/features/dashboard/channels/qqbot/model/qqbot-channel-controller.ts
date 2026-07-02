@@ -3,7 +3,7 @@ import type {
   OpenClawPostInstallStatus,
   OpenClawQqbotChannelSetupResult,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 import { buildQqbotChannelSetupPayloadFromStatus } from './qqbot-channel';
 
 export type CreateQqbotChannelControllerOptions = {

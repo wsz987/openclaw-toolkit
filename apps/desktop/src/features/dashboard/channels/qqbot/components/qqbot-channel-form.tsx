@@ -1,9 +1,9 @@
 import { Eye, EyeOff, Info, KeyRound, LockKeyhole, MessageCircle, Users } from 'lucide-react';
-import { Button } from '../../../../../components/ui/button';
-import { Input } from '../../../../../components/ui/input';
-import { Select } from '../../../../../components/ui/select';
-import { Switch } from '../../../../../components/ui/switch';
-import type { QqbotChannelStatus } from '../../../../installer/model/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import type { QqbotChannelStatus } from '@/openclaw/model/types';
 import type { QqbotChannelFormState } from '../model/qqbot-channel';
 
 type QqbotChannelFormProps = {

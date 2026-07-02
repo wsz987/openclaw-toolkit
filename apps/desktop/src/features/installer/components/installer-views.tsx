@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { AnsiLogLine } from '../../../components/ansi-log-line';
-import { Button } from '../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
-import { Progress } from '../../../components/ui/progress';
-import { Select } from '../../../components/ui/select';
-import { SecretField } from '../../../components/secret-field';
+import { AnsiLogLine } from '@/components/ansi-log-line';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Select } from '@/components/ui/select';
+import { SecretField } from '@/components/secret-field';
 import {
   AlertIcon,
   ArrowLeftIcon,
@@ -18,8 +18,8 @@ import {
   SettingsIcon,
   SpinnerIcon,
   XIcon
-} from '../../../components/icons';
-import { installerSteps } from '../model/graph';
+} from '@/components/icons';
+import { installerSteps } from '@/openclaw/model/graph';
 import type {
   InstallMode,
   InstallDashboard,
@@ -29,7 +29,7 @@ import type {
   InstallStepSnapshot,
   VersionCatalogOption,
   VersionCatalogResult
-} from '../model/types';
+} from '@/openclaw/model/types';
 
 type ChecksCardProps = {
   title: string;

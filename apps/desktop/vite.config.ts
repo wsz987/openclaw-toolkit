@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
       react: fileURLToPath(new URL('./node_modules/react', import.meta.url)),
       'react-dom': fileURLToPath(new URL('./node_modules/react-dom', import.meta.url))
     }

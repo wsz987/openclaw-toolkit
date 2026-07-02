@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { isInstallStep } from '../model/graph';
+import { isInstallStep } from '@/openclaw/model/graph';
 import type {
   AppBootstrapState,
   DingtalkAuthQrPayload,
@@ -57,7 +57,7 @@ import type {
   UninstallPlan,
   UninstallResult,
   VersionCatalogResult
-} from '../model/types';
+} from '@/openclaw/model/types';
 
 function normalizeDashboard(response: InstallDashboard): InstallDashboard {
   return {

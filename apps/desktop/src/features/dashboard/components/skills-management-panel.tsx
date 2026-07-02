@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { ScrollArea } from '../../../components/ui/scroll-area';
-import { Switch } from '../../../components/ui/switch';
-import { SpinnerIcon } from '../../../components/icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { SpinnerIcon } from '@/components/icons';
 import { Search, RefreshCw, AlertCircle, Blocks, Tag } from 'lucide-react';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/lib/utils';
 import type {
   ManagedSkillCatalog,
   OpenClawSkillTogglePayload,
   OpenClawInstallResult
-} from '../../installer/model/types';
+} from '@/openclaw/model/types';
 
 type SkillsManagementPanelProps = {
   result: OpenClawInstallResult;

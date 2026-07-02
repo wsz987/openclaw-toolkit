@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { ScrollArea } from '../../../components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { testOpenClawProviderConnection } from '../../installer/api/installer-api';
+import { testOpenClawProviderConnection } from '@/openclaw/api/client';
 import {
   Cpu,
   Eye,
@@ -27,8 +27,8 @@ import type {
   OpenClawProviderSetupResult,
   ProviderCatalogEntry,
   OpenClawInstallResult
-} from '../../installer/model/types';
-import { useOpenClawStatusSubscription } from '../../installer/model/openclaw-status-store';
+} from '@/openclaw/model/types';
+import { useOpenClawStatusSubscription } from '@/openclaw/model/status-store';
 import { ProviderBrandIcon } from './provider-brand-icons';
 
 type ProviderSetupPanelProps = {

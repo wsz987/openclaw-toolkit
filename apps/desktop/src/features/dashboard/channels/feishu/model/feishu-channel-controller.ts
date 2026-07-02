@@ -3,7 +3,7 @@ import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPostInstallStatus,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 import { buildFeishuChannelSetupPayloadFromStatus } from './feishu-channel';
 
 type CreateFeishuChannelControllerOptions = {

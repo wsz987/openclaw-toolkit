@@ -2,7 +2,7 @@ import type {
   DingtalkChannelStatus,
   InstalledPluginStatus,
   OpenClawDingtalkChannelSetupPayload
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 export const DINGTALK_PLUGIN_PACKAGE = '@dingtalk-real-ai/dingtalk-connector';
 export const DINGTALK_PLUGIN_IDS = new Set(['dingtalk', 'dingtalk-connector', 'dd', 'ding']);

@@ -10,7 +10,7 @@ import { useDingtalkChannelControl } from '../../channels/dingtalk/hooks/use-din
 import { findInstalledDingtalkPlugin } from '../../channels/dingtalk/model/dingtalk-channel';
 import { useQqbotChannelControl } from '../../channels/qqbot/hooks/use-qqbot-channel-control';
 import { findInstalledQqbotPlugin } from '../../channels/qqbot/model/qqbot-channel';
-import type { OpenClawDingtalkChannelSetupPayload, OpenClawDingtalkChannelSetupResult, OpenClawQqbotChannelSetupPayload, OpenClawQqbotChannelSetupResult } from '../../../installer/model/types';
+import type { OpenClawDingtalkChannelSetupPayload, OpenClawDingtalkChannelSetupResult, OpenClawQqbotChannelSetupPayload, OpenClawQqbotChannelSetupResult } from '@/openclaw/model/types';
 import type { ChannelController } from '../../channels/shared/model/channel-controller';
 import type { UsePluginOperationResult } from '../../channels/shared/hooks/use-plugin-install';
 import {

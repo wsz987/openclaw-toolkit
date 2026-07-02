@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { BookOpen, Eye, EyeOff, Settings2, Shield } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
-import { Input } from '../../../../../components/ui/input';
-import { Select } from '../../../../../components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { ChannelToggleCard } from '../../panel/shared';
 import type { DingtalkChannelFormState } from '../model/dingtalk-channel';
-import type { DingtalkChannelStatus } from '../../../../installer/model/types';
+import type { DingtalkChannelStatus } from '@/openclaw/model/types';
 
 type DingtalkChannelFormProps = {
   form: DingtalkChannelFormState;

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookOpen, Check, ExternalLink, RefreshCw, Shield, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '../../../../../components/ui/button';
-import { ScrollArea } from '../../../../../components/ui/scroll-area';
-import { createDingtalkAuthQr, inspectDingtalkAuthQrStatus, openExternalUrl } from '../../../../installer/api/installer-api';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { createDingtalkAuthQr, inspectDingtalkAuthQrStatus, openExternalUrl } from '@/openclaw/api/client';
 import { DingtalkChannelForm } from './dingtalk-channel-form';
 import { DingtalkAuthQrDialog } from './dingtalk-auth-qr-dialog';
 import { DingtalkDocLinksCard } from './dingtalk-doc-links-card';
@@ -16,7 +16,7 @@ import type {
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 type SecretVisibilityState = {
   clientSecret: boolean;

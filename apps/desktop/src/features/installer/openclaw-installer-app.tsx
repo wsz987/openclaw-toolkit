@@ -6,9 +6,9 @@ import {
   isInstallerWorkflowScreen,
   isPostInstallScreen,
   resolveInstallerScreen
-} from './model/app-flow';
-import { useOpenClawInstaller } from './hooks/use-openclaw-installer';
-import type { AppBootstrapState } from './model/types';
+} from '@/openclaw/model/app-flow';
+import { useOpenClawInstaller } from '@/openclaw/hooks/use-openclaw-installer';
+import type { AppBootstrapState } from '@/openclaw/model/types';
 
 type OpenClawInstallerAppProps = {
   bootstrapState?: AppBootstrapState | null;

@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, BookOpen, Check, ExternalLink, RefreshCw, Shield } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '../../../../../components/ui/button';
-import { ScrollArea } from '../../../../../components/ui/scroll-area';
-import { createFeishuAuthQr, inspectFeishuAuthQrStatus, openExternalUrl } from '../../../../installer/api/installer-api';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { createFeishuAuthQr, inspectFeishuAuthQrStatus, openExternalUrl } from '@/openclaw/api/client';
 import { FeishuAuthQrDialog } from './feishu-auth-qr-dialog';
 import { FeishuChannelForm } from './feishu-channel-form';
 import { FeishuDocLinksCard } from './feishu-doc-links-card';
 import { FeishuHelpDialog } from './feishu-help-dialog';
 import { FEISHU_PERMISSION_TROUBLESHOOTING, getFeishuConsoleLinks } from '../model/feishu-docs';
 import { buildFeishuChannelSetupPayload, createFeishuChannelFormState } from '../model/feishu-channel';
-import type { FeishuAuthQrResult } from '../../../../installer/model/types';
+import type { FeishuAuthQrResult } from '@/openclaw/model/types';
 import type {
   OpenClawFeishuChannelSetupResult,
   OpenClawPluginInstallResult,
   OpenClawPostInstallStatus,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 
 type SecretVisibilityState = {
   appSecret: boolean;

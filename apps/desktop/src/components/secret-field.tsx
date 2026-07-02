@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { cn } from '../lib/utils';
+import { cn } from '@/lib/utils';
 import { EyeIcon, EyeOffIcon, KeyIcon } from './icons';
 
 type Props = {

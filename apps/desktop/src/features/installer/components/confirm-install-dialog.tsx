@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '../../../components/ui/alert-dialog';
-import type { InstallDashboard } from '../model/types';
+} from '@/components/ui/alert-dialog';
+import type { InstallDashboard } from '@/openclaw/model/types';
 import { AlertTriangle, Folder, Cpu, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
 
 type Props = {

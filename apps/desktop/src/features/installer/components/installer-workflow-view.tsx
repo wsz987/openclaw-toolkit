@@ -1,6 +1,6 @@
-import { findStepTitle } from '../model/selectors';
-import type { InstallerWorkflowScreen } from '../model/app-flow';
-import type { OpenClawInstallerController } from '../hooks/use-openclaw-installer';
+import { findStepTitle } from '@/openclaw/model/selectors';
+import type { InstallerWorkflowScreen } from '@/openclaw/model/app-flow';
+import type { OpenClawInstallerController } from '@/openclaw/hooks/use-openclaw-installer';
 import { ConfigStepView, ErrorStateView, PrecheckStepView, ProgressStageView } from './installer-views';
 
 type InstallerWorkflowViewProps = {

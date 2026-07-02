@@ -1,7 +1,7 @@
-import { CheckIcon } from '../../../components/icons';
-import { masterPhases } from '../model/graph';
-import type { InstallPhase } from '../model/types';
-import type { InstallerWizardStep } from '../model/app-flow';
+import { CheckIcon } from '@/components/icons';
+import { masterPhases } from '@/openclaw/model/graph';
+import type { InstallPhase } from '@/openclaw/model/types';
+import type { InstallerWizardStep } from '@/openclaw/model/app-flow';
 
 type Props = {
   phase: InstallPhase;

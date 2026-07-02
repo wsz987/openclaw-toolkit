@@ -1,7 +1,7 @@
-import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
-import type { InstallerWizardStep } from '../model/app-flow';
-import type { DebugBootstrapMode } from '../model/debug-flow';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import type { InstallerWizardStep } from '@/openclaw/model/app-flow';
+import type { DebugBootstrapMode } from '@/openclaw/model/debug-flow';
 
 type DebugFlowPanelProps = {
   mode: DebugBootstrapMode;

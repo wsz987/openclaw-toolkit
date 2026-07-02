@@ -3,7 +3,7 @@ import type {
   OpenClawDingtalkChannelSetupResult,
   OpenClawPostInstallStatus,
   OpenClawInstallResult
-} from '../../../../installer/model/types';
+} from '@/openclaw/model/types';
 import { buildDingtalkChannelSetupPayloadFromStatus } from './dingtalk-channel';
 
 type CreateDingtalkChannelControllerOptions = {
