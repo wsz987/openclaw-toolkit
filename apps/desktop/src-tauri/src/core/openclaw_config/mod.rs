@@ -77,6 +77,10 @@ const PLUGIN_DISCOVERY_CACHE_TTL: Duration = Duration::from_secs(60);
 
 static PLUGIN_DISCOVERY_CACHE: OnceLock<Mutex<PluginDiscoveryCache>> = OnceLock::new();
 
+fn normalize_plugin_discovery_cache_key(config_path: &Path) -> PathBuf {
+    fs::canonicalize(config_path).unwrap_or_else(|_| config_path.to_path_buf())
+}
+
 #[derive(Default)]
 struct PluginDiscoveryCache {
     entries: HashMap<PathBuf, CachedPluginDiscovery>,
@@ -97,7 +101,9 @@ impl PluginDiscoveryCache {
         manifest_modified_at: SystemTime,
         discovered_at: Instant,
     ) -> Option<OpenClawPluginDiscovery> {
-        self.entries.get(config_path).and_then(|cached| {
+        let config_key = normalize_plugin_discovery_cache_key(config_path);
+
+        self.entries.get(&config_key).and_then(|cached| {
             (cached.config_modified_at == config_modified_at
                 && cached.manifest_modified_at == manifest_modified_at
                 && discovered_at.saturating_duration_since(cached.discovered_at)
@@ -114,8 +120,10 @@ impl PluginDiscoveryCache {
         discovered_at: Instant,
         discovery: OpenClawPluginDiscovery,
     ) {
+        let config_key = normalize_plugin_discovery_cache_key(config_path);
+
         self.entries.insert(
-            config_path.to_path_buf(),
+            config_key,
             CachedPluginDiscovery {
                 config_modified_at,
                 manifest_modified_at,
@@ -2687,6 +2695,52 @@ mod tests {
 
         assert_eq!(discovery_calls.get(), 1);
         assert_eq!(second.enabled_plugin_ids, vec!["first"]);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_normalizes_equivalent_config_paths() {
+        let temp_dir = unique_temp_dir("plugin-discovery-cache-path");
+        let config_dir = temp_dir.join("config");
+        let config_path = config_dir.join("openclaw.json");
+        let equivalent_config_path = config_dir
+            .join(".")
+            .join("equivalent")
+            .join("..")
+            .join("openclaw.json");
+        let config_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let manifest_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+        let discovery_calls = Cell::new(1);
+        let mut cache = PluginDiscoveryCache::default();
+
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::create_dir_all(config_dir.join("equivalent")).unwrap();
+        fs::write(&config_path, "{}").unwrap();
+        assert_ne!(config_path, equivalent_config_path);
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+
+        let second = cache
+            .get(
+                &equivalent_config_path,
+                config_modified_at,
+                manifest_modified_at,
+                discovered_at + Duration::from_secs(1),
+            )
+            .unwrap_or_else(|| {
+                discovery_calls.set(discovery_calls.get() + 1);
+                plugin_discovery("second")
+            });
+
+        assert_eq!(discovery_calls.get(), 1);
+        assert_eq!(second.enabled_plugin_ids, vec!["first"]);
+
+        fs::remove_dir_all(temp_dir).unwrap();
     }
 
     #[test]
