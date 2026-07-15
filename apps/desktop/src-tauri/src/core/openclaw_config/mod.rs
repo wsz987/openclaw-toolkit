@@ -84,41 +84,45 @@ struct PluginDiscoveryCache {
 
 struct CachedPluginDiscovery {
     config_modified_at: SystemTime,
+    manifest_modified_at: SystemTime,
     discovered_at: Instant,
     discovery: OpenClawPluginDiscovery,
 }
 
 impl PluginDiscoveryCache {
-    fn get_or_discover<F>(
+    fn get(
+        &self,
+        config_path: &Path,
+        config_modified_at: SystemTime,
+        manifest_modified_at: SystemTime,
+        discovered_at: Instant,
+    ) -> Option<OpenClawPluginDiscovery> {
+        self.entries.get(config_path).and_then(|cached| {
+            (cached.config_modified_at == config_modified_at
+                && cached.manifest_modified_at == manifest_modified_at
+                && discovered_at.saturating_duration_since(cached.discovered_at)
+                    < PLUGIN_DISCOVERY_CACHE_TTL)
+                .then(|| cached.discovery.clone())
+        })
+    }
+
+    fn insert(
         &mut self,
         config_path: &Path,
         config_modified_at: SystemTime,
+        manifest_modified_at: SystemTime,
         discovered_at: Instant,
-        discover: F,
-    ) -> anyhow::Result<OpenClawPluginDiscovery>
-    where
-        F: FnOnce() -> anyhow::Result<OpenClawPluginDiscovery>,
-    {
-        if let Some(cached) = self.entries.get(config_path) {
-            if cached.config_modified_at == config_modified_at
-                && discovered_at.saturating_duration_since(cached.discovered_at)
-                    < PLUGIN_DISCOVERY_CACHE_TTL
-            {
-                return Ok(cached.discovery.clone());
-            }
-        }
-
-        let discovery = discover()?;
+        discovery: OpenClawPluginDiscovery,
+    ) {
         self.entries.insert(
             config_path.to_path_buf(),
             CachedPluginDiscovery {
                 config_modified_at,
+                manifest_modified_at,
                 discovered_at,
-                discovery: discovery.clone(),
+                discovery,
             },
         );
-
-        Ok(discovery)
     }
 }
 
@@ -1462,14 +1466,56 @@ fn read_cached_openclaw_discovered_plugins(
         .with_context(|| format!("read metadata for {}", config_path.display()))?
         .modified()
         .with_context(|| format!("read modification time for {}", config_path.display()))?;
+    let manifest_path = config_path
+        .parent()
+        .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?
+        .join("installed-manifest.json");
+    let manifest_modified_at = fs::metadata(&manifest_path)
+        .with_context(|| format!("read metadata for {}", manifest_path.display()))?
+        .modified()
+        .with_context(|| format!("read modification time for {}", manifest_path.display()))?;
+    let lookup_at = Instant::now();
+    let cached_discovery = {
+        let cache = PLUGIN_DISCOVERY_CACHE
+            .get_or_init(|| Mutex::new(PluginDiscoveryCache::default()))
+            .lock()
+            .map_err(|_| anyhow::anyhow!("plugin discovery cache lock poisoned"))?;
+
+        cache.get(
+            config_path,
+            config_modified_at,
+            manifest_modified_at,
+            lookup_at,
+        )
+    };
+    if let Some(discovery) = cached_discovery {
+        return Ok(discovery);
+    }
+
+    let discovery = read_openclaw_discovered_plugins(openclaw_dir, config_path)?;
+    let discovered_at = Instant::now();
     let mut cache = PLUGIN_DISCOVERY_CACHE
         .get_or_init(|| Mutex::new(PluginDiscoveryCache::default()))
         .lock()
         .map_err(|_| anyhow::anyhow!("plugin discovery cache lock poisoned"))?;
 
-    cache.get_or_discover(config_path, config_modified_at, Instant::now(), || {
-        read_openclaw_discovered_plugins(openclaw_dir, config_path)
-    })
+    if let Some(cached_discovery) = cache.get(
+        config_path,
+        config_modified_at,
+        manifest_modified_at,
+        discovered_at,
+    ) {
+        return Ok(cached_discovery);
+    }
+    cache.insert(
+        config_path,
+        config_modified_at,
+        manifest_modified_at,
+        discovered_at,
+        discovery.clone(),
+    );
+
+    Ok(discovery)
 }
 
 fn string_at_path(value: &Value, path: &[&str]) -> Option<String> {
@@ -2609,36 +2655,37 @@ mod tests {
     fn plugin_discovery_cache_reuses_discovery_for_unchanged_config_before_ttl() {
         let mut cache = PluginDiscoveryCache::default();
         let config_path = PathBuf::from("C:\\openclaw\\openclaw.json");
-        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let config_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let manifest_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
         let discovered_at = Instant::now();
         let discovery_calls = Cell::new(0);
 
-        let first = cache
-            .get_or_discover(&config_path, modified_at, discovered_at, || {
-                discovery_calls.set(discovery_calls.get() + 1);
-                Ok(OpenClawPluginDiscovery {
-                    installed_plugins: Vec::new(),
-                    enabled_plugin_ids: vec!["first".to_string()],
-                })
-            })
-            .unwrap();
-        let second = cache
-            .get_or_discover(
+        assert!(cache
+            .get(
                 &config_path,
-                modified_at,
+                config_modified_at,
+                manifest_modified_at,
+                discovered_at,
+            )
+            .is_none());
+        discovery_calls.set(discovery_calls.get() + 1);
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+        let second = cache
+            .get(
+                &config_path,
+                config_modified_at,
+                manifest_modified_at,
                 discovered_at + Duration::from_secs(59),
-                || {
-                    discovery_calls.set(discovery_calls.get() + 1);
-                    Ok(OpenClawPluginDiscovery {
-                        installed_plugins: Vec::new(),
-                        enabled_plugin_ids: vec!["second".to_string()],
-                    })
-                },
             )
             .unwrap();
 
         assert_eq!(discovery_calls.get(), 1);
-        assert_eq!(first.enabled_plugin_ids, vec!["first"]);
         assert_eq!(second.enabled_plugin_ids, vec!["first"]);
     }
 
@@ -2646,36 +2693,98 @@ mod tests {
     fn plugin_discovery_cache_refreshes_discovery_after_config_modification() {
         let mut cache = PluginDiscoveryCache::default();
         let config_path = PathBuf::from("C:\\openclaw\\openclaw.json");
-        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let config_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let manifest_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
         let discovered_at = Instant::now();
         let discovery_calls = Cell::new(0);
 
-        cache
-            .get_or_discover(&config_path, modified_at, discovered_at, || {
-                discovery_calls.set(discovery_calls.get() + 1);
-                Ok(OpenClawPluginDiscovery {
-                    installed_plugins: Vec::new(),
-                    enabled_plugin_ids: vec!["first".to_string()],
-                })
-            })
-            .unwrap();
-        let refreshed = cache
-            .get_or_discover(
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+        assert!(cache
+            .get(
                 &config_path,
-                modified_at + Duration::from_secs(1),
+                config_modified_at + Duration::from_secs(1),
+                manifest_modified_at,
                 discovered_at + Duration::from_secs(1),
-                || {
-                    discovery_calls.set(discovery_calls.get() + 1);
-                    Ok(OpenClawPluginDiscovery {
-                        installed_plugins: Vec::new(),
-                        enabled_plugin_ids: vec!["refreshed".to_string()],
-                    })
-                },
+            )
+            .is_none());
+        discovery_calls.set(discovery_calls.get() + 1);
+        cache.insert(
+            &config_path,
+            config_modified_at + Duration::from_secs(1),
+            manifest_modified_at,
+            discovered_at + Duration::from_secs(1),
+            plugin_discovery("refreshed"),
+        );
+        let refreshed = cache
+            .get(
+                &config_path,
+                config_modified_at + Duration::from_secs(1),
+                manifest_modified_at,
+                discovered_at + Duration::from_secs(1),
             )
             .unwrap();
 
-        assert_eq!(discovery_calls.get(), 2);
+        assert_eq!(discovery_calls.get(), 1);
         assert_eq!(refreshed.enabled_plugin_ids, vec!["refreshed"]);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_refreshes_discovery_after_manifest_modification() {
+        let mut cache = PluginDiscoveryCache::default();
+        let config_path = PathBuf::from("C:\\openclaw\\openclaw.json");
+        let config_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let manifest_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+        let discovery_calls = Cell::new(0);
+
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+        assert!(cache
+            .get(
+                &config_path,
+                config_modified_at,
+                manifest_modified_at + Duration::from_secs(1),
+                discovered_at + Duration::from_secs(1),
+            )
+            .is_none());
+        discovery_calls.set(discovery_calls.get() + 1);
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at + Duration::from_secs(1),
+            discovered_at + Duration::from_secs(1),
+            plugin_discovery("refreshed"),
+        );
+
+        let refreshed = cache
+            .get(
+                &config_path,
+                config_modified_at,
+                manifest_modified_at + Duration::from_secs(1),
+                discovered_at + Duration::from_secs(1),
+            )
+            .unwrap();
+
+        assert_eq!(discovery_calls.get(), 1);
+        assert_eq!(refreshed.enabled_plugin_ids, vec!["refreshed"]);
+    }
+
+    fn plugin_discovery(id: &str) -> OpenClawPluginDiscovery {
+        OpenClawPluginDiscovery {
+            installed_plugins: Vec::new(),
+            enabled_plugin_ids: vec![id.to_string()],
+        }
     }
 
     fn sample_release() -> ReleaseArtifact {
