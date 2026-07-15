@@ -11,7 +11,8 @@ use anyhow::Context;
 use openclaw_toolkit_desktop_lib::core::{
     background_process::{background_command, detach_from_parent_process, suppress_console_window},
     openclaw_config::{
-        probe_gateway_runtime, read_openclaw_runtime_context, OpenClawRuntimeContext,
+        probe_gateway_runtime, read_openclaw_runtime_context, runtime_pid_for_gateway_url,
+        OpenClawRuntimeContext,
     },
     process::{launch_managed_openclaw_from_context, stop_managed_openclaw},
     runtime_host::RUNTIME_HOST_KIND_EXTERNAL_HELPER,
@@ -338,7 +339,7 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("daemon must be launched via spawn-daemon");
     }
 
-    let runtime_context = read_openclaw_runtime_context(&config_path).with_context(|| {
+    let mut runtime_context = read_openclaw_runtime_context(&config_path).with_context(|| {
         format!(
             "read openclaw runtime context from {}",
             config_path.display()
@@ -351,18 +352,15 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
     fs::write(&paths.daemon_pid_path, process::id().to_string())
         .with_context(|| format!("write {}", paths.daemon_pid_path.display()))?;
 
+    let (runtime_state, runtime_pid) = observe_gateway_runtime(&runtime_context.gateway_url);
     let mut state = DaemonState {
         config_path: config_path.to_string_lossy().to_string(),
         runtime_host_kind: RUNTIME_HOST_KIND_EXTERNAL_HELPER.to_string(),
         daemon_pid: process::id(),
         daemon_started_at: chrono::Utc::now().to_rfc3339(),
         daemon_heartbeat_at: chrono::Utc::now().to_rfc3339(),
-        runtime_state: if probe_gateway_runtime(&runtime_context.gateway_url) {
-            "running".to_string()
-        } else {
-            "stopped".to_string()
-        },
-        runtime_pid: None,
+        runtime_state: runtime_state.to_string(),
+        runtime_pid,
         runtime_log_path: Some(runtime_context.runtime_log_path.clone()),
         last_error: None,
         last_command_id: None,
@@ -375,7 +373,14 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         state.daemon_heartbeat_at = chrono::Utc::now().to_rfc3339();
         let now = Instant::now();
         if runtime_reconciliation_due(last_runtime_reconciliation, now) {
-            reconcile_runtime_state(&runtime_context.gateway_url, &mut state);
+            match read_openclaw_runtime_context(&config_path) {
+                Ok(refreshed_context) => {
+                    runtime_context = refreshed_context;
+                    state.runtime_log_path = Some(runtime_context.runtime_log_path.clone());
+                    reconcile_runtime_state(&runtime_context.gateway_url, &mut state);
+                }
+                Err(error) => state.last_error = Some(render_error(&error)),
+            }
             last_runtime_reconciliation = Some(now);
         }
         persist_state(&paths, &state)?;
@@ -437,7 +442,8 @@ fn ensure_runtime_started(
     runtime_context: &OpenClawRuntimeContext,
     state: &mut DaemonState,
 ) -> anyhow::Result<()> {
-    if state.runtime_pid.is_some_and(process_is_running) {
+    let runtime_is_running = state.runtime_pid.is_some_and(process_is_running);
+    if !runtime_launch_required(state.runtime_pid, runtime_is_running) {
         state.runtime_state = "running".to_string();
         return Ok(());
     }
@@ -462,17 +468,32 @@ fn ensure_runtime_stopped(state: &mut DaemonState) -> anyhow::Result<()> {
 }
 
 fn reconcile_runtime_state(gateway_url: &str, state: &mut DaemonState) {
-    if state.runtime_pid.is_some_and(process_is_running) {
-        state.runtime_state = "running".to_string();
-        return;
-    }
+    let (runtime_state, runtime_pid) = observe_gateway_runtime(gateway_url);
+    state.runtime_state = runtime_state.to_string();
+    state.runtime_pid = runtime_pid;
+}
 
-    state.runtime_pid = None;
-    state.runtime_state = if probe_gateway_runtime(gateway_url) {
-        "running".to_string()
+fn observe_gateway_runtime(gateway_url: &str) -> (&'static str, Option<u32>) {
+    let reachable = probe_gateway_runtime(gateway_url);
+    let runtime_pid = reachable
+        .then(|| runtime_pid_for_gateway_url(gateway_url))
+        .flatten();
+    gateway_runtime_observation(reachable, runtime_pid)
+}
+
+fn gateway_runtime_observation(
+    gateway_reachable: bool,
+    runtime_pid: Option<u32>,
+) -> (&'static str, Option<u32>) {
+    if gateway_reachable {
+        ("running", runtime_pid)
     } else {
-        "stopped".to_string()
-    };
+        ("stopped", None)
+    }
+}
+
+fn runtime_launch_required(runtime_pid: Option<u32>, runtime_is_running: bool) -> bool {
+    runtime_pid.is_none() || !runtime_is_running
 }
 
 fn runtime_reconciliation_due(last: Option<Instant>, now: Instant) -> bool {
@@ -694,5 +715,14 @@ mod tests {
     #[test]
     fn spawn_ready_timeout_waits_thirty_seconds() {
         assert_eq!(SPAWN_READY_TIMEOUT_MS, 30_000);
+    }
+
+    #[test]
+    fn reachable_gateway_observation_retains_port_owner_pid_and_avoids_relaunch() {
+        let (runtime_state, runtime_pid) = gateway_runtime_observation(true, Some(4321));
+
+        assert_eq!(runtime_state, "running");
+        assert_eq!(runtime_pid, Some(4321));
+        assert!(!runtime_launch_required(runtime_pid, true));
     }
 }

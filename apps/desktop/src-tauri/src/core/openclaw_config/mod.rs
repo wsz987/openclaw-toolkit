@@ -659,13 +659,9 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .to_string_lossy()
         .to_string();
     let runtime_running = probe_gateway_runtime(&gateway_url);
-    let runtime_pid = if runtime_running {
-        u16::try_from(gateway_port)
-            .ok()
-            .and_then(find_runtime_pid_by_port)
-    } else {
-        None
-    };
+    let runtime_pid = runtime_running
+        .then(|| runtime_pid_for_gateway_url(&gateway_url))
+        .flatten();
     let panel_reachable = runtime_running && probe_control_panel(&control_ui_url);
     let provider_id = infer_primary_provider_id(&config);
     let provider_api_url = provider_id.as_deref().and_then(|provider| {
@@ -798,6 +794,16 @@ pub fn probe_gateway_runtime(gateway_url: &str) -> bool {
     }
 
     false
+}
+
+pub fn runtime_pid_for_gateway_url(gateway_url: &str) -> Option<u32> {
+    gateway_port_from_url(gateway_url).and_then(find_runtime_pid_by_port)
+}
+
+fn gateway_port_from_url(gateway_url: &str) -> Option<u16> {
+    reqwest::Url::parse(gateway_url)
+        .ok()?
+        .port_or_known_default()
 }
 
 #[cfg(target_os = "windows")]
@@ -2608,7 +2614,7 @@ mod tests {
     use serde_json::{json, Value};
 
     use super::{
-        normalize_plugin_discovery_cache_key, plugin_discovery_busy_error,
+        gateway_port_from_url, normalize_plugin_discovery_cache_key, plugin_discovery_busy_error,
         read_openclaw_runtime_context, write_openclaw_config, PluginDiscoveryCache,
         PluginDiscoveryCacheLookup,
     };
@@ -2616,6 +2622,13 @@ mod tests {
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
     };
     use crate::core::openclaw_cli::OpenClawPluginDiscovery;
+
+    #[test]
+    fn extracts_port_from_gateway_url_for_runtime_pid_lookup() {
+        assert_eq!(gateway_port_from_url("http://127.0.0.1:19001"), Some(19001));
+        assert_eq!(gateway_port_from_url("http://localhost"), Some(80));
+        assert_eq!(gateway_port_from_url("not a url"), None);
+    }
 
     #[test]
     fn generated_config_omits_root_version_field() {
