@@ -214,12 +214,12 @@ The update selector only returns releases that are enabled, newer than the curre
 
 The desktop installer is not Windows Authenticode code-signed. Tauri updater package signing is separate from Windows code signing and is required by the official updater plugin.
 
-The Tauri updater public key is committed in `apps/desktop/src-tauri/tauri.conf.json`. The private key is generated locally under `apps/desktop/.tmp/` and ignored by git.
+The Tauri updater public key is committed in `apps/desktop/src-tauri/tauri.conf.json`. The private key is stored locally under `apps/desktop/signing/` and ignored by git.
 
 Build signing uses:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY_PATH="D:\coding\auto-intsall-openclaw\apps\desktop\.tmp\openclaw-updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PATH="D:\coding\auto-intsall-openclaw\apps\desktop\signing\openclaw-updater.key"
 pnpm --dir apps/desktop build
 ```
 
