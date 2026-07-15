@@ -100,6 +100,10 @@ enum PluginDiscoveryCacheLookup {
     Busy,
 }
 
+fn plugin_discovery_busy_error() -> anyhow::Error {
+    anyhow::anyhow!("plugin discovery already in progress")
+}
+
 impl PluginDiscoveryCache {
     fn lookup_or_reserve(
         &mut self,
@@ -1565,7 +1569,7 @@ fn read_cached_openclaw_discovered_plugins(
     };
     match lookup {
         PluginDiscoveryCacheLookup::Hit(discovery) => return Ok(discovery),
-        PluginDiscoveryCacheLookup::Busy => anyhow::bail!("plugin discovery already in progress"),
+        PluginDiscoveryCacheLookup::Busy => return Err(plugin_discovery_busy_error()),
         PluginDiscoveryCacheLookup::Reserved => {}
     }
 
@@ -2604,8 +2608,9 @@ mod tests {
     use serde_json::{json, Value};
 
     use super::{
-        normalize_plugin_discovery_cache_key, read_openclaw_runtime_context, write_openclaw_config,
-        PluginDiscoveryCache, PluginDiscoveryCacheLookup,
+        normalize_plugin_discovery_cache_key, plugin_discovery_busy_error,
+        read_openclaw_runtime_context, write_openclaw_config, PluginDiscoveryCache,
+        PluginDiscoveryCacheLookup,
     };
     use crate::core::manifest::models::{
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
@@ -2871,6 +2876,65 @@ mod tests {
 
         assert_eq!(discovery_calls.get(), 1);
         cache.release(&config_key);
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.release(&config_key);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_busy_error_preserves_status_fallback_path() {
+        assert_eq!(
+            plugin_discovery_busy_error().to_string(),
+            "plugin discovery already in progress"
+        );
+    }
+
+    #[test]
+    fn plugin_discovery_cache_insert_and_release_allows_changed_config_reservation() {
+        let mut cache = PluginDiscoveryCache::default();
+        let config_key = PathBuf::from("C:\\openclaw\\openclaw.json");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.insert_and_release(
+            &config_key,
+            modified_at,
+            modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+
+        assert!(matches!(
+            cache.lookup_or_reserve(
+                &config_key,
+                modified_at + Duration::from_secs(1),
+                modified_at,
+                discovered_at + Duration::from_secs(1),
+            ),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.release(&config_key);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_release_allows_retry_after_failed_discovery() {
+        let mut cache = PluginDiscoveryCache::default();
+        let config_key = PathBuf::from("C:\\openclaw\\openclaw.json");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.release(&config_key);
+
         assert!(matches!(
             cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
             PluginDiscoveryCacheLookup::Reserved
