@@ -352,7 +352,10 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
     fs::write(&paths.daemon_pid_path, process::id().to_string())
         .with_context(|| format!("write {}", paths.daemon_pid_path.display()))?;
 
-    let (runtime_state, runtime_pid) = observe_gateway_runtime(&runtime_context.gateway_url);
+    let (gateway_reachable, observed_runtime_pid) =
+        observe_gateway_runtime(&runtime_context.gateway_url);
+    let (runtime_state, runtime_pid) =
+        gateway_runtime_observation(gateway_reachable, observed_runtime_pid);
     let mut state = DaemonState {
         config_path: config_path.to_string_lossy().to_string(),
         runtime_host_kind: RUNTIME_HOST_KIND_EXTERNAL_HELPER.to_string(),
@@ -468,17 +471,24 @@ fn ensure_runtime_stopped(state: &mut DaemonState) -> anyhow::Result<()> {
 }
 
 fn reconcile_runtime_state(gateway_url: &str, state: &mut DaemonState) {
-    let (runtime_state, runtime_pid) = observe_gateway_runtime(gateway_url);
+    let (gateway_reachable, observed_runtime_pid) = observe_gateway_runtime(gateway_url);
+    let runtime_pid_is_running = state.runtime_pid.is_some_and(process_is_running);
+    let (runtime_state, runtime_pid) = reconciled_gateway_runtime_observation(
+        state.runtime_pid,
+        runtime_pid_is_running,
+        gateway_reachable,
+        observed_runtime_pid,
+    );
     state.runtime_state = runtime_state.to_string();
     state.runtime_pid = runtime_pid;
 }
 
-fn observe_gateway_runtime(gateway_url: &str) -> (&'static str, Option<u32>) {
+fn observe_gateway_runtime(gateway_url: &str) -> (bool, Option<u32>) {
     let reachable = probe_gateway_runtime(gateway_url);
     let runtime_pid = reachable
         .then(|| runtime_pid_for_gateway_url(gateway_url))
         .flatten();
-    gateway_runtime_observation(reachable, runtime_pid)
+    (reachable, runtime_pid)
 }
 
 fn gateway_runtime_observation(
@@ -489,6 +499,19 @@ fn gateway_runtime_observation(
         ("running", runtime_pid)
     } else {
         ("stopped", None)
+    }
+}
+
+fn reconciled_gateway_runtime_observation(
+    owned_runtime_pid: Option<u32>,
+    owned_runtime_pid_is_running: bool,
+    gateway_reachable: bool,
+    observed_runtime_pid: Option<u32>,
+) -> (&'static str, Option<u32>) {
+    if owned_runtime_pid.is_some() && owned_runtime_pid_is_running {
+        ("running", owned_runtime_pid)
+    } else {
+        gateway_runtime_observation(gateway_reachable, observed_runtime_pid)
     }
 }
 
@@ -724,5 +747,24 @@ mod tests {
         assert_eq!(runtime_state, "running");
         assert_eq!(runtime_pid, Some(4321));
         assert!(!runtime_launch_required(runtime_pid, true));
+    }
+
+    #[test]
+    fn reconciliation_retains_live_owned_pid_when_gateway_pid_lookup_is_empty() {
+        let (runtime_state, runtime_pid) =
+            reconciled_gateway_runtime_observation(Some(4321), true, true, None);
+
+        assert_eq!(runtime_state, "running");
+        assert_eq!(runtime_pid, Some(4321));
+        assert!(!runtime_launch_required(runtime_pid, true));
+    }
+
+    #[test]
+    fn reconciliation_retains_live_owned_pid_after_gateway_endpoint_changes() {
+        let (runtime_state, runtime_pid) =
+            reconciled_gateway_runtime_observation(Some(4321), true, true, Some(8765));
+
+        assert_eq!(runtime_state, "running");
+        assert_eq!(runtime_pid, Some(4321));
     }
 }
