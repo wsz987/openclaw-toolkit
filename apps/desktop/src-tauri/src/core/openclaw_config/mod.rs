@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     io::{BufRead, BufReader},
     net::{TcpStream, ToSocketAddrs},
@@ -84,6 +84,7 @@ fn normalize_plugin_discovery_cache_key(config_path: &Path) -> PathBuf {
 #[derive(Default)]
 struct PluginDiscoveryCache {
     entries: HashMap<PathBuf, CachedPluginDiscovery>,
+    in_flight: HashSet<PathBuf>,
 }
 
 struct CachedPluginDiscovery {
@@ -93,43 +94,108 @@ struct CachedPluginDiscovery {
     discovery: OpenClawPluginDiscovery,
 }
 
+enum PluginDiscoveryCacheLookup {
+    Hit(OpenClawPluginDiscovery),
+    Reserved,
+    Busy,
+}
+
 impl PluginDiscoveryCache {
-    fn get(
-        &self,
-        config_path: &Path,
+    fn lookup_or_reserve(
+        &mut self,
+        config_key: &Path,
         config_modified_at: SystemTime,
         manifest_modified_at: SystemTime,
-        discovered_at: Instant,
-    ) -> Option<OpenClawPluginDiscovery> {
-        let config_key = normalize_plugin_discovery_cache_key(config_path);
+        lookup_at: Instant,
+    ) -> PluginDiscoveryCacheLookup {
+        self.prune_expired_entries(lookup_at);
 
-        self.entries.get(&config_key).and_then(|cached| {
-            (cached.config_modified_at == config_modified_at
+        if let Some(cached) = self.entries.get(config_key) {
+            if cached.config_modified_at == config_modified_at
                 && cached.manifest_modified_at == manifest_modified_at
-                && discovered_at.saturating_duration_since(cached.discovered_at)
-                    < PLUGIN_DISCOVERY_CACHE_TTL)
-                .then(|| cached.discovery.clone())
-        })
+            {
+                return PluginDiscoveryCacheLookup::Hit(cached.discovery.clone());
+            }
+        }
+        self.entries.remove(config_key);
+
+        if self.in_flight.insert(config_key.to_path_buf()) {
+            PluginDiscoveryCacheLookup::Reserved
+        } else {
+            PluginDiscoveryCacheLookup::Busy
+        }
     }
 
-    fn insert(
+    fn insert_and_release(
         &mut self,
-        config_path: &Path,
+        config_key: &Path,
         config_modified_at: SystemTime,
         manifest_modified_at: SystemTime,
         discovered_at: Instant,
         discovery: OpenClawPluginDiscovery,
     ) {
-        let config_key = normalize_plugin_discovery_cache_key(config_path);
+        self.prune_expired_entries(discovered_at);
 
         self.entries.insert(
-            config_key,
+            config_key.to_path_buf(),
             CachedPluginDiscovery {
                 config_modified_at,
                 manifest_modified_at,
                 discovered_at,
                 discovery,
             },
+        );
+        self.in_flight.remove(config_key);
+    }
+
+    fn release(&mut self, config_key: &Path) {
+        self.in_flight.remove(config_key);
+    }
+
+    fn prune_expired_entries(&mut self, now: Instant) {
+        self.entries.retain(|_, cached| {
+            now.saturating_duration_since(cached.discovered_at) < PLUGIN_DISCOVERY_CACHE_TTL
+        });
+    }
+
+    #[cfg(test)]
+    fn get(
+        &mut self,
+        config_key: &Path,
+        config_modified_at: SystemTime,
+        manifest_modified_at: SystemTime,
+        lookup_at: Instant,
+    ) -> Option<OpenClawPluginDiscovery> {
+        match self.lookup_or_reserve(
+            config_key,
+            config_modified_at,
+            manifest_modified_at,
+            lookup_at,
+        ) {
+            PluginDiscoveryCacheLookup::Hit(discovery) => Some(discovery),
+            PluginDiscoveryCacheLookup::Reserved => {
+                self.release(config_key);
+                None
+            }
+            PluginDiscoveryCacheLookup::Busy => None,
+        }
+    }
+
+    #[cfg(test)]
+    fn insert(
+        &mut self,
+        config_key: &Path,
+        config_modified_at: SystemTime,
+        manifest_modified_at: SystemTime,
+        discovered_at: Instant,
+        discovery: OpenClawPluginDiscovery,
+    ) {
+        self.insert_and_release(
+            config_key,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            discovery,
         );
     }
 }
@@ -1482,48 +1548,50 @@ fn read_cached_openclaw_discovered_plugins(
         .with_context(|| format!("read metadata for {}", manifest_path.display()))?
         .modified()
         .with_context(|| format!("read modification time for {}", manifest_path.display()))?;
+    let config_key = normalize_plugin_discovery_cache_key(config_path);
     let lookup_at = Instant::now();
-    let cached_discovery = {
-        let cache = PLUGIN_DISCOVERY_CACHE
+    let lookup = {
+        let mut cache = PLUGIN_DISCOVERY_CACHE
             .get_or_init(|| Mutex::new(PluginDiscoveryCache::default()))
             .lock()
             .map_err(|_| anyhow::anyhow!("plugin discovery cache lock poisoned"))?;
 
-        cache.get(
-            config_path,
+        cache.lookup_or_reserve(
+            &config_key,
             config_modified_at,
             manifest_modified_at,
             lookup_at,
         )
     };
-    if let Some(discovery) = cached_discovery {
-        return Ok(discovery);
+    match lookup {
+        PluginDiscoveryCacheLookup::Hit(discovery) => return Ok(discovery),
+        PluginDiscoveryCacheLookup::Busy => anyhow::bail!("plugin discovery already in progress"),
+        PluginDiscoveryCacheLookup::Reserved => {}
     }
 
-    let discovery = read_openclaw_discovered_plugins(openclaw_dir, config_path)?;
+    let discovery = read_openclaw_discovered_plugins(openclaw_dir, config_path);
     let discovered_at = Instant::now();
     let mut cache = PLUGIN_DISCOVERY_CACHE
         .get_or_init(|| Mutex::new(PluginDiscoveryCache::default()))
         .lock()
         .map_err(|_| anyhow::anyhow!("plugin discovery cache lock poisoned"))?;
 
-    if let Some(cached_discovery) = cache.get(
-        config_path,
-        config_modified_at,
-        manifest_modified_at,
-        discovered_at,
-    ) {
-        return Ok(cached_discovery);
+    match discovery {
+        Ok(discovery) => {
+            cache.insert_and_release(
+                &config_key,
+                config_modified_at,
+                manifest_modified_at,
+                discovered_at,
+                discovery.clone(),
+            );
+            Ok(discovery)
+        }
+        Err(error) => {
+            cache.release(&config_key);
+            Err(error)
+        }
     }
-    cache.insert(
-        config_path,
-        config_modified_at,
-        manifest_modified_at,
-        discovered_at,
-        discovery.clone(),
-    );
-
-    Ok(discovery)
 }
 
 fn string_at_path(value: &Value, path: &[&str]) -> Option<String> {
@@ -2535,7 +2603,10 @@ mod tests {
 
     use serde_json::{json, Value};
 
-    use super::{read_openclaw_runtime_context, write_openclaw_config, PluginDiscoveryCache};
+    use super::{
+        normalize_plugin_discovery_cache_key, read_openclaw_runtime_context, write_openclaw_config,
+        PluginDiscoveryCache, PluginDiscoveryCacheLookup,
+    };
     use crate::core::manifest::models::{
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
     };
@@ -2717,8 +2788,11 @@ mod tests {
         fs::create_dir_all(config_dir.join("equivalent")).unwrap();
         fs::write(&config_path, "{}").unwrap();
         assert_ne!(config_path, equivalent_config_path);
+        let config_key = normalize_plugin_discovery_cache_key(&config_path);
+        let equivalent_key = normalize_plugin_discovery_cache_key(&equivalent_config_path);
+        assert_eq!(config_key, equivalent_key);
         cache.insert(
-            &config_path,
+            &config_key,
             config_modified_at,
             manifest_modified_at,
             discovered_at,
@@ -2727,7 +2801,7 @@ mod tests {
 
         let second = cache
             .get(
-                &equivalent_config_path,
+                &equivalent_key,
                 config_modified_at,
                 manifest_modified_at,
                 discovered_at + Duration::from_secs(1),
@@ -2739,6 +2813,111 @@ mod tests {
 
         assert_eq!(discovery_calls.get(), 1);
         assert_eq!(second.enabled_plugin_ids, vec!["first"]);
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn plugin_discovery_cache_prunes_expired_entries_when_reserving() {
+        let mut cache = PluginDiscoveryCache::default();
+        let first_key = PathBuf::from("C:\\openclaw\\first.json");
+        let second_key = PathBuf::from("C:\\openclaw\\second.json");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+
+        assert!(matches!(
+            cache.lookup_or_reserve(&first_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.insert_and_release(
+            &first_key,
+            modified_at,
+            modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+
+        assert!(matches!(
+            cache.lookup_or_reserve(
+                &second_key,
+                modified_at,
+                modified_at,
+                discovered_at + Duration::from_secs(60),
+            ),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        assert!(!cache.entries.contains_key(&first_key));
+        cache.release(&second_key);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_reserves_only_one_in_flight_discovery_per_key() {
+        let mut cache = PluginDiscoveryCache::default();
+        let config_key = PathBuf::from("C:\\openclaw\\openclaw.json");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+        let discovery_calls = Cell::new(0);
+
+        if matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ) {
+            discovery_calls.set(discovery_calls.get() + 1);
+        }
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Busy
+        ));
+
+        assert_eq!(discovery_calls.get(), 1);
+        cache.release(&config_key);
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.release(&config_key);
+    }
+
+    #[test]
+    fn plugin_discovery_cache_accepts_keys_normalized_before_locking() {
+        let temp_dir = unique_temp_dir("plugin-discovery-cache-normalized-key");
+        let config_dir = temp_dir.join("config");
+        let config_path = config_dir.join("openclaw.json");
+        let equivalent_config_path = config_dir
+            .join(".")
+            .join("equivalent")
+            .join("..")
+            .join("openclaw.json");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+
+        fs::create_dir_all(config_dir.join("equivalent")).unwrap();
+        fs::write(&config_path, "{}").unwrap();
+        let config_key = normalize_plugin_discovery_cache_key(&config_path);
+        let equivalent_key = normalize_plugin_discovery_cache_key(&equivalent_config_path);
+        assert_eq!(config_key, equivalent_key);
+
+        let mut cache = PluginDiscoveryCache::default();
+        assert!(matches!(
+            cache.lookup_or_reserve(&config_key, modified_at, modified_at, discovered_at),
+            PluginDiscoveryCacheLookup::Reserved
+        ));
+        cache.insert_and_release(
+            &config_key,
+            modified_at,
+            modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+        assert!(matches!(
+            cache.lookup_or_reserve(
+                &equivalent_key,
+                modified_at,
+                modified_at,
+                discovered_at + Duration::from_secs(1),
+            ),
+            PluginDiscoveryCacheLookup::Hit(ref discovery) if discovery.enabled_plugin_ids == ["first"]
+        ));
 
         fs::remove_dir_all(temp_dir).unwrap();
     }
