@@ -8,8 +8,9 @@ use std::{
 use anyhow::Context;
 
 use crate::core::{
-    background_process::background_command, node_runtime::node_runtime_executable,
-    openclaw_config::OpenClawStatusSummary,
+    background_process::background_command,
+    node_runtime::node_runtime_executable,
+    openclaw_config::{OpenClawRuntimeContext, OpenClawStatusSummary},
 };
 
 pub struct SystemOpenClawDetection {
@@ -60,13 +61,31 @@ pub fn verify_openclaw_runtime(config_path: &Path) -> anyhow::Result<()> {
 pub fn launch_managed_openclaw(
     status: &OpenClawStatusSummary,
 ) -> anyhow::Result<ManagedOpenClawLaunchResult> {
-    let node_dir = PathBuf::from(&status.node_dir);
+    launch_managed_openclaw_from_context(&OpenClawRuntimeContext {
+        openclaw_dir: status.openclaw_dir.clone(),
+        node_dir: status.node_dir.clone(),
+        config_path: status.config_path.clone(),
+        gateway_url: status.gateway_url.clone(),
+        runtime_log_path: status.runtime_log_path.clone().unwrap_or_else(|| {
+            PathBuf::from(&status.openclaw_dir)
+                .join("logs")
+                .join("gateway-runtime.log")
+                .to_string_lossy()
+                .to_string()
+        }),
+    })
+}
+
+pub fn launch_managed_openclaw_from_context(
+    context: &OpenClawRuntimeContext,
+) -> anyhow::Result<ManagedOpenClawLaunchResult> {
+    let node_dir = PathBuf::from(&context.node_dir);
     let node_exe = node_runtime_executable(&node_dir);
     if !node_exe.exists() {
         anyhow::bail!("managed node runtime not found: {}", node_exe.display());
     }
 
-    let openclaw_entry = PathBuf::from(&status.openclaw_dir)
+    let openclaw_entry = PathBuf::from(&context.openclaw_dir)
         .join("package")
         .join("openclaw.mjs");
     if !openclaw_entry.exists() {
@@ -76,9 +95,11 @@ pub fn launch_managed_openclaw(
         );
     }
 
-    let log_dir = PathBuf::from(&status.openclaw_dir).join("logs");
+    let log_path = PathBuf::from(&context.runtime_log_path);
+    let log_dir = log_path
+        .parent()
+        .with_context(|| format!("resolve log dir from {}", log_path.display()))?;
     fs::create_dir_all(&log_dir).with_context(|| format!("create {}", log_dir.display()))?;
-    let log_path = log_dir.join("gateway-runtime.log");
     let stdout = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -92,10 +113,10 @@ pub fn launch_managed_openclaw(
     command
         .arg(&openclaw_entry)
         .arg("gateway")
-        .env("OPENCLAW_CONFIG_PATH", &status.config_path)
-        .env("OPENCLAW_HOME", &status.openclaw_dir)
-        .env("OPENCLAW_STATE_DIR", &status.openclaw_dir)
-        .current_dir(PathBuf::from(&status.openclaw_dir).join("package"))
+        .env("OPENCLAW_CONFIG_PATH", &context.config_path)
+        .env("OPENCLAW_HOME", &context.openclaw_dir)
+        .env("OPENCLAW_STATE_DIR", &context.openclaw_dir)
+        .current_dir(PathBuf::from(&context.openclaw_dir).join("package"))
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));

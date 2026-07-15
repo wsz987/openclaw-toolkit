@@ -62,6 +62,15 @@ pub struct OpenClawStatusSummary {
     pub installed_plugins: Vec<InstalledPlugin>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpenClawRuntimeContext {
+    pub openclaw_dir: String,
+    pub node_dir: String,
+    pub config_path: String,
+    pub gateway_url: String,
+    pub runtime_log_path: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderDescriptor {
@@ -609,6 +618,28 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         skills_installed: enabled_skill_ids(&config),
         plugins_enabled: plugin_discovery.enabled_plugin_ids,
         installed_plugins: plugin_discovery.installed_plugins,
+    })
+}
+
+pub fn read_openclaw_runtime_context(config_path: &Path) -> anyhow::Result<OpenClawRuntimeContext> {
+    let config = read_openclaw_config_value(config_path)?;
+    let openclaw_dir = config_path
+        .parent()
+        .with_context(|| format!("resolve openclaw dir from {}", config_path.display()))?;
+    let installed_manifest = read_installed_manifest_from_openclaw_dir(openclaw_dir)?;
+    let gateway_port =
+        number_at_path(&config, &["gateway", "port"]).unwrap_or(DEFAULT_GATEWAY_PORT as u64);
+
+    Ok(OpenClawRuntimeContext {
+        openclaw_dir: openclaw_dir.to_string_lossy().to_string(),
+        node_dir: installed_manifest.node_dir,
+        config_path: config_path.to_string_lossy().to_string(),
+        gateway_url: format!("http://127.0.0.1:{gateway_port}"),
+        runtime_log_path: openclaw_dir
+            .join("logs")
+            .join("gateway-runtime.log")
+            .to_string_lossy()
+            .to_string(),
     })
 }
 
@@ -2379,9 +2410,9 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use serde_json::Value;
+    use serde_json::{json, Value};
 
-    use super::write_openclaw_config;
+    use super::{read_openclaw_runtime_context, write_openclaw_config};
     use crate::core::manifest::models::{
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
     };
@@ -2455,6 +2486,50 @@ mod tests {
                 .and_then(Value::as_object)
                 .map(|models| models.keys().cloned().collect::<Vec<_>>()),
             Some(vec!["deepseek/deepseek-v4-pro".to_string()])
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn runtime_context_reads_launch_paths_without_plugin_discovery() {
+        let temp_dir = unique_temp_dir("openclaw-runtime-context");
+        let openclaw_dir = temp_dir.join("openclaw");
+        fs::create_dir_all(&openclaw_dir).unwrap();
+        let config_path = openclaw_dir.join("openclaw.json");
+        let node_dir = temp_dir.join("node");
+
+        fs::write(
+            &config_path,
+            json!({ "gateway": { "port": 19001 } }).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            openclaw_dir.join("installed-manifest.json"),
+            json!({
+                "toolkitVersion": "0.1.0",
+                "openclawVersion": "2026.5.20",
+                "nodeVersion": "22.19.0",
+                "installMode": "archive",
+                "installedAt": "2026-07-15T00:00:00Z",
+                "openclawDir": openclaw_dir,
+                "nodeDir": node_dir,
+                "configPath": config_path,
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let context = read_openclaw_runtime_context(&config_path).unwrap();
+
+        assert_eq!(context.node_dir, node_dir.to_string_lossy());
+        assert_eq!(context.gateway_url, "http://127.0.0.1:19001");
+        assert_eq!(
+            context.runtime_log_path,
+            openclaw_dir
+                .join("logs")
+                .join("gateway-runtime.log")
+                .to_string_lossy()
         );
 
         fs::remove_dir_all(temp_dir).unwrap();
