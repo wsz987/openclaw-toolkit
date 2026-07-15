@@ -2690,6 +2690,52 @@ mod tests {
     }
 
     #[test]
+    fn plugin_discovery_cache_refreshes_discovery_at_ttl_expiry() {
+        let mut cache = PluginDiscoveryCache::default();
+        let config_path = PathBuf::from("C:\\openclaw\\openclaw.json");
+        let config_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let manifest_modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        let discovered_at = Instant::now();
+        let discovery_calls = Cell::new(1);
+
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at,
+            plugin_discovery("first"),
+        );
+        assert!(cache
+            .get(
+                &config_path,
+                config_modified_at,
+                manifest_modified_at,
+                discovered_at + Duration::from_secs(60),
+            )
+            .is_none());
+        discovery_calls.set(discovery_calls.get() + 1);
+        cache.insert(
+            &config_path,
+            config_modified_at,
+            manifest_modified_at,
+            discovered_at + Duration::from_secs(60),
+            plugin_discovery("refreshed"),
+        );
+
+        let refreshed = cache
+            .get(
+                &config_path,
+                config_modified_at,
+                manifest_modified_at,
+                discovered_at + Duration::from_secs(60),
+            )
+            .unwrap();
+
+        assert_eq!(discovery_calls.get(), 2);
+        assert_eq!(refreshed.enabled_plugin_ids, vec!["refreshed"]);
+    }
+
+    #[test]
     fn plugin_discovery_cache_refreshes_discovery_after_config_modification() {
         let mut cache = PluginDiscoveryCache::default();
         let config_path = PathBuf::from("C:\\openclaw\\openclaw.json");
