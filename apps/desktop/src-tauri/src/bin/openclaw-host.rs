@@ -10,8 +10,10 @@ use std::{
 use anyhow::Context;
 use openclaw_toolkit_desktop_lib::core::{
     background_process::{background_command, detach_from_parent_process, suppress_console_window},
-    openclaw_config::read_openclaw_status,
-    process::{launch_managed_openclaw, stop_managed_openclaw},
+    openclaw_config::{
+        probe_gateway_runtime, read_openclaw_runtime_context, OpenClawRuntimeContext,
+    },
+    process::{launch_managed_openclaw_from_context, stop_managed_openclaw},
     runtime_host::RUNTIME_HOST_KIND_EXTERNAL_HELPER,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -19,7 +21,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 const HOST_DIR_NAME: &str = ".runtime-host";
 const DAEMON_POLL_INTERVAL_MS: u64 = 800;
 const CLIENT_WAIT_TIMEOUT_MS: u64 = 20_000;
-const SPAWN_READY_TIMEOUT_MS: u64 = 4_000;
+const SPAWN_READY_TIMEOUT_MS: u64 = 30_000;
+const RUNTIME_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(5);
 const STALE_COMMAND_TIMEOUT_SECS: i64 = 30;
 const DAEMON_LAUNCH_SENTINEL: &str = "OPENCLAW_HOST_DAEMONIZED";
 
@@ -335,8 +338,12 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("daemon must be launched via spawn-daemon");
     }
 
-    let status = read_openclaw_status(&config_path)
-        .with_context(|| format!("read openclaw status from {}", config_path.display()))?;
+    let runtime_context = read_openclaw_runtime_context(&config_path).with_context(|| {
+        format!(
+            "read openclaw runtime context from {}",
+            config_path.display()
+        )
+    })?;
     let paths = host_paths_from_config(&config_path);
     fs::create_dir_all(&paths.host_dir)
         .with_context(|| format!("create runtime host dir {}", paths.host_dir.display()))?;
@@ -350,28 +357,33 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
         daemon_pid: process::id(),
         daemon_started_at: chrono::Utc::now().to_rfc3339(),
         daemon_heartbeat_at: chrono::Utc::now().to_rfc3339(),
-        runtime_state: if status.runtime_running {
+        runtime_state: if probe_gateway_runtime(&runtime_context.gateway_url) {
             "running".to_string()
         } else {
             "stopped".to_string()
         },
-        runtime_pid: status.runtime_pid,
-        runtime_log_path: status.runtime_log_path.clone(),
+        runtime_pid: None,
+        runtime_log_path: Some(runtime_context.runtime_log_path.clone()),
         last_error: None,
         last_command_id: None,
         last_command_completed_at: None,
     };
     persist_state(&paths, &state)?;
 
+    let mut last_runtime_reconciliation = None;
     loop {
         state.daemon_heartbeat_at = chrono::Utc::now().to_rfc3339();
-        reconcile_runtime_state(&status.config_path, &mut state);
+        let now = Instant::now();
+        if runtime_reconciliation_due(last_runtime_reconciliation, now) {
+            reconcile_runtime_state(&runtime_context.gateway_url, &mut state);
+            last_runtime_reconciliation = Some(now);
+        }
         persist_state(&paths, &state)?;
 
         if let Some(command) =
             read_json_file_if_present::<HostCommandEnvelope>(&paths.command_path)?
         {
-            let result = execute_command(&status, &mut state, &command);
+            let result = execute_command(&runtime_context, &mut state, &command);
             let host_result = match result {
                 Ok(()) => HostCommandResult {
                     command_id: command.command_id.clone(),
@@ -404,16 +416,16 @@ fn run_daemon(config_path: PathBuf) -> anyhow::Result<()> {
 }
 
 fn execute_command(
-    status: &openclaw_toolkit_desktop_lib::core::openclaw_config::OpenClawStatusSummary,
+    runtime_context: &OpenClawRuntimeContext,
     state: &mut DaemonState,
     command: &HostCommandEnvelope,
 ) -> anyhow::Result<()> {
     match command.kind {
-        HostCommandKind::Start => ensure_runtime_started(status, state)?,
+        HostCommandKind::Start => ensure_runtime_started(runtime_context, state)?,
         HostCommandKind::Stop => ensure_runtime_stopped(state)?,
         HostCommandKind::Restart => {
             let _ = ensure_runtime_stopped(state);
-            ensure_runtime_started(status, state)?;
+            ensure_runtime_started(runtime_context, state)?;
         }
     }
 
@@ -422,7 +434,7 @@ fn execute_command(
 }
 
 fn ensure_runtime_started(
-    status: &openclaw_toolkit_desktop_lib::core::openclaw_config::OpenClawStatusSummary,
+    runtime_context: &OpenClawRuntimeContext,
     state: &mut DaemonState,
 ) -> anyhow::Result<()> {
     if state.runtime_pid.is_some_and(process_is_running) {
@@ -430,7 +442,7 @@ fn ensure_runtime_started(
         return Ok(());
     }
 
-    let launch = launch_managed_openclaw(status)?;
+    let launch = launch_managed_openclaw_from_context(runtime_context)?;
     state.runtime_pid = Some(launch.pid);
     state.runtime_log_path = Some(launch.log_path.to_string_lossy().to_string());
     state.runtime_state = "running".to_string();
@@ -449,23 +461,24 @@ fn ensure_runtime_stopped(state: &mut DaemonState) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn reconcile_runtime_state(config_path: &str, state: &mut DaemonState) {
+fn reconcile_runtime_state(gateway_url: &str, state: &mut DaemonState) {
     if state.runtime_pid.is_some_and(process_is_running) {
         state.runtime_state = "running".to_string();
         return;
     }
 
-    if let Ok(status) = read_openclaw_status(&PathBuf::from(config_path)) {
-        state.runtime_pid = status.runtime_pid;
-        state.runtime_log_path = status.runtime_log_path;
-        state.runtime_state = if status.runtime_running {
-            "running".to_string()
-        } else {
-            "stopped".to_string()
-        };
+    state.runtime_pid = None;
+    state.runtime_state = if probe_gateway_runtime(gateway_url) {
+        "running".to_string()
     } else {
-        state.runtime_pid = None;
-        state.runtime_state = "stopped".to_string();
+        "stopped".to_string()
+    };
+}
+
+fn runtime_reconciliation_due(last: Option<Instant>, now: Instant) -> bool {
+    match last {
+        Some(last) => now.saturating_duration_since(last) >= RUNTIME_RECONCILIATION_INTERVAL,
+        None => true,
     }
 }
 
@@ -657,4 +670,29 @@ fn render_error(error: &anyhow::Error) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn runtime_reconciliation_is_due_every_five_seconds() {
+        let now = Instant::now();
+
+        assert!(runtime_reconciliation_due(None, now));
+        assert!(!runtime_reconciliation_due(
+            Some(now - Duration::from_secs(4)),
+            now
+        ));
+        assert!(runtime_reconciliation_due(
+            Some(now - Duration::from_secs(5)),
+            now
+        ));
+    }
+
+    #[test]
+    fn spawn_ready_timeout_waits_thirty_seconds() {
+        assert_eq!(SPAWN_READY_TIMEOUT_MS, 30_000);
+    }
 }

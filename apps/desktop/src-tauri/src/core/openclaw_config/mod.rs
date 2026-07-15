@@ -774,7 +774,7 @@ pub fn read_openclaw_runtime_context(config_path: &Path) -> anyhow::Result<OpenC
     })
 }
 
-fn probe_gateway_runtime(gateway_url: &str) -> bool {
+pub fn probe_gateway_runtime(gateway_url: &str) -> bool {
     let Ok(url) = reqwest::Url::parse(gateway_url) else {
         return false;
     };
