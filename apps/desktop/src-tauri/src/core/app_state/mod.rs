@@ -15,13 +15,13 @@ use crate::core::{
     manifest::{models::InstalledManifest, write_installed_manifest},
     node_runtime::ensure_node_runtime_mirror_config,
     openclaw_config::{read_openclaw_status, OpenClawStatusSummary},
-    runtime_host::default_runtime_host_kind,
     runtime_manager::{RuntimeLifecycleState, RuntimeSnapshot},
 };
 
 const SETTINGS_SCHEMA_VERSION: u32 = 1;
 const REGISTRY_SCHEMA_VERSION: u32 = 1;
 const DEFAULT_BASE_DIR: &str = r"D:\OpenClaw";
+const DEFAULT_RUNTIME_HOST_KIND: &str = "direct-process";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -425,7 +425,7 @@ pub fn resolve_runtime_host_kind_by_config_path(config_path: &Path) -> String {
         })
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| default_runtime_host_kind().to_string())
+        .unwrap_or_else(|| DEFAULT_RUNTIME_HOST_KIND.to_string())
 }
 
 pub fn mark_installation_runtime_state(
@@ -433,7 +433,7 @@ pub fn mark_installation_runtime_state(
     runtime_state: &str,
     runtime_pid: Option<u32>,
     runtime_log_path: Option<&Path>,
-    runtime_host_kind: Option<&str>,
+    _runtime_host_kind: Option<&str>,
 ) -> anyhow::Result<()> {
     let mut registry = load_install_registry()?;
     let Some(record) = registry
@@ -448,12 +448,7 @@ pub fn mark_installation_runtime_state(
     record.status = "installed".to_string();
     record.runtime_pid = runtime_pid;
     record.runtime_log_path = runtime_log_path.map(|path| path.to_string_lossy().to_string());
-    if let Some(runtime_host_kind) = runtime_host_kind
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        record.runtime_host_kind = runtime_host_kind.to_string();
-    }
+    record.runtime_host_kind = DEFAULT_RUNTIME_HOST_KIND.to_string();
     if runtime_state.eq_ignore_ascii_case("running") {
         record.runtime_action_required = "none".to_string();
         record.pending_config_changes.clear();
@@ -706,7 +701,7 @@ fn installation_record_from_manifest(
         runtime_pid: None,
         runtime_log_path: None,
         gateway_ready: false,
-        runtime_host_kind: default_runtime_host_kind().to_string(),
+        runtime_host_kind: DEFAULT_RUNTIME_HOST_KIND.to_string(),
         installed_at: manifest.installed_at.clone(),
         last_validated_at: None,
         last_launched_at: None,
@@ -999,7 +994,7 @@ fn dedupe_paths(paths: &mut Vec<PathBuf>) {
 }
 
 fn default_runtime_host_kind_string() -> String {
-    default_runtime_host_kind().to_string()
+    DEFAULT_RUNTIME_HOST_KIND.to_string()
 }
 
 fn same_path(left: impl AsRef<Path>, right: impl AsRef<Path>) -> bool {

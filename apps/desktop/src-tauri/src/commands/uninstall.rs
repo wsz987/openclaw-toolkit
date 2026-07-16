@@ -1,5 +1,6 @@
 use crate::core::{
     app_state::bootstrap_app_state,
+    runtime_manager::RuntimeManager,
     status_watcher::OpenClawStatusWatcher,
     uninstall::{
         execute_uninstall, inspect_uninstall_plan, ExecuteUninstallInput, UninstallPlan,
@@ -27,10 +28,12 @@ pub async fn inspect_uninstall_plan_command(
 
 #[tauri::command]
 pub async fn execute_uninstall_command(
+    manager: tauri::State<'_, RuntimeManager>,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     input: ExecuteUninstallInput,
 ) -> Result<UninstallResult, String> {
-    tauri::async_runtime::spawn_blocking(move || execute_uninstall(input))
+    let manager = manager.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || execute_uninstall(input, &manager))
         .await
         .map_err(|error| {
             let rendered = error.to_string();

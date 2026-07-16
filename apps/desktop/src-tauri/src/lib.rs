@@ -25,11 +25,12 @@ const WINDOWS_RUN_VALUE_NAME: &str = "OpenClawToolkit";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let runtime_manager = RuntimeManager::default();
+    let exit_runtime_manager = runtime_manager.clone();
     let status_watcher = OpenClawStatusWatcher::new(runtime_manager.clone());
     status_watcher.bootstrap_active_installation();
     let should_start_hidden = should_start_hidden();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .manage(runtime_manager)
         .manage(status_watcher.clone())
         .on_window_event(|window, event| {
@@ -103,8 +104,16 @@ pub fn run() {
             commands::uninstall::inspect_uninstall_plan_command,
             commands::uninstall::execute_uninstall_command
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(move |_app_handle, event| {
+        if matches!(event, tauri::RunEvent::ExitRequested { .. }) {
+            if let Err(error) = exit_runtime_manager.shutdown() {
+                eprintln!("stop OpenClaw during desktop exit failed: {error:#}");
+            }
+        }
+    });
 }
 
 fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<tauri::tray::TrayIcon> {

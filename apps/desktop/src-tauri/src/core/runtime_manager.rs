@@ -1,5 +1,5 @@
 use std::{
-    fs::{File, OpenOptions},
+    fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     thread,
@@ -9,6 +9,7 @@ use std::{
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::OpenOptionsExt;
 
+use anyhow::Context;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
@@ -299,6 +300,7 @@ impl RuntimeManager {
         &self,
         context: &OpenClawRuntimeContext,
     ) -> anyhow::Result<RuntimeSnapshot> {
+        self.migrate_legacy_runtime_host(context)?;
         let current = self.snapshot();
         let port_owner = self.adapter.port_owner(&context.gateway_url);
 
@@ -438,6 +440,48 @@ impl RuntimeManager {
             .identity(pid)
             .map(|identity| identity_matches_context(&identity, context))
             .unwrap_or(false)
+    }
+
+    fn migrate_legacy_runtime_host(&self, context: &OpenClawRuntimeContext) -> anyhow::Result<()> {
+        let host_dir = PathBuf::from(&context.openclaw_dir).join(".runtime-host");
+        let daemon_pid_path = host_dir.join("daemon.pid");
+        if !host_dir.exists() {
+            return Ok(());
+        }
+
+        let daemon_pid = fs::read_to_string(&daemon_pid_path)
+            .ok()
+            .and_then(|value| value.trim().parse::<u32>().ok());
+        if let Some(pid) = daemon_pid {
+            let is_legacy_host = self
+                .adapter
+                .identity(pid)
+                .ok()
+                .and_then(|identity| {
+                    identity
+                        .executable_path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|name| {
+                            name.eq_ignore_ascii_case("openclaw-host.exe")
+                                || name.eq_ignore_ascii_case("openclaw-host")
+                        })
+                })
+                .unwrap_or(false);
+            if !is_legacy_host {
+                return Ok(());
+            }
+
+            self.adapter
+                .force_stop_tree(pid)
+                .with_context(|| format!("stop legacy openclaw-host daemon {pid}"))?;
+        }
+
+        for file_name in ["command.json", "result.json", "state.json", "daemon.pid"] {
+            let _ = fs::remove_file(host_dir.join(file_name));
+        }
+        let _ = fs::remove_dir(&host_dir);
+        Ok(())
     }
 
     fn failed_snapshot(&self, mut snapshot: RuntimeSnapshot, error: String) -> RuntimeSnapshot {
@@ -624,6 +668,29 @@ mod tests {
         assert!(snapshot.adopted);
     }
 
+    #[test]
+    fn shutdown_stops_only_the_verified_managed_process() {
+        let fixture = RuntimeFixture::new();
+        let adapter = FakeAdapter::ready_after_launch(7001);
+        let manager = RuntimeManager::with_adapter(Arc::new(adapter.clone()));
+        manager.start(&fixture.config_path).unwrap();
+
+        manager.shutdown().unwrap();
+
+        assert_eq!(adapter.stop_count(), 1);
+        assert_eq!(manager.snapshot().state, RuntimeLifecycleState::Stopped);
+    }
+
+    #[test]
+    fn shutdown_does_not_stop_an_unverified_pid() {
+        let adapter = FakeAdapter::with_unrelated_port_owner(9001);
+        let manager = RuntimeManager::with_adapter(Arc::new(adapter.clone()));
+
+        manager.shutdown().unwrap();
+
+        assert_eq!(adapter.stop_count(), 0);
+    }
+
     struct RuntimeFixture {
         config_path: PathBuf,
         context: OpenClawRuntimeContext,
@@ -784,8 +851,9 @@ mod tests {
 
         fn mark_exited(&self, pid: u32) {
             self.state.alive_pids.lock().unwrap().remove(&pid);
-            if *self.state.port_owner.lock().unwrap() == Some(pid) {
-                *self.state.port_owner.lock().unwrap() = None;
+            let mut port_owner = self.state.port_owner.lock().unwrap();
+            if *port_owner == Some(pid) {
+                *port_owner = None;
             }
         }
     }
@@ -842,7 +910,8 @@ mod tests {
 
         fn request_official_stop(&self, _context: &OpenClawRuntimeContext) -> anyhow::Result<()> {
             self.state.stop_count.fetch_add(1, Ordering::SeqCst);
-            if let Some(pid) = *self.state.port_owner.lock().unwrap() {
+            let pid = *self.state.port_owner.lock().unwrap();
+            if let Some(pid) = pid {
                 self.mark_exited(pid);
             }
             Ok(())

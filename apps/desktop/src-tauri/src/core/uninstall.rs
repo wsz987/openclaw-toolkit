@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::{
     app_state::{load_install_registry, unregister_installation, InstallationRecord},
     openclaw_config::read_openclaw_status,
-    runtime_host::stop_openclaw_runtime,
+    runtime_manager::RuntimeManager,
 };
 
 const CONFIRMATION_TEXT: &str = "DELETE OPENCLAW";
@@ -97,7 +97,10 @@ pub fn inspect_uninstall_plan(installation_id: &str) -> anyhow::Result<Uninstall
     Ok(plan)
 }
 
-pub fn execute_uninstall(input: ExecuteUninstallInput) -> anyhow::Result<UninstallResult> {
+pub fn execute_uninstall(
+    input: ExecuteUninstallInput,
+    runtime_manager: &RuntimeManager,
+) -> anyhow::Result<UninstallResult> {
     eprintln!(
         "[卸载] 开始执行: installation_id={}, requested_scopes={:?}",
         input.installation_id, input.selected_scopes
@@ -119,24 +122,17 @@ pub fn execute_uninstall(input: ExecuteUninstallInput) -> anyhow::Result<Uninsta
         input.installation_id
     );
 
-    if plan.runtime.running {
-        eprintln!(
-            "[卸载] 检测到运行中的 OpenClaw，准备停止运行实例: config_path={}",
-            record.config_path
-        );
-        stop_openclaw_runtime(
-            Some(&record.runtime_host_kind),
-            &record.config_path,
-            plan.runtime.pid,
-        )
+    eprintln!(
+        "[卸载] 删除文件前协调停止 OpenClaw: config_path={}",
+        record.config_path
+    );
+    runtime_manager
+        .stop(Path::new(&record.config_path))
         .with_context(|| format!("停止 OpenClaw 运行实例 {}", record.config_path))?;
-        eprintln!(
-            "[卸载] OpenClaw 运行实例已停止: config_path={}",
-            record.config_path
-        );
-    } else {
-        eprintln!("[卸载] 当前未检测到运行中的 OpenClaw 进程");
-    }
+    eprintln!(
+        "[卸载] OpenClaw 运行实例已停止或已不存在: config_path={}",
+        record.config_path
+    );
 
     let mut deleted_scopes = Vec::new();
     for target in plan
