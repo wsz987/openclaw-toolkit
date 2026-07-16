@@ -796,6 +796,30 @@ pub fn probe_gateway_runtime(gateway_url: &str) -> bool {
     false
 }
 
+pub fn probe_gateway_liveness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/healthz")
+}
+
+pub fn probe_gateway_readiness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/readyz")
+}
+
+fn probe_gateway_endpoint(gateway_url: &str, endpoint: &str) -> bool {
+    let Ok(base_url) = reqwest::Url::parse(gateway_url) else {
+        return false;
+    };
+    let Ok(url) = base_url.join(endpoint) else {
+        return false;
+    };
+
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(750))
+        .build()
+        .and_then(|client| client.get(url).send())
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
+}
+
 pub fn runtime_pid_for_gateway_url(gateway_url: &str) -> Option<u32> {
     gateway_port_from_url(gateway_url).and_then(find_runtime_pid_by_port)
 }

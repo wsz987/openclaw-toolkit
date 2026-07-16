@@ -19,6 +19,7 @@ pub mod remote;
 pub mod runtime;
 pub mod runtime_host;
 pub mod runtime_manager;
+pub mod runtime_process;
 pub mod service_endpoints;
 pub mod skills;
 pub mod status_events;
