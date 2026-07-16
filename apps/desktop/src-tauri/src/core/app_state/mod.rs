@@ -16,6 +16,7 @@ use crate::core::{
     node_runtime::ensure_node_runtime_mirror_config,
     openclaw_config::{read_openclaw_status, OpenClawStatusSummary},
     runtime_host::default_runtime_host_kind,
+    runtime_manager::{RuntimeLifecycleState, RuntimeSnapshot},
 };
 
 const SETTINGS_SCHEMA_VERSION: u32 = 1;
@@ -88,6 +89,8 @@ pub struct InstallationRecord {
     pub runtime_pid: Option<u32>,
     #[serde(default)]
     pub runtime_log_path: Option<String>,
+    #[serde(default)]
+    pub gateway_ready: bool,
     #[serde(default = "default_runtime_host_kind_string")]
     pub runtime_host_kind: String,
     pub installed_at: String,
@@ -460,6 +463,41 @@ pub fn mark_installation_runtime_state(
     save_install_registry(&registry)
 }
 
+pub fn apply_runtime_snapshot(
+    config_path: &Path,
+    snapshot: &RuntimeSnapshot,
+) -> anyhow::Result<()> {
+    let mut registry = load_install_registry()?;
+    let Some(record) = registry
+        .installations
+        .iter_mut()
+        .find(|item| same_path(&item.config_path, config_path))
+    else {
+        return Ok(());
+    };
+
+    record.runtime_state = snapshot.state.as_str().to_string();
+    record.runtime_pid = snapshot.pid;
+    record.runtime_log_path = snapshot
+        .log_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().to_string());
+    record.gateway_ready = snapshot.gateway_ready;
+    record.runtime_host_kind = "direct-process".to_string();
+    record.last_error = snapshot.last_error.clone();
+    record.status = if snapshot.state == RuntimeLifecycleState::Failed {
+        "degraded".to_string()
+    } else {
+        "installed".to_string()
+    };
+    if snapshot.state == RuntimeLifecycleState::Running {
+        record.runtime_action_required = "none".to_string();
+        record.pending_config_changes.clear();
+        record.last_launched_at = Some(Utc::now().to_rfc3339());
+    }
+    save_install_registry(&registry)
+}
+
 pub fn mark_runtime_action_required(
     config_path: &Path,
     action: &str,
@@ -667,6 +705,7 @@ fn installation_record_from_manifest(
         pending_config_changes: Vec::new(),
         runtime_pid: None,
         runtime_log_path: None,
+        gateway_ready: false,
         runtime_host_kind: default_runtime_host_kind().to_string(),
         installed_at: manifest.installed_at.clone(),
         last_validated_at: None,
@@ -760,6 +799,7 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
         record.runtime_pid = None;
     }
     record.runtime_log_path = status.runtime_log_path.clone();
+    record.gateway_ready = status.gateway_ready;
     record.runtime_action_required = if status.runtime_action_required.trim().is_empty() {
         "none".to_string()
     } else {
@@ -772,7 +812,7 @@ fn apply_status_to_record(record: &mut InstallationRecord, status: &OpenClawStat
         "unavailable".to_string()
     };
     record.last_validated_at = Some(Utc::now().to_rfc3339());
-    record.last_error = None;
+    record.last_error = status.runtime_error.clone();
 }
 
 fn resolve_status_for_record(
@@ -781,26 +821,20 @@ fn resolve_status_for_record(
 ) -> anyhow::Result<OpenClawStatusSummary> {
     let mut status = read_openclaw_status(config_path)?;
 
-    if status.runtime_running {
-        status.runtime_state = "running".to_string();
-        status.runtime_pid = status.runtime_pid.or(record.runtime_pid);
-        status.runtime_log_path = record
-            .runtime_log_path
-            .clone()
-            .or(status.runtime_log_path.clone());
-    } else if record.runtime_state.eq_ignore_ascii_case("starting")
-        && record.runtime_pid.is_some_and(process_id_is_running)
-    {
-        status.runtime_state = "starting".to_string();
-        status.runtime_pid = record.runtime_pid;
-        status.runtime_log_path = record
-            .runtime_log_path
-            .clone()
-            .or(status.runtime_log_path.clone());
-    } else {
-        status.runtime_state = "stopped".to_string();
-        status.runtime_pid = None;
-    }
+    let runtime_state = match record.runtime_state.as_str() {
+        "starting" | "running" | "stopping" | "failed" | "stopped" => record.runtime_state.clone(),
+        _ => "stopped".to_string(),
+    };
+    let runtime_active = matches!(runtime_state.as_str(), "starting" | "running" | "stopping");
+    status.runtime_state = runtime_state;
+    status.runtime_running = runtime_active;
+    status.runtime_pid = runtime_active.then_some(record.runtime_pid).flatten();
+    status.runtime_log_path = record
+        .runtime_log_path
+        .clone()
+        .or(status.runtime_log_path.clone());
+    status.gateway_ready = record.gateway_ready && status.runtime_state == "running";
+    status.runtime_error = record.last_error.clone();
 
     status.runtime_action_required = if record.runtime_action_required.trim().is_empty() {
         "none".to_string()
@@ -824,33 +858,6 @@ fn upsert_installation(registry: &mut InstallationRegistry, record: Installation
             .installations
             .sort_by(|left, right| compare_installed_at(right, left));
     }
-}
-
-#[cfg(target_os = "windows")]
-fn process_id_is_running(pid: u32) -> bool {
-    let filter = format!("PID eq {pid}");
-    let output = background_command("tasklist")
-        .args(["/FI", &filter, "/FO", "CSV", "/NH"])
-        .output();
-
-    let Ok(output) = output else {
-        return false;
-    };
-
-    if !output.status.success() {
-        return false;
-    }
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    text.lines().any(|line| {
-        let trimmed = line.trim();
-        !trimmed.is_empty() && !trimmed.starts_with("INFO:")
-    })
-}
-
-#[cfg(not(target_os = "windows"))]
-fn process_id_is_running(_pid: u32) -> bool {
-    false
 }
 
 fn compare_installed_at(

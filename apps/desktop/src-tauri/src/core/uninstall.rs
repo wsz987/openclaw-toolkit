@@ -815,6 +815,7 @@ mod tests {
             pending_config_changes: Vec::new(),
             runtime_pid: None,
             runtime_log_path: None,
+            gateway_ready: false,
             runtime_host_kind: "direct-process".to_string(),
             installed_at: "2026-06-10T00:00:00Z".to_string(),
             last_validated_at: None,

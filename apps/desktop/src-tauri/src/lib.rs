@@ -1,7 +1,7 @@
 pub mod commands;
 pub mod core;
 
-use crate::core::status_watcher::OpenClawStatusWatcher;
+use crate::core::{runtime_manager::RuntimeManager, status_watcher::OpenClawStatusWatcher};
 use std::path::PathBuf;
 use tauri::{
     image::Image,
@@ -24,11 +24,13 @@ const WINDOWS_RUN_VALUE_NAME: &str = "OpenClawToolkit";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let status_watcher = OpenClawStatusWatcher::default();
+    let runtime_manager = RuntimeManager::default();
+    let status_watcher = OpenClawStatusWatcher::new(runtime_manager.clone());
     status_watcher.bootstrap_active_installation();
     let should_start_hidden = should_start_hidden();
 
     tauri::Builder::default()
+        .manage(runtime_manager)
         .manage(status_watcher.clone())
         .on_window_event(|window, event| {
             if window.label() != MAIN_WINDOW_LABEL {

@@ -5,8 +5,8 @@ use tauri::Emitter;
 
 use crate::core::{
     app_state::{
-        mark_installation_runtime_state, mark_runtime_action_required,
-        resolve_installation_status_by_config_path, resolve_runtime_host_kind_by_config_path,
+        apply_runtime_snapshot, mark_runtime_action_required,
+        resolve_installation_status_by_config_path,
     },
     openclaw_config::{
         apply_dingtalk_channel_setup, apply_feishu_channel_setup, apply_provider_setup,
@@ -25,11 +25,7 @@ use crate::core::{
         QqbotChannelToggleInput, QqbotChannelToggleResult, QqbotLoginQrStartInput,
         QqbotLoginQrStartResult, QqbotLoginQrWaitInput, QqbotLoginQrWaitResult,
     },
-    runtime_host::{
-        launch_openclaw_runtime as launch_runtime_via_host,
-        stop_openclaw_runtime as stop_runtime_via_host, ManagedRuntimeLaunchResult,
-        ManagedRuntimeStopResult,
-    },
+    runtime_manager::{RuntimeManager, RuntimeSnapshot},
     skills::{
         inspect_skill_catalog, set_skill_enabled, ManagedSkillCatalog, SkillToggleInput,
         SkillToggleResult,
@@ -123,30 +119,22 @@ pub struct DingtalkAuthQrStatusResult {
     pub detail: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedLaunchResponse {
-    pub pid: u32,
-    pub log_path: String,
-    pub runtime_host_kind: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedStopResponse {
-    pub stopped: bool,
-    pub runtime_host_kind: String,
-}
-
 #[tauri::command]
 pub async fn inspect_openclaw_status(
+    manager: tauri::State<'_, RuntimeManager>,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
 ) -> Result<OpenClawStatusSummary, String> {
     watcher.watch_config_path(&config_path);
+    let manager = manager.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let config_path = PathBuf::from(config_path);
-        resolve_installation_status_by_config_path(&config_path).map_err(render_error)
+        let result = (|| -> anyhow::Result<OpenClawStatusSummary> {
+            let snapshot = manager.reconcile(&config_path)?;
+            apply_runtime_snapshot(&config_path, &snapshot)?;
+            resolve_installation_status_by_config_path(&config_path)
+        })();
+        result.map_err(render_error)
     })
     .await
     .map_err(|error| {
@@ -668,22 +656,18 @@ pub async fn set_openclaw_skill_enabled(
 #[tauri::command]
 pub async fn launch_openclaw_runtime(
     app: tauri::AppHandle,
+    manager: tauri::State<'_, RuntimeManager>,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
-) -> Result<ManagedLaunchResponse, String> {
+) -> Result<RuntimeSnapshot, String> {
     watcher.watch_config_path(&config_path);
+    let manager = manager.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let status = read_openclaw_status(&PathBuf::from(&config_path))?;
-        let launch = launch_runtime_via_host(&status)?;
-        let _ = mark_installation_runtime_state(
-            &PathBuf::from(&config_path),
-            "starting",
-            Some(launch.pid),
-            Some(&launch.log_path),
-            Some(&launch.runtime_host_kind),
-        );
-        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&config_path));
-        Ok::<ManagedLaunchResponse, anyhow::Error>(map_launch_response(launch))
+        let config_path = PathBuf::from(config_path);
+        let snapshot = manager.start(&config_path)?;
+        apply_runtime_snapshot(&config_path, &snapshot)?;
+        let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        Ok::<RuntimeSnapshot, anyhow::Error>(snapshot)
     })
     .await
     .map_err(|error| {
@@ -740,24 +724,19 @@ pub async fn read_openclaw_runtime_log_tail(
 #[tauri::command]
 pub async fn stop_openclaw_runtime(
     app: tauri::AppHandle,
+    manager: tauri::State<'_, RuntimeManager>,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
-    pid: Option<u32>,
-) -> Result<ManagedStopResponse, String> {
+    _pid: Option<u32>,
+) -> Result<RuntimeSnapshot, String> {
     watcher.watch_config_path(&config_path);
+    let manager = manager.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let runtime_host_kind =
-            resolve_runtime_host_kind_by_config_path(&PathBuf::from(&config_path));
-        let result = stop_runtime_via_host(Some(&runtime_host_kind), &config_path, pid)?;
-        let _ = mark_installation_runtime_state(
-            &PathBuf::from(&config_path),
-            "stopped",
-            None,
-            None,
-            Some(&result.runtime_host_kind),
-        );
-        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&config_path));
-        Ok::<ManagedStopResponse, anyhow::Error>(map_stop_response(result))
+        let config_path = PathBuf::from(config_path);
+        let snapshot = manager.stop(&config_path)?;
+        apply_runtime_snapshot(&config_path, &snapshot)?;
+        let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        Ok::<RuntimeSnapshot, anyhow::Error>(snapshot)
     })
     .await
     .map_err(|error| {
@@ -771,27 +750,19 @@ pub async fn stop_openclaw_runtime(
 #[tauri::command]
 pub async fn restart_openclaw_runtime(
     app: tauri::AppHandle,
+    manager: tauri::State<'_, RuntimeManager>,
     watcher: tauri::State<'_, OpenClawStatusWatcher>,
     config_path: String,
-    pid: Option<u32>,
-) -> Result<ManagedLaunchResponse, String> {
+    _pid: Option<u32>,
+) -> Result<RuntimeSnapshot, String> {
     watcher.watch_config_path(&config_path);
+    let manager = manager.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let runtime_host_kind =
-            resolve_runtime_host_kind_by_config_path(&PathBuf::from(&config_path));
-        let _ = stop_runtime_via_host(Some(&runtime_host_kind), &config_path, pid);
-
-        let status = read_openclaw_status(&PathBuf::from(&config_path))?;
-        let launch = launch_runtime_via_host(&status)?;
-        let _ = mark_installation_runtime_state(
-            &PathBuf::from(&config_path),
-            "starting",
-            Some(launch.pid),
-            Some(&launch.log_path),
-            Some(&launch.runtime_host_kind),
-        );
-        let _ = refresh_and_emit_openclaw_status(&app, &PathBuf::from(&config_path));
-        Ok::<ManagedLaunchResponse, anyhow::Error>(map_launch_response(launch))
+        let config_path = PathBuf::from(config_path);
+        let snapshot = manager.restart(&config_path)?;
+        apply_runtime_snapshot(&config_path, &snapshot)?;
+        let _ = refresh_and_emit_openclaw_status(&app, &config_path);
+        Ok::<RuntimeSnapshot, anyhow::Error>(snapshot)
     })
     .await
     .map_err(|error| {
@@ -800,21 +771,6 @@ pub async fn restart_openclaw_runtime(
         rendered
     })?
     .map_err(render_error)
-}
-
-fn map_launch_response(launch: ManagedRuntimeLaunchResult) -> ManagedLaunchResponse {
-    ManagedLaunchResponse {
-        pid: launch.pid,
-        log_path: launch.log_path.to_string_lossy().to_string(),
-        runtime_host_kind: launch.runtime_host_kind,
-    }
-}
-
-fn map_stop_response(result: ManagedRuntimeStopResult) -> ManagedStopResponse {
-    ManagedStopResponse {
-        stopped: result.stopped,
-        runtime_host_kind: result.runtime_host_kind,
-    }
 }
 
 #[derive(Debug, serde::Deserialize)]

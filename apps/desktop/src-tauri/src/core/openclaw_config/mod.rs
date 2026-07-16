@@ -45,6 +45,8 @@ pub struct OpenClawStatusSummary {
     pub runtime_state: String,
     pub runtime_pid: Option<u32>,
     pub runtime_log_path: Option<String>,
+    pub gateway_ready: bool,
+    pub runtime_error: Option<String>,
     pub runtime_action_required: String,
     pub pending_config_changes: Vec<String>,
     pub runtime_running: bool,
@@ -659,6 +661,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .to_string_lossy()
         .to_string();
     let runtime_running = probe_gateway_runtime(&gateway_url);
+    let gateway_ready = probe_gateway_readiness(&gateway_url);
     let runtime_pid = runtime_running
         .then(|| runtime_pid_for_gateway_url(&gateway_url))
         .flatten();
@@ -728,6 +731,8 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         },
         runtime_pid,
         runtime_log_path: Some(runtime_log_path),
+        gateway_ready,
+        runtime_error: None,
         runtime_action_required: "none".to_string(),
         pending_config_changes: Vec::new(),
         runtime_running,
