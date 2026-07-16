@@ -272,8 +272,8 @@ impl RuntimeManager {
         if let Err(error) = self.adapter.request_official_stop(&context) {
             let failed =
                 self.failed_snapshot(current, format!("请求 OpenClaw 正常停止失败：{error:#}"));
-            self.replace_snapshot(failed);
-            self.release_startup_lock();
+            self.replace_snapshot(failed.clone());
+            self.release_startup_lock_if_safe(&context, &failed);
             return Err(error);
         }
 
@@ -289,8 +289,8 @@ impl RuntimeManager {
                 if let Err(error) = self.adapter.force_stop_tree(pid) {
                     let failed =
                         self.failed_snapshot(current, format!("OpenClaw 强制停止失败：{error:#}"));
-                    self.replace_snapshot(failed);
-                    self.release_startup_lock();
+                    self.replace_snapshot(failed.clone());
+                    self.release_startup_lock_if_safe(&context, &failed);
                     return Err(error);
                 }
                 if self.wait_for_stop(&context, Some(pid)) {
@@ -304,8 +304,8 @@ impl RuntimeManager {
 
         let error = anyhow::anyhow!("OpenClaw 未能在限定时间内停止");
         let failed = self.failed_snapshot(current, error.to_string());
-        self.replace_snapshot(failed);
-        self.release_startup_lock();
+        self.replace_snapshot(failed.clone());
+        self.release_startup_lock_if_safe(&context, &failed);
         Err(error)
     }
 
@@ -362,9 +362,7 @@ impl RuntimeManager {
             });
         }
         self.replace_snapshot(next.clone());
-        if next_state != RuntimeLifecycleState::Starting {
-            self.release_startup_lock();
-        }
+        self.release_startup_lock_if_safe(context, &next);
         Ok(next)
     }
 
@@ -387,7 +385,7 @@ impl RuntimeManager {
                 ),
             );
             self.replace_snapshot(failed.clone());
-            self.release_startup_lock();
+            self.release_startup_lock_if_safe(context, &failed);
             return Ok(failed);
         }
 
@@ -410,9 +408,7 @@ impl RuntimeManager {
             gateway_ready,
         };
         self.replace_snapshot(snapshot.clone());
-        if snapshot.state != RuntimeLifecycleState::Starting {
-            self.release_startup_lock();
-        }
+        self.release_startup_lock_if_safe(context, &snapshot);
         Ok(snapshot)
     }
 
@@ -439,7 +435,7 @@ impl RuntimeManager {
         failed.gateway_live = observation.gateway_live;
         failed.gateway_ready = observation.gateway_ready;
         self.replace_snapshot(failed.clone());
-        self.release_startup_lock();
+        self.release_startup_lock_if_safe(context, &failed);
         Ok(failed)
     }
 
@@ -527,6 +523,22 @@ impl RuntimeManager {
             .lock()
             .expect("runtime startup lock poisoned")
             .take();
+    }
+
+    fn release_startup_lock_if_safe(
+        &self,
+        context: &OpenClawRuntimeContext,
+        snapshot: &RuntimeSnapshot,
+    ) {
+        let pid_alive = snapshot.pid.is_some_and(|pid| self.adapter.is_alive(pid));
+        let port_occupied = self.adapter.port_owner(&context.gateway_url).is_some();
+        if matches!(
+            snapshot.state,
+            RuntimeLifecycleState::Running | RuntimeLifecycleState::Stopped
+        ) || (!pid_alive && !port_occupied)
+        {
+            self.release_startup_lock();
+        }
     }
 }
 
@@ -720,6 +732,23 @@ mod tests {
     }
 
     #[test]
+    fn failed_official_stop_keeps_startup_lock_until_the_spawned_pid_exits() {
+        let fixture = RuntimeFixture::new();
+        let adapter = FakeAdapter::ready_after_launch(7001);
+        let manager = RuntimeManager::with_adapter(Arc::new(adapter.clone()));
+        manager.start(&fixture.config_path).unwrap();
+        adapter.set_gateway_ready(false);
+        adapter.fail_official_stop();
+
+        assert!(manager.stop(&fixture.config_path).is_err());
+        assert!(acquire_start_lock(&fixture.context).is_err());
+
+        adapter.mark_exited(7001);
+        manager.reconcile(&fixture.config_path).unwrap();
+        assert!(acquire_start_lock(&fixture.context).is_ok());
+    }
+
+    #[test]
     fn shutdown_stops_only_the_verified_managed_process() {
         let fixture = RuntimeFixture::new();
         let adapter = FakeAdapter::ready_after_launch(7001);
@@ -804,6 +833,7 @@ mod tests {
         port_owner: Mutex<Option<u32>>,
         identities: Mutex<HashMap<u32, ManagedProcessIdentity>>,
         official_status: Mutex<OfficialGatewayStatus>,
+        official_stop_error: AtomicBool,
         gateway_live: AtomicBool,
         gateway_ready: AtomicBool,
     }
@@ -886,6 +916,7 @@ mod tests {
                     port_owner: Mutex::new(port_owner),
                     identities: Mutex::new(HashMap::new()),
                     official_status: Mutex::new(official_status),
+                    official_stop_error: AtomicBool::new(false),
                     gateway_live: AtomicBool::new(gateway_live),
                     gateway_ready: AtomicBool::new(gateway_ready),
                 }),
@@ -906,6 +937,14 @@ mod tests {
             if *port_owner == Some(pid) {
                 *port_owner = None;
             }
+        }
+
+        fn fail_official_stop(&self) {
+            self.state.official_stop_error.store(true, Ordering::SeqCst);
+        }
+
+        fn set_gateway_ready(&self, value: bool) {
+            self.state.gateway_ready.store(value, Ordering::SeqCst);
         }
     }
 
@@ -961,6 +1000,9 @@ mod tests {
 
         fn request_official_stop(&self, _context: &OpenClawRuntimeContext) -> anyhow::Result<()> {
             self.state.stop_count.fetch_add(1, Ordering::SeqCst);
+            if self.state.official_stop_error.load(Ordering::SeqCst) {
+                anyhow::bail!("fake official stop failed");
+            }
             let pid = *self.state.port_owner.lock().unwrap();
             if let Some(pid) = pid {
                 self.mark_exited(pid);
