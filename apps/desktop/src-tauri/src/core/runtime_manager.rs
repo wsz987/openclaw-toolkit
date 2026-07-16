@@ -119,6 +119,7 @@ pub struct RuntimeManager {
     adapter: Arc<dyn RuntimeProcessAdapter>,
     operation_lock: Arc<Mutex<()>>,
     snapshot: Arc<Mutex<RuntimeSnapshot>>,
+    startup_lock: Arc<Mutex<Option<File>>>,
 }
 
 impl Default for RuntimeManager {
@@ -133,6 +134,7 @@ impl RuntimeManager {
             adapter,
             operation_lock: Arc::new(Mutex::new(())),
             snapshot: Arc::new(Mutex::new(RuntimeSnapshot::default())),
+            startup_lock: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -211,7 +213,7 @@ impl RuntimeManager {
             RuntimeLifecycleState::Stopped | RuntimeLifecycleState::Failed => {}
         }
 
-        let _start_lock = acquire_start_lock(&context)?;
+        let start_lock = acquire_start_lock(&context)?;
         let official_status = self.adapter.official_status(&context)?;
         if official_status.has_service_conflict() {
             anyhow::bail!("检测到官方 Gateway 服务，请先停用后再启动桌面托管模式");
@@ -248,6 +250,7 @@ impl RuntimeManager {
             gateway_ready: false,
         };
         self.replace_snapshot(snapshot.clone());
+        self.retain_startup_lock(start_lock);
         Ok(snapshot)
     }
 
@@ -270,21 +273,30 @@ impl RuntimeManager {
             let failed =
                 self.failed_snapshot(current, format!("请求 OpenClaw 正常停止失败：{error:#}"));
             self.replace_snapshot(failed);
+            self.release_startup_lock();
             return Err(error);
         }
 
         if self.wait_for_stop(&context, current.pid) {
             let stopped = stopped_snapshot(config_path);
             self.replace_snapshot(stopped.clone());
+            self.release_startup_lock();
             return Ok(stopped);
         }
 
         if let Some(pid) = current.pid.filter(|_| !current.adopted) {
             if self.identity_matches(&context, pid) {
-                self.adapter.force_stop_tree(pid)?;
+                if let Err(error) = self.adapter.force_stop_tree(pid) {
+                    let failed =
+                        self.failed_snapshot(current, format!("OpenClaw 强制停止失败：{error:#}"));
+                    self.replace_snapshot(failed);
+                    self.release_startup_lock();
+                    return Err(error);
+                }
                 if self.wait_for_stop(&context, Some(pid)) {
                     let stopped = stopped_snapshot(config_path);
                     self.replace_snapshot(stopped.clone());
+                    self.release_startup_lock();
                     return Ok(stopped);
                 }
             }
@@ -293,6 +305,7 @@ impl RuntimeManager {
         let error = anyhow::anyhow!("OpenClaw 未能在限定时间内停止");
         let failed = self.failed_snapshot(current, error.to_string());
         self.replace_snapshot(failed);
+        self.release_startup_lock();
         Err(error)
     }
 
@@ -349,6 +362,9 @@ impl RuntimeManager {
             });
         }
         self.replace_snapshot(next.clone());
+        if next_state != RuntimeLifecycleState::Starting {
+            self.release_startup_lock();
+        }
         Ok(next)
     }
 
@@ -371,6 +387,7 @@ impl RuntimeManager {
                 ),
             );
             self.replace_snapshot(failed.clone());
+            self.release_startup_lock();
             return Ok(failed);
         }
 
@@ -393,6 +410,9 @@ impl RuntimeManager {
             gateway_ready,
         };
         self.replace_snapshot(snapshot.clone());
+        if snapshot.state != RuntimeLifecycleState::Starting {
+            self.release_startup_lock();
+        }
         Ok(snapshot)
     }
 
@@ -419,6 +439,7 @@ impl RuntimeManager {
         failed.gateway_live = observation.gateway_live;
         failed.gateway_ready = observation.gateway_ready;
         self.replace_snapshot(failed.clone());
+        self.release_startup_lock();
         Ok(failed)
     }
 
@@ -493,6 +514,20 @@ impl RuntimeManager {
     fn replace_snapshot(&self, snapshot: RuntimeSnapshot) {
         *self.snapshot.lock().expect("runtime snapshot poisoned") = snapshot;
     }
+
+    fn retain_startup_lock(&self, lock: File) {
+        *self
+            .startup_lock
+            .lock()
+            .expect("runtime startup lock poisoned") = Some(lock);
+    }
+
+    fn release_startup_lock(&self) {
+        self.startup_lock
+            .lock()
+            .expect("runtime startup lock poisoned")
+            .take();
+    }
 }
 
 fn stopped_snapshot(config_path: &Path) -> RuntimeSnapshot {
@@ -529,7 +564,10 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use super::{reduce_observation, RuntimeLifecycleState, RuntimeManager, RuntimeObservation};
+    use super::{
+        acquire_start_lock, reduce_observation, RuntimeLifecycleState, RuntimeManager,
+        RuntimeObservation,
+    };
     use crate::core::{
         openclaw_config::OpenClawRuntimeContext,
         runtime_process::{
@@ -666,6 +704,19 @@ mod tests {
         assert_eq!(snapshot.state, RuntimeLifecycleState::Running);
         assert_eq!(snapshot.pid, Some(8123));
         assert!(snapshot.adopted);
+    }
+
+    #[test]
+    fn startup_lock_is_held_until_the_gateway_reaches_a_terminal_start_state() {
+        let fixture = RuntimeFixture::new();
+        let adapter = FakeAdapter::ready_after_launch(7001);
+        let manager = RuntimeManager::with_adapter(Arc::new(adapter));
+
+        manager.start(&fixture.config_path).unwrap();
+        assert!(acquire_start_lock(&fixture.context).is_err());
+
+        manager.reconcile(&fixture.config_path).unwrap();
+        assert!(acquire_start_lock(&fixture.context).is_ok());
     }
 
     #[test]
