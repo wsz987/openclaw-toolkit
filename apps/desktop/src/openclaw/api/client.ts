@@ -13,6 +13,7 @@ import type {
   FeishuAuthQrStatusResult,
   InstallMode,
   OpenClawLaunchResult,
+  OpenClawRuntimeSnapshot,
   OpenClawFeishuChannelSetupPayload,
   OpenClawFeishuChannelSetupResult,
   OpenClawDingtalkChannelSetupPayload,
@@ -194,7 +195,8 @@ export async function stopOpenClawRuntime(
   configPath: string,
   pid?: number | null
 ): Promise<OpenClawStopResult> {
-  return invoke<OpenClawStopResult>('stop_openclaw_runtime', { configPath, pid });
+  const snapshot = await invoke<OpenClawRuntimeSnapshot>('stop_openclaw_runtime', { configPath, pid });
+  return { ...snapshot, stopped: snapshot.state === 'stopped' };
 }
 
 export async function restartOpenClawRuntime(

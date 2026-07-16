@@ -13,7 +13,8 @@ import { toast } from 'sonner';
 import type {
   OpenClawPostInstallStatus,
   InstallLogTail,
-  OpenClawInstallResult
+  OpenClawInstallResult,
+  OpenClawStopResult
 } from '@/openclaw/model/types';
 import { readOpenClawRuntimeLogTail } from '@/openclaw/api/client';
 import { useOpenClawStatusSubscription } from '@/openclaw/model/status-store';
@@ -30,7 +31,7 @@ type RuntimeOperationsPanelProps = {
   logsDirOpening: boolean;
   error?: string | null;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
-  onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
+  onStopRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawStopResult | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
@@ -63,14 +64,18 @@ export function RuntimeOperationsPanel({
   const { status: subscribedStatus, loading: subscribedStatusLoading } = useOpenClawStatusSubscription(result.configPath);
   const resolvedStatus = subscribedStatus ?? status;
   const providerReady = resolvedStatus?.providerInitialized ?? false;
-  const isStarting = resolvedStatus?.runtimeState === 'starting';
-  const isRunning = resolvedStatus?.runtimeRunning ?? (resolvedStatus?.runtimeState === 'running');
-  const launchPending = runtimeLaunchLoading || isStarting;
-  const panelReachable = resolvedStatus?.panelReachable ?? false;
+  const runtimeState = resolvedStatus?.runtimeState ?? 'stopped';
+  const isStarting = runtimeState === 'starting';
+  const isRunning = runtimeState === 'running';
+  const isStopping = runtimeState === 'stopping';
+  const gatewayReady = resolvedStatus?.gatewayReady ?? false;
+  const runtimeActive = isStarting || isRunning;
+  const launchPending = runtimeLaunchLoading || isStarting || isStopping;
+  const panelReachable = (resolvedStatus?.panelReachable ?? false) && gatewayReady;
   const postInstallActionLoading =
     launchPending || runtimeStopLoading || runtimeRestartLoading || subscribedStatusLoading || statusLoading;
   const activeLogPath = resolvedStatus?.runtimeLogPath ?? null;
-  const hasRuntimeSession = (isRunning || isStarting) && Boolean(activeLogPath);
+  const hasRuntimeSession = runtimeActive && Boolean(activeLogPath);
   const runtimePid = resolvedStatus?.runtimePid ?? null;
 
   useEffect(() => {
@@ -180,7 +185,7 @@ export function RuntimeOperationsPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isRunning ? (
+          {isRunning && gatewayReady ? (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(var(--success))]"></span>
@@ -191,14 +196,14 @@ export function RuntimeOperationsPanel({
             </span>
           )}
           <span
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${isRunning
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${isRunning && gatewayReady
                 ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                : isStarting
+                : runtimeActive
                   ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]'
                   : 'bg-white/5 text-[hsl(var(--on-dark-soft))]'
               }`}
           >
-            {isRunning ? '服务运行中' : isStarting ? '服务启动中' : '服务未启动'}
+            {isRunning && gatewayReady ? '服务运行中' : runtimeActive ? '服务启动中' : '服务未启动'}
           </span>
         </div>
       </div>
@@ -245,8 +250,8 @@ export function RuntimeOperationsPanel({
         {hasRuntimeSession ? (
           <>
             <div>[daemon] Spawning OpenClaw core instance...</div>
-            <div className={isRunning ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--primary))]'}>
-              [{isRunning ? 'success' : 'startup'}] Process {runtimePid ? `started with PID: ${runtimePid}` : 'is initializing'}
+            <div className={isRunning && gatewayReady ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--primary))]'}>
+              [{isRunning && gatewayReady ? 'success' : 'startup'}] Process {runtimePid ? `started with PID: ${runtimePid}` : 'is initializing'}
             </div>
             {logTail && logTail.lines.length > 0 ? (
               logTail.lines.map((line, index) => (
@@ -286,7 +291,7 @@ export function RuntimeOperationsPanel({
         <div className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
-            disabled={postInstallActionLoading || !status || isStarting}
+            disabled={postInstallActionLoading || !status || isStarting || isStopping}
             onClick={() => {
               if (isRunning) {
                 void onRestartRuntime(result.configPath, runtimePid);
@@ -317,8 +322,8 @@ export function RuntimeOperationsPanel({
 
           <Button
             variant="secondary"
-            disabled={postInstallActionLoading || !status || !isRunning || !runtimePid}
-            onClick={() => runtimePid ? void onStopRuntime(result.configPath, runtimePid) : undefined}
+            disabled={postInstallActionLoading || !status || !runtimeActive}
+            onClick={() => void onStopRuntime(result.configPath, runtimePid)}
             className="flex-1 min-w-[130px] bg-[hsl(var(--surface-dark-elevated))] hover:bg-white/10 text-[hsl(var(--on-dark))] border border-white/5 h-10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           >
             {runtimeStopLoading ? (

@@ -5,6 +5,7 @@ import type {
   OpenClawStopResult,
   OpenClawInstallResult
 } from '@/openclaw/model/types';
+import { deriveRuntimePresentation } from '@/openclaw/model/runtime-state';
 
 // Custom premium inline SVG icons
 const PlayIcon = ({ className }: { className?: string }) => (
@@ -100,7 +101,7 @@ type ServiceControlPanelProps = {
   runtimeStopLoading: boolean;
   runtimeRestartLoading: boolean;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
-  onStopRuntime: (configPath: string, pid: number) => Promise<OpenClawStopResult | null>;
+  onStopRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawStopResult | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
   onNavigateToAdvancedConsole?: () => void;
   onNavigateToProvider?: () => void;
@@ -165,13 +166,18 @@ export function ServiceControlPanel({
   controlPanelOpening = false
 }: ServiceControlPanelProps) {
   const providerReady = status?.providerInitialized ?? false;
-  const isStarting = status?.runtimeState === 'starting';
-  const isRunning = status?.runtimeRunning ?? (status?.runtimeState === 'running');
-  const launchPending = runtimeLaunchLoading || isStarting;
+  const runtimeState = status?.runtimeState ?? 'stopped';
+  const gatewayReady = status?.gatewayReady ?? false;
+  const runtimePresentation = deriveRuntimePresentation(runtimeState, gatewayReady, status?.runtimeError ?? null);
+  const isStarting = runtimeState === 'starting';
+  const isRunning = runtimeState === 'running';
+  const canOpenControlPanel = isRunning && gatewayReady;
+  const launchPending = runtimeLaunchLoading || runtimePresentation.busy;
   const pid = status?.runtimePid ?? null;
   const runtimeActionRequired = status?.runtimeActionRequired ?? 'none';
   const pendingConfigChanges = status?.pendingConfigChanges ?? [];
-  const busy = launchPending || runtimeStopLoading || runtimeRestartLoading || statusLoading;
+  const operationBusy = runtimeLaunchLoading || runtimeStopLoading || runtimeRestartLoading || statusLoading;
+  const busy = operationBusy || runtimePresentation.busy;
 
   if (!providerReady) {
     return (
@@ -203,18 +209,18 @@ export function ServiceControlPanel({
   return (
     <div className="max-w-md w-full mx-auto my-auto py-12 px-4 flex flex-col items-center justify-center text-center gap-8 animate-fade-in">
       {/* Heartbeat Status Indicator */}
-      <StatusHeartbeat isRunning={isRunning} isBusy={busy} />
+      <StatusHeartbeat isRunning={canOpenControlPanel} isBusy={busy} />
 
       {/* Title & Status Info */}
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-2xl font-medium text-[hsl(var(--ink))] tracking-tight">OpenClaw Gateway</h2>
 
-        <div className={`text-[10px] font-semibold tracking-wider flex items-center gap-1.5 uppercase ${isRunning ? 'text-[hsl(var(--success))]' : isStarting ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'
+        <div className={`text-[10px] font-semibold tracking-wider flex items-center gap-1.5 uppercase ${runtimePresentation.tone === 'success' ? 'text-[hsl(var(--success))]' : runtimePresentation.tone === 'error' ? 'text-[hsl(var(--error))]' : runtimePresentation.tone === 'pending' ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted))]'
           }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-[hsl(var(--success))] animate-pulse' : isStarting ? 'bg-[hsl(var(--primary))] animate-pulse' : 'bg-[hsl(var(--muted-soft))]'
+          <span className={`w-1.5 h-1.5 rounded-full ${runtimePresentation.tone === 'success' ? 'bg-[hsl(var(--success))] animate-pulse' : runtimePresentation.tone === 'error' ? 'bg-[hsl(var(--error))]' : runtimePresentation.tone === 'pending' ? 'bg-[hsl(var(--primary))] animate-pulse' : 'bg-[hsl(var(--muted-soft))]'
             }`} />
-          {isRunning ? '服务运行中' : isStarting ? '服务启动中' : '服务已停止'}
-          {(isRunning || isStarting) && pid && (
+          {runtimePresentation.label}
+          {runtimePresentation.canStop && pid && (
             <span className="text-[hsl(var(--muted-soft))] font-normal font-mono normal-case">
               (PID: {pid})
             </span>
@@ -224,7 +230,7 @@ export function ServiceControlPanel({
 
       {/* Main Interactive Controls */}
       <div className="w-full flex flex-col items-center gap-4">
-        {isRunning ? (
+        {canOpenControlPanel ? (
           onOpenControlPanel && (
             <Button
               onClick={() => void onOpenControlPanel(result.configPath)}
@@ -246,11 +252,11 @@ export function ServiceControlPanel({
           )
         ) : (
           <Button
-            disabled={busy || isStarting}
+            disabled={operationBusy || !runtimePresentation.canStart}
             onClick={() => void onLaunchRuntime(result.configPath)}
             className="w-full h-12 text-xs font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--on-primary))] hover:bg-[hsl(var(--primary-active))] transition-all duration-300 flex items-center justify-center gap-2 rounded-xl shadow-[0_4px_12px_rgba(204,120,92,0.25)] hover:shadow-[0_6px_20px_rgba(204,120,92,0.4)] hover:-translate-y-0.5 active:translate-y-0"
           >
-            {launchPending ? (
+            {runtimeLaunchLoading ? (
               <>
                 <SpinnerIcon size={14} className="spinning mr-1" />
                 正在启动服务...
@@ -258,7 +264,7 @@ export function ServiceControlPanel({
             ) : (
               <>
                 <PlayIcon className="mr-1" />
-                启动网关服务
+                {runtimeState === 'failed' ? '重新启动服务' : runtimePresentation.label}
               </>
             )}
           </Button>
@@ -266,14 +272,14 @@ export function ServiceControlPanel({
 
         {/* Restart & Stop Buttons (Always in DOM to preserve height, preventing layout jumps) */}
         <div
-          className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${(isRunning || isStarting)
+          className={`flex w-full gap-3 mt-1 transition-all duration-300 ease-out ${runtimePresentation.canStop
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 -translate-y-2 pointer-events-none'
             }`}
         >
           <Button
             variant="outline"
-            disabled={busy || !isRunning}
+            disabled={operationBusy || !runtimePresentation.canStop}
             onClick={() => void onRestartRuntime(result.configPath, pid)}
             className="flex-1 h-10 text-xs font-medium border-[hsl(var(--hairline))] bg-transparent hover:bg-[hsl(var(--surface-soft))] text-[hsl(var(--body-strong))] rounded-xl transition-all duration-200"
           >
@@ -292,8 +298,8 @@ export function ServiceControlPanel({
 
           <Button
             variant="outline"
-            disabled={busy || !pid || isStarting}
-            onClick={() => pid ? void onStopRuntime(result.configPath, pid) : undefined}
+            disabled={operationBusy || !runtimePresentation.canStop}
+            onClick={() => void onStopRuntime(result.configPath, pid)}
             className="flex-1 h-10 text-xs font-medium border-[hsl(var(--error)/0.18)] bg-transparent hover:bg-[hsl(var(--error)/0.04)] text-[hsl(var(--error))] hover:text-[hsl(var(--error))] rounded-xl transition-all duration-200"
           >
             {runtimeStopLoading ? (
@@ -310,6 +316,12 @@ export function ServiceControlPanel({
           </Button>
         </div>
       </div>
+
+      {status?.runtimeError ? (
+        <div className="w-full border border-[hsl(var(--error)/0.22)] bg-[hsl(var(--error)/0.05)] px-4 py-3 text-left text-xs leading-relaxed text-[hsl(var(--error))]">
+          {status.runtimeError}
+        </div>
+      ) : null}
 
       {/* Pending Config Changes Warning Banner */}
       {/* {runtimeActionRequired !== 'none' && (

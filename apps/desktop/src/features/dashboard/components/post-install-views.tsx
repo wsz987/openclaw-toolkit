@@ -14,6 +14,7 @@ import type {
   OpenClawProviderSetupPayload,
   OpenClawProviderSetupResult,
   OpenClawInstallResult,
+  OpenClawStopResult,
   UninstallPlan,
   UninstallResult
 } from '@/openclaw/model/types';
@@ -63,7 +64,7 @@ type PostInstallHomeViewProps = {
   onReloadSkillCatalog: (configPath: string) => Promise<ManagedSkillCatalog | null>;
   onSkillToggle: (input: OpenClawSkillTogglePayload) => Promise<unknown>;
   onLaunchRuntime: (configPath: string) => Promise<unknown>;
-  onStopRuntime: (configPath: string, pid: number) => Promise<{ stopped: boolean } | null>;
+  onStopRuntime: (configPath: string, pid?: number | null) => Promise<OpenClawStopResult | null>;
   onRestartRuntime: (configPath: string, pid?: number | null) => Promise<unknown>;
   onOpenControlPanel?: (configPath: string) => Promise<string | null>;
   onOpenInstallationDirectory?: (path: string) => Promise<string | null>;
