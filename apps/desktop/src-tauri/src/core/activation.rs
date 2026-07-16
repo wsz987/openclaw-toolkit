@@ -414,7 +414,10 @@ mod tests {
 
     #[test]
     fn configures_remote_activation_timeout() {
-        assert_eq!(super::REMOTE_ACTIVATION_TIMEOUT, std::time::Duration::from_secs(3));
+        assert_eq!(
+            super::REMOTE_ACTIVATION_TIMEOUT,
+            std::time::Duration::from_secs(3)
+        );
         let _client = super::build_http_client();
     }
 

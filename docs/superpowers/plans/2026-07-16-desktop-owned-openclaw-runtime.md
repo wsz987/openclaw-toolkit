@@ -15,7 +15,7 @@
 ### 创建
 
 - `apps/desktop/src-tauri/src/core/runtime_manager.rs`：生命周期状态机、操作串行化、幂等启停、恢复与退出协调。
-- `apps/desktop/src-tauri/src/core/runtime_process.rs`：进程适配接口、Windows 进程身份查询、端口所有者、启动和有界停止。
+- `apps/desktop/src-tauri/src/core/runtime_process.rs`：官方 Gateway CLI 适配、`/healthz`/`/readyz` 探测、Windows 进程身份回退和有界停止。
 - `apps/desktop/src/openclaw/model/runtime-state.ts`：前端运行状态规范化和展示模型。
 - `apps/desktop/tests/runtime-state.test.ts`：前端状态映射测试。
 - `apps/desktop/tests/no-runtime-host-daemon.test.ts`：防止 external helper 和文件 IPC 回归。
@@ -24,14 +24,14 @@
 
 - `apps/desktop/src-tauri/src/core/mod.rs`：导出 runtime manager 与 process adapter。
 - `apps/desktop/src-tauri/src/core/process/mod.rs`：移除已迁移的 Gateway lifecycle 函数，保留 OpenClaw CLI/版本发现职责。
-- `apps/desktop/src-tauri/src/core/openclaw_config/mod.rs`：暴露轻量 HTTP readiness 与端口 PID 查询，不承担 lifecycle 状态写入。
+- `apps/desktop/src-tauri/src/core/openclaw_config/mod.rs`：暴露轻量 HTTP liveness/readiness 与端口 PID 查询，不承担 lifecycle 状态写入。
 - `apps/desktop/src-tauri/src/core/app_state/mod.rs`：让安装注册表保存 RuntimeSnapshot 的恢复字段和失败原因。
 - `apps/desktop/src-tauri/src/core/status_watcher.rs`：通过 RuntimeManager reconcile 推进状态并采用分状态轮询间隔。
-- `apps/desktop/src-tauri/src/core/status_events.rs`：统一发送包含 runtimeError 的状态快照。
+- `apps/desktop/src-tauri/src/core/status_events.rs`：统一发送包含 gatewayReady 和 runtimeError 的状态快照。
 - `apps/desktop/src-tauri/src/commands/post_install.rs`：将 runtime commands 改为 RuntimeManager 的薄适配层。
 - `apps/desktop/src-tauri/src/core/uninstall.rs`：卸载前通过 RuntimeManager 停止受管实例。
 - `apps/desktop/src-tauri/src/lib.rs`：注册 RuntimeManager，并在真正退出应用时执行 bounded shutdown。
-- `apps/desktop/src/openclaw/model/types.ts`：收紧 RuntimeLifecycleState 类型并增加 runtimeError。
+- `apps/desktop/src/openclaw/model/types.ts`：收紧 RuntimeLifecycleState 类型并增加 gatewayReady 与 runtimeError。
 - `apps/desktop/src/openclaw/api/client.ts`：使用统一 RuntimeSnapshot 响应。
 - `apps/desktop/src/openclaw/hooks/use-openclaw-installer.ts`：启动请求返回后依赖后端状态事件，不以 invoke promise 代表完整 ready。
 - `apps/desktop/src/features/dashboard/components/service-control-panel.tsx`：展示 starting/stopping/failed，并允许 failed 后重新启动。
@@ -62,6 +62,7 @@ mod tests {
             RuntimeLifecycleState::Starting,
             RuntimeObservation {
                 process_alive: true,
+                gateway_live: true,
                 gateway_ready: true,
                 port_owner_matches: true,
                 startup_timed_out: false,
@@ -77,6 +78,7 @@ mod tests {
             RuntimeLifecycleState::Running,
             RuntimeObservation {
                 process_alive: false,
+                gateway_live: false,
                 gateway_ready: false,
                 port_owner_matches: false,
                 startup_timed_out: false,
@@ -92,6 +94,7 @@ mod tests {
             RuntimeLifecycleState::Starting,
             RuntimeObservation {
                 process_alive: true,
+                gateway_live: true,
                 gateway_ready: false,
                 port_owner_matches: false,
                 startup_timed_out: true,
@@ -99,6 +102,22 @@ mod tests {
         );
 
         assert_eq!(failed, RuntimeLifecycleState::Failed);
+    }
+
+    #[test]
+    fn running_stays_running_when_readiness_temporarily_drops() {
+        let running = reduce_observation(
+            RuntimeLifecycleState::Running,
+            RuntimeObservation {
+                process_alive: true,
+                gateway_live: true,
+                gateway_ready: false,
+                port_owner_matches: true,
+                startup_timed_out: false,
+            },
+        );
+
+        assert_eq!(running, RuntimeLifecycleState::Running);
     }
 }
 ```
@@ -144,6 +163,8 @@ pub struct RuntimeSnapshot {
     pub ready_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
     pub adopted: bool,
+    pub gateway_live: bool,
+    pub gateway_ready: bool,
 }
 
 impl Default for RuntimeSnapshot {
@@ -157,6 +178,8 @@ impl Default for RuntimeSnapshot {
             ready_at: None,
             last_error: None,
             adopted: false,
+            gateway_live: false,
+            gateway_ready: false,
         }
     }
 }
@@ -164,6 +187,7 @@ impl Default for RuntimeSnapshot {
 #[derive(Debug, Clone, Copy)]
 pub struct RuntimeObservation {
     pub process_alive: bool,
+    pub gateway_live: bool,
     pub gateway_ready: bool,
     pub port_owner_matches: bool,
     pub startup_timed_out: bool,
@@ -189,9 +213,7 @@ pub fn reduce_observation(
         {
             RuntimeLifecycleState::Failed
         }
-        RuntimeLifecycleState::Running
-            if !observation.gateway_ready || !observation.port_owner_matches =>
-        {
+        RuntimeLifecycleState::Running if !observation.port_owner_matches => {
             RuntimeLifecycleState::Failed
         }
         state => state,
@@ -233,7 +255,11 @@ rtk git commit -m "feat: add desktop runtime lifecycle state"
 mod tests {
     use std::path::PathBuf;
 
-    use super::{identity_matches_context, ManagedProcessIdentity};
+    use serde_json::json;
+
+    use super::{
+        identity_matches_context, ManagedProcessIdentity, OfficialGatewayStatus,
+    };
     use crate::core::openclaw_config::OpenClawRuntimeContext;
 
     fn context() -> OpenClawRuntimeContext {
@@ -253,7 +279,7 @@ mod tests {
             executable_path: PathBuf::from(
                 r"D:\OpenClaw\runtimes\node\22.19.0-win-x64\node.exe",
             ),
-            command_line: r#"node.exe D:\OpenClaw\openclaw\2026.5.20\package\openclaw.mjs gateway"#.to_string(),
+            command_line: r#"node.exe D:\OpenClaw\openclaw\2026.5.20\package\openclaw.mjs gateway run"#.to_string(),
         };
 
         assert!(identity_matches_context(&identity, &context()));
@@ -268,6 +294,46 @@ mod tests {
         };
 
         assert!(!identity_matches_context(&identity, &context()));
+    }
+
+    #[test]
+    fn parses_openclaw_2026_5_20_gateway_status_shape() {
+        let status: OfficialGatewayStatus = serde_json::from_value(json!({
+            "service": {
+                "label": "Scheduled Task",
+                "loaded": false,
+                "runtime": {
+                    "status": "stopped",
+                    "detail": "ERROR: The system cannot find the file specified.",
+                    "missingUnit": true
+                }
+            },
+            "extraServices": []
+        }))
+        .unwrap();
+
+        assert!(!status.service.loaded);
+        assert_eq!(
+            status.service.runtime.as_ref().unwrap().status.as_deref(),
+            Some("stopped")
+        );
+        assert!(!status.has_service_conflict());
+    }
+
+    #[test]
+    fn active_or_extra_official_service_is_a_conflict() {
+        let status: OfficialGatewayStatus = serde_json::from_value(json!({
+            "service": {
+                "installed": true,
+                "loaded": true,
+                "running": true,
+                "runtime": { "status": "running", "pid": 4321 }
+            },
+            "extraServices": [{ "label": "OpenClaw Gateway (legacy)" }]
+        }))
+        .unwrap();
+
+        assert!(status.has_service_conflict());
     }
 }
 ```
@@ -287,6 +353,8 @@ rtk cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml runtime_process
 ```rust
 use std::path::PathBuf;
 
+use serde::Deserialize;
+
 use crate::core::openclaw_config::OpenClawRuntimeContext;
 
 #[derive(Debug, Clone)]
@@ -302,20 +370,71 @@ pub struct RuntimeLaunch {
     pub log_path: PathBuf,
 }
 
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OfficialGatewayStatus {
+    pub service: OfficialGatewayServiceStatus,
+    #[serde(default)]
+    pub extra_services: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OfficialGatewayServiceStatus {
+    #[serde(default)]
+    pub installed: bool,
+    #[serde(default)]
+    pub loaded: bool,
+    #[serde(default)]
+    pub running: bool,
+    #[serde(default)]
+    pub runtime: Option<OfficialGatewayRuntimeStatus>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OfficialGatewayRuntimeStatus {
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub pid: Option<u32>,
+}
+
+impl OfficialGatewayStatus {
+    pub fn has_service_conflict(&self) -> bool {
+        self.service.installed
+            || self.service.loaded
+            || self.service.running
+            || self
+                .service
+                .runtime
+                .as_ref()
+                .and_then(|runtime| runtime.status.as_deref())
+                .is_some_and(|status| status.eq_ignore_ascii_case("running"))
+            || !self.extra_services.is_empty()
+    }
+}
+
 pub trait RuntimeProcessAdapter: Send + Sync {
     fn launch(&self, context: &OpenClawRuntimeContext) -> anyhow::Result<RuntimeLaunch>;
     fn is_alive(&self, pid: u32) -> bool;
     fn port_owner(&self, gateway_url: &str) -> Option<u32>;
-    fn gateway_ready(&self, gateway_url: &str) -> bool;
+    fn gateway_liveness(&self, gateway_url: &str) -> bool;
+    fn gateway_readiness(&self, gateway_url: &str) -> bool;
+    fn official_status(
+        &self,
+        context: &OpenClawRuntimeContext,
+    ) -> anyhow::Result<OfficialGatewayStatus>;
+    fn request_official_stop(&self, context: &OpenClawRuntimeContext) -> anyhow::Result<()>;
     fn identity(&self, pid: u32) -> anyhow::Result<ManagedProcessIdentity>;
-    fn stop_tree(&self, pid: u32, force: bool) -> anyhow::Result<()>;
+    fn force_stop_tree(&self, pid: u32) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, Default)]
 pub struct SystemRuntimeProcessAdapter;
 ```
 
-`identity_matches_context` 必须同时验证：简化后的 executable path 位于 `context.node_dir`、命令行包含当前安装的 `package\openclaw.mjs`、并包含独立参数 `gateway`。比较路径时使用现有 `process_friendly_path` 和不区分大小写的 Windows 路径比较。
+`identity_matches_context` 必须同时验证：简化后的 executable path 位于 `context.node_dir`、命令行包含当前安装的 `package\openclaw.mjs`、并包含独立参数 `gateway run`。比较路径时使用现有 `process_friendly_path` 和不区分大小写的 Windows 路径比较。这个身份查询只用于崩溃恢复、旧 Host 迁移和官方停止超时后的最终保护，不作为正常停止的首选协议。
 
 - [ ] **步骤 4：迁移 Gateway 启动与停止实现**
 
@@ -325,6 +444,7 @@ pub struct SystemRuntimeProcessAdapter;
 command
     .arg(&openclaw_entry)
     .arg("gateway")
+    .arg("run")
     .env("OPENCLAW_CONFIG_PATH", &context.config_path)
     .env("OPENCLAW_HOME", &context.openclaw_dir)
     .env("OPENCLAW_STATE_DIR", &context.openclaw_dir)
@@ -334,22 +454,41 @@ command
     .stderr(Stdio::from(stderr));
 ```
 
-stdout/stderr 必须继续追加到 `gateway-runtime.log`。`stop_tree(pid, false)` 使用 `taskkill /PID <pid> /T`，`stop_tree(pid, true)` 使用 `taskkill /PID <pid> /T /F`。Manager 在两次调用之间负责轮询存活状态。
+stdout/stderr 必须继续追加到 `gateway-runtime.log`。
 
-`identity(pid)` 在 Windows 上调用 PowerShell `Get-CimInstance Win32_Process -Filter "ProcessId = <pid>"` 并通过 `ConvertTo-Json -Compress` 返回 `ExecutablePath` 与 `CommandLine`；命令输出使用 serde JSON 解析，不按空格手工拆分。
+`official_status` 使用同一个受管 Node 和 CLI 入口执行 `gateway status --json --deep`；`request_official_stop` 执行 `gateway stop --json`。两者必须设置与启动进程完全相同的 `OPENCLAW_CONFIG_PATH`、`OPENCLAW_STATE_DIR` 和 `OPENCLAW_HOME`，并使用 serde JSON 解析响应。解析时保留官方嵌套层级：当前 `2026.5.20` 读取 `service.loaded`、可选 `service.runtime.status/pid` 和顶层 `extraServices`；同时接受新版本可能增加的 `service.installed`、`service.running`。对响应中缺失的布尔字段使用 serde default；不得把字段假设为顶层值，也不得从人类可读输出做字符串匹配。
+
+`official_status` 只允许由 `RuntimeManager::start` 的 preflight 调用一次。`reconcile` 和 `StatusWatcher` 不调用 CLI，避免 `--deep` 的服务扫描与插件校验进入高频轮询。
+
+`identity(pid)` 在 Windows 上调用 PowerShell `Get-CimInstance Win32_Process -Filter "ProcessId = <pid>"` 并通过 `ConvertTo-Json -Compress` 返回 `ExecutablePath` 与 `CommandLine`；命令输出使用 serde JSON 解析，不按空格手工拆分。`force_stop_tree(pid)` 只能在官方停止超时后调用，并使用 `taskkill /PID <pid> /T /F`。
 
 - [ ] **步骤 5：暴露轻量探测函数**
 
-将 `runtime_pid_for_gateway_url` 和 HTTP readiness 保持为 `pub` 轻量函数。新增 readiness 函数使用 750 ms 超时 GET `gateway_url`，仅接受 HTTP 2xx 或 3xx：
+将 `runtime_pid_for_gateway_url` 保持为 `pub` 轻量函数。新增官方 liveness/readiness 探测，分别请求 `/healthz` 和 `/readyz`，仅接受 HTTP 2xx：
 
 ```rust
-pub fn probe_gateway_ready(gateway_url: &str) -> bool {
+fn probe_gateway_endpoint(gateway_url: &str, endpoint: &str) -> bool {
+    let Ok(base_url) = reqwest::Url::parse(gateway_url) else {
+        return false;
+    };
+    let Ok(url) = base_url.join(endpoint) else {
+        return false;
+    };
+
     reqwest::blocking::Client::builder()
         .timeout(Duration::from_millis(750))
         .build()
-        .and_then(|client| client.get(gateway_url).send())
-        .map(|response| response.status().is_success() || response.status().is_redirection())
+        .and_then(|client| client.get(url).send())
+        .map(|response| response.status().is_success())
         .unwrap_or(false)
+}
+
+pub fn probe_gateway_liveness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/healthz")
+}
+
+pub fn probe_gateway_readiness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/readyz")
 }
 ```
 
@@ -401,6 +540,18 @@ fn unrelated_port_owner_is_never_stopped() {
     let error = manager.start(&sample_config_path()).unwrap_err();
 
     assert!(error.to_string().contains("18789"));
+    assert_eq!(adapter.stop_count(), 0);
+}
+
+#[test]
+fn installed_official_gateway_service_blocks_foreground_launch() {
+    let adapter = FakeAdapter::with_official_service(true, true, true);
+    let manager = RuntimeManager::with_adapter(Arc::new(adapter.clone()));
+
+    let error = manager.start(&sample_config_path()).unwrap_err();
+
+    assert!(error.to_string().contains("Gateway 服务"));
+    assert_eq!(adapter.launch_count(), 0);
     assert_eq!(adapter.stop_count(), 0);
 }
 
@@ -459,7 +610,7 @@ impl RuntimeManager {
 }
 ```
 
-所有 start/stop/restart 先获取 `operation_lock`。跨进程临界区使用 `<openclawDir>/.runtime-control.lock`，Windows 打开句柄时设置 `share_mode(0)`；句柄存活期间执行“reconcile、检查端口、spawn、记录 PID”，离开 start 后自动释放。
+所有 start/stop/restart 先获取 `operation_lock`。跨进程临界区使用 `<openclawDir>/.runtime-control.lock`，Windows 打开句柄时设置 `share_mode(0)`；句柄存活期间执行“官方服务检查、reconcile、检查端口、spawn、记录 PID”，离开 start 后自动释放。
 
 - [ ] **步骤 4：实现 start、stop、restart 和 reconcile**
 
@@ -477,9 +628,13 @@ match current.state {
 }
 ```
 
-`start` 成功 spawn 后立即返回 `Starting`。`reconcile` 只有在 PID 存活、端口所有者匹配且 HTTP ready 时进入 `Running`。启动超过 60 秒仍未 ready 时，先重新验证身份，再停止本次 PID并进入 `Failed`。
+`start` 在 spawn 前调用一次 `official_status`，并用 `status.has_service_conflict()` 判断冲突。当前 `2026.5.20` 主要依据 `service.loaded`、`service.runtime.status` 和 `extraServices`；兼容字段 `service.installed`、`service.running` 也参与判断。存在冲突时返回“检测到官方 Gateway 服务，请先停用后再启动桌面托管模式”，不得自动停止、卸载或清理服务。没有服务冲突时，再检查目标端口；端口被未经验证的监听者占用也必须拒绝。成功 spawn 后立即返回 `Starting`。这些检查只在显式 start 路径执行，不进入 `reconcile` 热轮询。
 
-`stop` 在身份验证失败时返回错误并保留 PID；普通停止后最多检查 3 秒，每 200 ms 检查一次，仍存活才使用 force。`restart` 在同一个 operation lock 内执行 stop-then-start，不能递归调用再次获取锁的公开方法。
+`reconcile` 分别记录 `gateway_liveness` 与 `gateway_readiness`：PID 存活、端口所有者匹配且只有 `/healthz` 成功时仍保持 `Starting`；只有 `/readyz` 成功才首次进入 `Running`。已经进入 `Running` 后，如果 PID 和端口所有权仍有效但 `/readyz` 暂时失败，保持 `Running` 并更新 `snapshot.gateway_ready=false`，不能开放第二次启动。启动超过 60 秒仍未 ready 时先调用 `request_official_stop`，等待退出；仅当本次会话创建的 PID 仍存活且 `identity_matches_context` 继续成立时调用 `force_stop_tree`，最后进入 `Failed`。
+
+`stop` 首先调用 `request_official_stop`，让 OpenClaw 官方 CLI 验证未托管 Gateway 并发送停止信号。随后最多检查 3 秒，每 200 ms 检查一次；仍存活时，仅允许强制结束本次桌面会话创建且身份未变化的 PID。接管自桌面崩溃前会话的 PID 如果官方 stop 失败，应保留 PID 并返回错误，不能直接强杀。
+
+Windows 前台 Gateway 不依赖 `SIGUSR1` 原地重启。`restart` 在同一个 operation lock 内执行应用级 stop-then-launch：先走上述官方 stop 流程并确认旧 PID 和端口消失，再执行新的 `gateway run`。该流程不得调用服务型 `gateway start`，也不能递归获取公开方法的 operation lock。
 
 - [ ] **步骤 5：增加残留进程接管测试**
 
@@ -503,7 +658,7 @@ fn reconcile_adopts_verified_gateway_after_desktop_restart() {
 rtk cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml runtime_manager::tests
 ```
 
-预期：状态转换、幂等、端口冲突、异常退出和接管测试全部 PASS。
+预期：状态转换、幂等、官方服务冲突、端口冲突、异常退出和接管测试全部 PASS。
 
 - [ ] **步骤 7：提交 RuntimeManager**
 
@@ -612,15 +767,16 @@ apply_runtime_snapshot(&config_path, &runtime_snapshot)?;
 let status = resolve_installation_status_by_config_path(&config_path)?;
 ```
 
-根据 `runtime_snapshot.state` 选择轮询间隔。`status_semantically_equal` 增加 `runtime_state`、`runtime_pid` 和 `runtime_error` 比较，避免状态变化不发事件。
+根据 `runtime_snapshot.state` 选择轮询间隔。`status_semantically_equal` 增加 `runtime_state`、`runtime_pid`、`gateway_ready` 和 `runtime_error` 比较，避免状态变化不发事件。
 
 同时在 `OpenClawStatusSummary` 增加序列化字段：
 
 ```rust
+pub gateway_ready: bool,
 pub runtime_error: Option<String>,
 ```
 
-`resolve_status_for_record` 从 `InstallationRecord.last_error` 填充该字段；非注册安装返回 `None`。这样 Rust 的 `runtime_error` 会按现有 serde camelCase 规则成为前端的 `runtimeError`。
+`read_openclaw_status` 使用轻量 `/readyz` 探测填充 `gateway_ready`；`resolve_status_for_record` 从 `InstallationRecord.last_error` 填充 `runtime_error`，非注册安装使用 `None`。这样 Rust 字段会按现有 serde camelCase 规则成为前端的 `gatewayReady` 与 `runtimeError`。RuntimeManager 仍保存自己的 readiness 快照，用于判断首次 ready 和防止重复启动。
 
 - [ ] **步骤 6：注册 RuntimeManager**
 
@@ -672,7 +828,7 @@ import { deriveRuntimePresentation } from '../src/openclaw/model/runtime-state';
 
 describe('runtime presentation', () => {
   it('keeps starting state after an invoke request has returned', () => {
-    expect(deriveRuntimePresentation('starting', null)).toEqual({
+    expect(deriveRuntimePresentation('starting', false, null)).toEqual({
       busy: true,
       canStart: false,
       canStop: true,
@@ -682,12 +838,22 @@ describe('runtime presentation', () => {
   });
 
   it('allows retry after a failed runtime without auto-restarting', () => {
-    expect(deriveRuntimePresentation('failed', 'Gateway 启动超时')).toEqual({
+    expect(deriveRuntimePresentation('failed', false, 'Gateway 启动超时')).toEqual({
       busy: false,
       canStart: true,
       canStop: false,
       label: '启动失败',
       tone: 'error'
+    });
+  });
+
+  it('keeps a live gateway non-startable when readiness is degraded', () => {
+    expect(deriveRuntimePresentation('running', false, null)).toEqual({
+      busy: false,
+      canStart: false,
+      canStop: true,
+      label: '运行中，尚未就绪',
+      tone: 'pending'
     });
   });
 });
@@ -714,7 +880,7 @@ export type RuntimeLifecycleState =
   | 'failed';
 ```
 
-将 `OpenClawPostInstallStatus.runtimeState` 改为该类型，并增加 `runtimeError: string | null`。
+将 `OpenClawPostInstallStatus.runtimeState` 改为该类型，并增加 `gatewayReady: boolean` 与 `runtimeError: string | null`。
 
 创建 `runtime-state.ts`：
 
@@ -723,13 +889,16 @@ import type { RuntimeLifecycleState } from './types';
 
 export function deriveRuntimePresentation(
   state: RuntimeLifecycleState,
+  gatewayReady: boolean,
   error: string | null
 ) {
   switch (state) {
     case 'starting':
       return { busy: true, canStart: false, canStop: true, label: '服务启动中', tone: 'pending' as const };
     case 'running':
-      return { busy: false, canStart: false, canStop: true, label: '服务运行中', tone: 'success' as const };
+      return gatewayReady
+        ? { busy: false, canStart: false, canStop: true, label: '服务运行中', tone: 'success' as const }
+        : { busy: false, canStart: false, canStop: true, label: '运行中，尚未就绪', tone: 'pending' as const };
     case 'stopping':
       return { busy: true, canStart: false, canStop: false, label: '服务停止中', tone: 'pending' as const };
     case 'failed':
@@ -748,10 +917,11 @@ stop/restart 使用相同规则。所有 mutation 完成后仍调用一次 `refr
 
 - [ ] **步骤 5：更新 ServiceControlPanel**
 
-使用 `deriveRuntimePresentation` 决定按钮与文本：
+调用 `deriveRuntimePresentation(status.runtimeState, status.gatewayReady, status.runtimeError)` 决定按钮与文本：
 
 - `starting`：显示启动中，允许停止，不允许重复启动；
-- `running`：显示网页端、重启、停止；
+- `running + gatewayReady=true`：显示网页端、重启、停止；
+- `running + gatewayReady=false`：显示“运行中，尚未就绪”，允许停止和重启，不允许再次启动或打开网页端；
 - `stopping`：全部操作禁用；
 - `failed`：显示 `runtimeError` 和“重新启动”；
 - `stopped`：显示“启动网关服务”。
