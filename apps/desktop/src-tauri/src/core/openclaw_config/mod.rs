@@ -45,6 +45,8 @@ pub struct OpenClawStatusSummary {
     pub runtime_state: String,
     pub runtime_pid: Option<u32>,
     pub runtime_log_path: Option<String>,
+    pub gateway_ready: bool,
+    pub runtime_error: Option<String>,
     pub runtime_action_required: String,
     pub pending_config_changes: Vec<String>,
     pub runtime_running: bool,
@@ -659,6 +661,7 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         .to_string_lossy()
         .to_string();
     let runtime_running = probe_gateway_runtime(&gateway_url);
+    let gateway_ready = probe_gateway_readiness(&gateway_url);
     let runtime_pid = runtime_running
         .then(|| runtime_pid_for_gateway_url(&gateway_url))
         .flatten();
@@ -728,6 +731,8 @@ pub fn read_openclaw_status(config_path: &Path) -> anyhow::Result<OpenClawStatus
         },
         runtime_pid,
         runtime_log_path: Some(runtime_log_path),
+        gateway_ready,
+        runtime_error: None,
         runtime_action_required: "none".to_string(),
         pending_config_changes: Vec::new(),
         runtime_running,
@@ -796,6 +801,30 @@ pub fn probe_gateway_runtime(gateway_url: &str) -> bool {
     false
 }
 
+pub fn probe_gateway_liveness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/healthz")
+}
+
+pub fn probe_gateway_readiness(gateway_url: &str) -> bool {
+    probe_gateway_endpoint(gateway_url, "/readyz")
+}
+
+fn probe_gateway_endpoint(gateway_url: &str, endpoint: &str) -> bool {
+    let Ok(base_url) = reqwest::Url::parse(gateway_url) else {
+        return false;
+    };
+    let Ok(url) = base_url.join(endpoint) else {
+        return false;
+    };
+
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(750))
+        .build()
+        .and_then(|client| client.get(url).send())
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
+}
+
 pub fn runtime_pid_for_gateway_url(gateway_url: &str) -> Option<u32> {
     gateway_port_from_url(gateway_url).and_then(find_runtime_pid_by_port)
 }
@@ -819,8 +848,13 @@ fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
         return None;
     }
 
+    find_runtime_pid_in_netstat(port, &String::from_utf8_lossy(&output.stdout))
+}
+
+#[cfg(target_os = "windows")]
+fn find_runtime_pid_in_netstat(port: u16, output: &str) -> Option<u32> {
     let target_suffix = format!(":{port}");
-    String::from_utf8_lossy(&output.stdout)
+    output
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
@@ -832,12 +866,16 @@ fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
 
             let proto = columns[0];
             let local_address = columns[1];
+            let state = columns[3];
             let pid = columns.last().copied()?;
-            if !proto.eq_ignore_ascii_case("TCP") || !local_address.ends_with(&target_suffix) {
+            if !proto.eq_ignore_ascii_case("TCP")
+                || !state.eq_ignore_ascii_case("LISTENING")
+                || !local_address.ends_with(&target_suffix)
+            {
                 return None;
             }
 
-            pid.parse::<u32>().ok()
+            pid.parse::<u32>().ok().filter(|pid| *pid > 0)
         })
 }
 
@@ -2614,9 +2652,9 @@ mod tests {
     use serde_json::{json, Value};
 
     use super::{
-        gateway_port_from_url, normalize_plugin_discovery_cache_key, plugin_discovery_busy_error,
-        read_openclaw_runtime_context, write_openclaw_config, PluginDiscoveryCache,
-        PluginDiscoveryCacheLookup,
+        find_runtime_pid_in_netstat, gateway_port_from_url, normalize_plugin_discovery_cache_key,
+        plugin_discovery_busy_error, read_openclaw_runtime_context, write_openclaw_config,
+        PluginDiscoveryCache, PluginDiscoveryCacheLookup,
     };
     use crate::core::manifest::models::{
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
@@ -2628,6 +2666,17 @@ mod tests {
         assert_eq!(gateway_port_from_url("http://127.0.0.1:19001"), Some(19001));
         assert_eq!(gateway_port_from_url("http://localhost"), Some(80));
         assert_eq!(gateway_port_from_url("not a url"), None);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn ignores_non_listening_and_zero_pid_netstat_entries() {
+        let output = concat!(
+            "  TCP    127.0.0.1:18789     127.0.0.1:51234     TIME_WAIT       0\n",
+            "  TCP    127.0.0.1:18789     0.0.0.0:0           LISTENING       4321\n"
+        );
+
+        assert_eq!(find_runtime_pid_in_netstat(18789, output), Some(4321));
     }
 
     #[test]

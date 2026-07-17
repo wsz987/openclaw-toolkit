@@ -1,7 +1,7 @@
 pub mod commands;
 pub mod core;
 
-use crate::core::status_watcher::OpenClawStatusWatcher;
+use crate::core::{runtime_manager::RuntimeManager, status_watcher::OpenClawStatusWatcher};
 use std::path::PathBuf;
 use tauri::{
     image::Image,
@@ -24,11 +24,14 @@ const WINDOWS_RUN_VALUE_NAME: &str = "OpenClawToolkit";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let status_watcher = OpenClawStatusWatcher::default();
+    let runtime_manager = RuntimeManager::default();
+    let exit_runtime_manager = runtime_manager.clone();
+    let status_watcher = OpenClawStatusWatcher::new(runtime_manager.clone());
     status_watcher.bootstrap_active_installation();
     let should_start_hidden = should_start_hidden();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        .manage(runtime_manager)
         .manage(status_watcher.clone())
         .on_window_event(|window, event| {
             if window.label() != MAIN_WINDOW_LABEL {
@@ -101,8 +104,16 @@ pub fn run() {
             commands::uninstall::inspect_uninstall_plan_command,
             commands::uninstall::execute_uninstall_command
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(move |_app_handle, event| {
+        if matches!(event, tauri::RunEvent::ExitRequested { .. }) {
+            if let Err(error) = exit_runtime_manager.shutdown() {
+                eprintln!("stop OpenClaw during desktop exit failed: {error:#}");
+            }
+        }
+    });
 }
 
 fn setup_system_tray(app: &tauri::AppHandle) -> tauri::Result<tauri::tray::TrayIcon> {

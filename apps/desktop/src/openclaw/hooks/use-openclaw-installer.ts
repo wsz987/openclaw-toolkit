@@ -648,6 +648,7 @@ export function useOpenClawInstaller(
         return null;
       }
 
+      setRuntimeLaunchLoading(false);
       await refreshStatusSnapshot(configPath);
       return response;
     } catch (err) {
@@ -664,7 +665,7 @@ export function useOpenClawInstaller(
     }
   }
 
-  async function handleStopRuntime(configPath: string, pid: number) {
+  async function handleStopRuntime(configPath: string, pid?: number | null) {
     const requestId = runtimeStopRequestGuard.begin();
     setRuntimeStopLoading(true);
     setError(null);
@@ -675,6 +676,7 @@ export function useOpenClawInstaller(
         return null;
       }
 
+      setRuntimeStopLoading(false);
       await refreshStatusSnapshot(configPath);
 
       return response;
@@ -703,6 +705,7 @@ export function useOpenClawInstaller(
         return null;
       }
 
+      setRuntimeRestartLoading(false);
       await refreshStatusSnapshot(configPath);
       return response;
     } catch (err) {

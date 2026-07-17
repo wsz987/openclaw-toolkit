@@ -3,6 +3,7 @@ export type InstallPhase = 'precheck' | 'running' | 'succeeded' | 'failed';
 export type InstallStepState = 'done' | 'current' | 'pending' | 'failed';
 export type InstallCheckState = 'ok' | 'warn' | 'error';
 export type PostInstallTab = 'controls' | 'advanced-console' | 'provider' | 'channels' | 'skills' | 'settings' | 'uninstall';
+export type RuntimeLifecycleState = 'stopped' | 'starting' | 'running' | 'stopping' | 'failed';
 
 export type InstallStep =
   | 'loadManifest'
@@ -90,9 +91,11 @@ export type OpenClawPostInstallStatus = {
   workspaceDir: string;
   gatewayUrl: string;
   controlUiUrl: string;
-  runtimeState: string;
+  runtimeState: RuntimeLifecycleState;
   runtimePid: number | null;
   runtimeLogPath: string | null;
+  gatewayReady: boolean;
+  runtimeError: string | null;
   runtimeActionRequired: 'none' | 'reload' | 'restart' | string;
   pendingConfigChanges: string[];
   runtimeRunning: boolean;
@@ -429,15 +432,23 @@ export type PluginInstallLogEntry = {
   message: string;
   createdAt: string;
 };
-export type OpenClawLaunchResult = {
-  pid: number;
-  logPath: string;
-  runtimeHostKind?: string;
+export type OpenClawRuntimeSnapshot = {
+  state: RuntimeLifecycleState;
+  configPath: string | null;
+  pid: number | null;
+  logPath: string | null;
+  startedAt: string | null;
+  readyAt: string | null;
+  lastError: string | null;
+  adopted: boolean;
+  gatewayLive: boolean;
+  gatewayReady: boolean;
 };
 
-export type OpenClawStopResult = {
+export type OpenClawLaunchResult = OpenClawRuntimeSnapshot;
+
+export type OpenClawStopResult = OpenClawRuntimeSnapshot & {
   stopped: boolean;
-  runtimeHostKind?: string;
 };
 
 export type OpenPathResult = string;
@@ -643,13 +654,14 @@ export type InstallationRecord = {
   nodeVersion: string;
   status: string;
   configState: string;
-  runtimeState: string;
+  runtimeState: RuntimeLifecycleState;
   providerState: string;
   panelState: string;
   runtimeActionRequired: 'none' | 'reload' | 'restart' | string;
   pendingConfigChanges: string[];
   runtimePid?: number | null;
   runtimeLogPath?: string | null;
+  gatewayReady?: boolean;
   runtimeHostKind?: string | null;
   installedAt: string;
   lastValidatedAt: string | null;

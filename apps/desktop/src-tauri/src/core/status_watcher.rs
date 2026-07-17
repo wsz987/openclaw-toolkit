@@ -9,16 +9,15 @@ use tauri::AppHandle;
 
 use crate::core::{
     app_state::{
-        bootstrap_app_state, resolve_installation_status_by_config_path,
-        sync_installation_status_by_config_path,
+        apply_runtime_snapshot, bootstrap_app_state, resolve_installation_status_by_config_path,
     },
     openclaw_config::OpenClawStatusSummary,
+    runtime_manager::{RuntimeLifecycleState, RuntimeManager},
     status_events::emit_openclaw_status_changed,
 };
 
-const RUNNING_POLL_INTERVAL_MS: u64 = 2500;
-const IDLE_POLL_INTERVAL_MS: u64 = 10000;
 const ERROR_RETRY_INTERVAL_MS: u64 = 5000;
+const IDLE_POLL_INTERVAL_MS: u64 = 10000;
 
 #[derive(Debug, Default)]
 struct StatusWatcherSnapshot {
@@ -26,12 +25,26 @@ struct StatusWatcherSnapshot {
     last_status: Option<OpenClawStatusSummary>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct OpenClawStatusWatcher {
     state: Arc<Mutex<StatusWatcherSnapshot>>,
+    runtime_manager: RuntimeManager,
+}
+
+impl Default for OpenClawStatusWatcher {
+    fn default() -> Self {
+        Self::new(RuntimeManager::default())
+    }
 }
 
 impl OpenClawStatusWatcher {
+    pub fn new(runtime_manager: RuntimeManager) -> Self {
+        Self {
+            state: Arc::new(Mutex::new(StatusWatcherSnapshot::default())),
+            runtime_manager,
+        }
+    }
+
     pub fn start(&self, app: AppHandle) {
         let watcher = self.clone();
         thread::spawn(move || {
@@ -85,46 +98,72 @@ impl OpenClawStatusWatcher {
                 continue;
             };
 
-            match resolve_installation_status_by_config_path(&config_path) {
-                Ok(status) => {
-                    let changed = previous_status
-                        .as_ref()
-                        .map(|current| !status_semantically_equal(current, &status))
-                        .unwrap_or(true);
+            match self.runtime_manager.reconcile(&config_path) {
+                Ok(runtime_snapshot) => {
+                    if let Err(error) = apply_runtime_snapshot(&config_path, &runtime_snapshot) {
+                        eprintln!(
+                            "status watcher failed to persist runtime snapshot for {}: {}",
+                            config_path.display(),
+                            error
+                        );
+                    }
 
-                    {
-                        let mut state = self.state.lock().expect("status watcher poisoned");
-                        if state
-                            .config_path
-                            .as_ref()
-                            .map(|current| current == &config_path)
-                            .unwrap_or(false)
-                        {
-                            state.last_status = Some(status.clone());
+                    match resolve_installation_status_by_config_path(&config_path) {
+                        Ok(status) => {
+                            let changed = previous_status
+                                .as_ref()
+                                .map(|current| !status_semantically_equal(current, &status))
+                                .unwrap_or(true);
+
+                            {
+                                let mut state = self.state.lock().expect("status watcher poisoned");
+                                if state
+                                    .config_path
+                                    .as_ref()
+                                    .map(|current| current == &config_path)
+                                    .unwrap_or(false)
+                                {
+                                    state.last_status = Some(status.clone());
+                                }
+                            }
+
+                            if changed {
+                                let _ = emit_openclaw_status_changed(&app, &status);
+                            }
+
+                            thread::sleep(runtime_poll_interval(runtime_snapshot.state));
+                        }
+                        Err(error) => {
+                            eprintln!(
+                                "status watcher failed to read {}: {}",
+                                config_path.display(),
+                                error
+                            );
+                            thread::sleep(Duration::from_millis(ERROR_RETRY_INTERVAL_MS));
                         }
                     }
-
-                    if changed {
-                        let _ = sync_installation_status_by_config_path(&config_path);
-                        let _ = emit_openclaw_status_changed(&app, &status);
-                    }
-
-                    let delay = if status.runtime_running {
-                        RUNNING_POLL_INTERVAL_MS
-                    } else {
-                        IDLE_POLL_INTERVAL_MS
-                    };
-                    thread::sleep(Duration::from_millis(delay));
                 }
                 Err(error) => {
                     eprintln!(
-                        "status watcher failed to read {}: {}",
+                        "status watcher failed to reconcile {}: {}",
                         config_path.display(),
                         error
                     );
                     thread::sleep(Duration::from_millis(ERROR_RETRY_INTERVAL_MS));
                 }
             }
+        }
+    }
+}
+
+fn runtime_poll_interval(state: RuntimeLifecycleState) -> Duration {
+    match state {
+        RuntimeLifecycleState::Starting | RuntimeLifecycleState::Stopping => {
+            Duration::from_millis(500)
+        }
+        RuntimeLifecycleState::Running => Duration::from_millis(2500),
+        RuntimeLifecycleState::Stopped | RuntimeLifecycleState::Failed => {
+            Duration::from_millis(10000)
         }
     }
 }
@@ -137,6 +176,10 @@ fn status_semantically_equal(left: &OpenClawStatusSummary, right: &OpenClawStatu
         && left.gateway_url == right.gateway_url
         && left.control_ui_url == right.control_ui_url
         && left.runtime_log_path == right.runtime_log_path
+        && left.runtime_state == right.runtime_state
+        && left.runtime_pid == right.runtime_pid
+        && left.gateway_ready == right.gateway_ready
+        && left.runtime_error == right.runtime_error
         && left.runtime_running == right.runtime_running
         && left.panel_reachable == right.panel_reachable
         && left.runtime_action_required == right.runtime_action_required
@@ -153,4 +196,36 @@ fn status_semantically_equal(left: &OpenClawStatusSummary, right: &OpenClawStatu
         && left.plugins_enabled == right.plugins_enabled
         && left.installed_plugins == right.installed_plugins
         && left.available_providers == right.available_providers
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::runtime_poll_interval;
+    use crate::core::runtime_manager::RuntimeLifecycleState;
+
+    #[test]
+    fn runtime_poll_interval_tracks_lifecycle_state() {
+        assert_eq!(
+            runtime_poll_interval(RuntimeLifecycleState::Starting),
+            Duration::from_millis(500)
+        );
+        assert_eq!(
+            runtime_poll_interval(RuntimeLifecycleState::Running),
+            Duration::from_millis(2500)
+        );
+        assert_eq!(
+            runtime_poll_interval(RuntimeLifecycleState::Stopping),
+            Duration::from_millis(500)
+        );
+        assert_eq!(
+            runtime_poll_interval(RuntimeLifecycleState::Stopped),
+            Duration::from_millis(10000)
+        );
+        assert_eq!(
+            runtime_poll_interval(RuntimeLifecycleState::Failed),
+            Duration::from_millis(10000)
+        );
+    }
 }
