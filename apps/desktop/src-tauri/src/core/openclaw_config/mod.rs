@@ -848,8 +848,13 @@ fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
         return None;
     }
 
+    find_runtime_pid_in_netstat(port, &String::from_utf8_lossy(&output.stdout))
+}
+
+#[cfg(target_os = "windows")]
+fn find_runtime_pid_in_netstat(port: u16, output: &str) -> Option<u32> {
     let target_suffix = format!(":{port}");
-    String::from_utf8_lossy(&output.stdout)
+    output
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
@@ -861,12 +866,16 @@ fn find_runtime_pid_by_port(port: u16) -> Option<u32> {
 
             let proto = columns[0];
             let local_address = columns[1];
+            let state = columns[3];
             let pid = columns.last().copied()?;
-            if !proto.eq_ignore_ascii_case("TCP") || !local_address.ends_with(&target_suffix) {
+            if !proto.eq_ignore_ascii_case("TCP")
+                || !state.eq_ignore_ascii_case("LISTENING")
+                || !local_address.ends_with(&target_suffix)
+            {
                 return None;
             }
 
-            pid.parse::<u32>().ok()
+            pid.parse::<u32>().ok().filter(|pid| *pid > 0)
         })
 }
 
@@ -2643,9 +2652,9 @@ mod tests {
     use serde_json::{json, Value};
 
     use super::{
-        gateway_port_from_url, normalize_plugin_discovery_cache_key, plugin_discovery_busy_error,
-        read_openclaw_runtime_context, write_openclaw_config, PluginDiscoveryCache,
-        PluginDiscoveryCacheLookup,
+        find_runtime_pid_in_netstat, gateway_port_from_url, normalize_plugin_discovery_cache_key,
+        plugin_discovery_busy_error, read_openclaw_runtime_context, write_openclaw_config,
+        PluginDiscoveryCache, PluginDiscoveryCacheLookup,
     };
     use crate::core::manifest::models::{
         ProviderCatalogEntry, ProviderModelCatalogEntry, ReleaseArtifact, RequiredNodeRuntime,
@@ -2657,6 +2666,17 @@ mod tests {
         assert_eq!(gateway_port_from_url("http://127.0.0.1:19001"), Some(19001));
         assert_eq!(gateway_port_from_url("http://localhost"), Some(80));
         assert_eq!(gateway_port_from_url("not a url"), None);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn ignores_non_listening_and_zero_pid_netstat_entries() {
+        let output = concat!(
+            "  TCP    127.0.0.1:18789     127.0.0.1:51234     TIME_WAIT       0\n",
+            "  TCP    127.0.0.1:18789     0.0.0.0:0           LISTENING       4321\n"
+        );
+
+        assert_eq!(find_runtime_pid_in_netstat(18789, output), Some(4321));
     }
 
     #[test]
