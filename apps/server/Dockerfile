@@ -35,15 +35,17 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/server/drizzle.config.ts apps/server/drizzle.config.ts
 COPY apps/server/drizzle apps/server/drizzle
-COPY apps/server/scripts apps/server/scripts
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/server/node_modules apps/server/node_modules
 COPY --from=builder /app/apps/server/.next/standalone apps/server/.next/standalone
-COPY --from=builder /app/apps/server/.next/static apps/server/.next/static
-COPY --from=builder /app/apps/server/public apps/server/public
+# The standalone server runs from apps/server, so Next resolves both locations there.
+COPY --from=builder /app/apps/server/.next/static apps/server/.next/standalone/apps/server/.next/static
+COPY --from=builder /app/apps/server/public apps/server/.next/standalone/apps/server/public
 RUN find apps/server/.next/standalone \( -name "*.test.ts" -o -name "*.test.tsx" \) -delete
 
 USER node
 VOLUME ["/data"]
 EXPOSE 31421
-CMD ["pnpm", "--dir", "apps/server", "start:docker"]
+# 直接启动 Next standalone 产物。数据库目录与迁移由应用启动时自动完成
+# （src/db/client.ts 的 getDb() 会建目录并跑 drizzle 迁移），无需额外脚本。
+CMD ["node", "apps/server/.next/standalone/apps/server/server.js"]

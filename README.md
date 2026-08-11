@@ -10,6 +10,23 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
 
 ---
 
+## 📸 界面预览
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/runtime.png" alt="运行时生命周期管理" width="95%"/><br/><b>运行管理</b></td>
+    <td align="center"><img src="docs/screenshots/provider.png" alt="模型供应商快速接入" width="95%"/><br/><b>模型供应商快速接入</b></td>
+    <td align="center"><img src="docs/screenshots/channels.png" alt="多渠道接入面板" width="95%"/><br/><b>多渠道接入OpenClaw</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/feishu-setting.png" alt="飞书渠道配置" width="95%"/><br/><b>飞书渠道配置</b></td>
+    <td align="center"><img src="docs/screenshots/skills.png" alt="技能管理" width="95%"/><br/><b>技能管理</b></td>
+    <td align="center"><img src="docs/screenshots/console.png" alt="控制台与实时日志" width="95%"/><br/><b>控制台与实时日志</b></td>
+  </tr>
+</table>
+
+---
+
 ## ✨ 功能特色
 
 ### 🚀 一键式自动化安装
@@ -18,8 +35,7 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
   - **内置稳定版**：使用随包发布的离线制品，无需联网即可安装；
   - **远程服务器**：从内部配置的远程服务器拉取版本清单与制品；
   - **官方 npm（国内镜像）**：从 `registry.npmmirror.com` 拉取版本列表，自动过滤预发布版并选取兼容的受管 Node 运行时。
-- **版本锁定**：每个 OpenClaw / Node 版本均以 `sha256` 校验，Node 版本按 `requiredNode.range` 自动匹配。
-- **受管 Node 运行时**：工具包自身不依赖全局 Node.js、不写入系统 PATH、不安装全局 npm；Node 仅作为 OpenClaw 的被管理运行环境（安装于独立目录），并提供国内镜像 `.npmrc`（npm 源 / node 镜像 / electron 镜像 / playwright 下载源）。
+- **内置 Node 运行环境（环境隔离）**：自带运行环境，一键部署安装，不依赖、不污染你的系统环境（不装全局 Node.js、不改 PATH）；安装到独立隔离目录，与系统互不干扰。
 - **自动备份**：安装前自动备份旧目录与 `openclaw.json` 到 `backups/`，并保留完整安装日志，便于排查问题。（真正的失败自动回滚——**画饼 ing**，还没做，旧版本先安静躺在 backups 里。）
 
 ### 📱 多渠道扫码接入（IM 通知/入口）
@@ -53,28 +69,6 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
 - **系统托盘**常驻：显示主界面 / 开机自启（可勾选）/ 退出；
 - 关闭窗口最小化到托盘，`--start-hidden` 参数支持开机静默启动；
 - 支持 **Tauri 自动更新**（每 6 小时 + 启动即查一次）。
-
----
-
-## 📸 界面预览
-
-<p align="center">
-  <img src="docs/screenshots/runtime.png" alt="运行时生命周期管理" width="49%"/>
-  <img src="docs/screenshots/provider.png" alt="模型供应商快速接入" width="49%"/>
-</p>
-<p align="center"><b>运行时生命周期管理</b>　·　<b>模型供应商快速接入</b></p>
-
-<p align="center">
-  <img src="docs/screenshots/channels.png" alt="多渠道接入面板" width="49%"/>
-  <img src="docs/screenshots/feishu-setting.png" alt="飞书渠道配置" width="49%"/>
-</p>
-<p align="center"><b>多渠道接入面板</b>　·　<b>飞书渠道配置</b></p>
-
-<p align="center">
-  <img src="docs/screenshots/skills.png" alt="技能管理" width="49%"/>
-  <img src="docs/screenshots/console.png" alt="控制台与实时日志" width="49%"/>
-</p>
-<p align="center"><b>技能管理</b>　·　<b>控制台与实时日志</b></p>
 
 ---
 
@@ -194,7 +188,7 @@ pnpm dev:server
 - **版本管理**：配置更新服务器地址、上传 Tauri 更新包与签名，按渠道控制发布与资产启用状态；
 - **自动更新**：桌面端通过 `GET /api/v1/desktop/updates/:target/:arch/:version` 获取更新元数据，从下载接口拉取安装包完成静默升级。
 
-> 坦白讲，这个服务端**基本还只是个架子**——功能代码是有的，但 UI、接口、鉴权、上传这些大多**没正经测过**（目前也就 `update-selection` 那个选版本逻辑有单测），边界情况基本靠想象。用来给桌面端喂更新够用，但别拿它当生产级后台使。
+> 坦白讲，这个服务端**基本还只是个架子**——功能代码是有的，但 UI、接口、鉴权、上传这些大多**没正经测过**（目前也就 `update-selection` 那个选版本逻辑有单测），边界情况基本靠想象。用来给桌面端喂更新够用，但别拿它当生产级后台使（没鉴权）。
 
 > **更新服务器地址是可配置的**。仓库中以 `https://YOUR-UPDATE-SERVER.invalid`（保留 TLD，永不解析）作为占位地址，不会暴露任何私有基础设施。部署者可：
 >

@@ -7,7 +7,6 @@
     "dev": "next dev --hostname 127.0.0.1 --port 31421",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 31421",
-    "start:docker": "node scripts/start-docker.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:prepare": "node -e \"require('node:fs').mkdirSync('data', { recursive: true })\"",
