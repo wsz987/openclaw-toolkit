@@ -1,6 +1,6 @@
 [package]
 name = "openclaw-toolkit-desktop"
-version = "0.1.2"
+version = "0.1.5"
 description = "OpenClaw Toolkit Desktop"
 authors = ["OpenClaw Toolkit"]
 edition = "2021"
