@@ -1,0 +1,54 @@
+name: Release
+
+# 推送形如 v0.1.4 的 tag 时自动构建、签名并发布到 GitHub Releases。
+# Tauri 自动更新依赖随 Release 一起上传的 latest.json（含签名与安装包 URL），
+# 桌面端会请求 https://github.com/<owner>/<repo>/releases/latest/download/latest.json。
+#
+# 需要先在仓库 Settings -> Secrets and variables -> Actions 配置：
+#   TAURI_SIGNING_PRIVATE_KEY         更新包签名私钥（minisign base64，内容见 apps/desktop/signing/*.key）
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD 私钥密码
+# 私钥信息不会写入本文件或仓库，只在 GitHub Secrets 中。
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and publish to GitHub Releases
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'OpenClaw Toolkit v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          createUpdaterArtifacts: true

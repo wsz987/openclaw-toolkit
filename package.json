@@ -7,8 +7,6 @@
   "scripts": {
     "build": "pnpm --filter @openclaw-toolkit/desktop build",
     "dev:desktop": "pnpm --filter @openclaw-toolkit/desktop dev",
-    "dev:server": "pnpm --filter @openclaw-toolkit/server dev",
-    "test:server": "pnpm --filter @openclaw-toolkit/server test",
     "typecheck": "pnpm --filter @openclaw-toolkit/desktop typecheck",
     "plugin:uninstall": "node scripts/uninstall-openclaw-plugin.mjs"
   },
@@ -17,7 +15,6 @@
     "typescript": "^5.8.3"
   },
   "workspaces": [
-    "apps/desktop",
-    "apps/server"
+    "apps/desktop"
   ]
 }

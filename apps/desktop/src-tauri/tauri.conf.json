@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "OpenClaw Toolkit",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.openclaw.toolkit",
   "build": {
     "beforeDevCommand": "pnpm vite --host 127.0.0.1 --port 31420",
@@ -42,8 +42,8 @@
       "active": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE2NTk1MzIwREZBQjhBOQpSV1NwdVBvTk1wVmxDcW9tRWlsYy85b0o5eExlaStxOUpCekNpc0J4NkVNZkFZNFp5UW8wYmhmUwo=",
       "endpoints": [
-        "https://YOUR-UPDATE-SERVER.invalid/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}",
-        "https://YOUR-UPDATE-SERVER.invalid/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}"
+        "https://github.com/wsz987/openclaw-toolkit/releases/latest/download/latest.json",
+        "https://github.com/wsz987/openclaw-toolkit/releases/latest/download/latest.json"
       ],
       "dangerousInsecureTransportProtocol": true,
       "windows": {

@@ -24,9 +24,6 @@ apps/desktop/signing/*.key
 artifacts/tmp
 .reasonix
 apps/desktop/.tmp/
-apps/server/data/
-apps/server/storage/
-apps/server/.next/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

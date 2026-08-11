@@ -4,7 +4,7 @@
 > 集成固定版本、适配国内镜像源，支持飞书 / 钉钉 / QQ 机器人 / 微信多渠道扫码接入，
 > 内置主流国产大模型供应商快速接入与常用 Skill，开箱即用。
 
-OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务端** 的完整方案。它把「下载 Node 运行时 → 安装 OpenClaw → 生成配置 → 接入 IM 渠道 → 配置模型供应商 → 部署 Skill → 启动运行」这一整套繁琐流程封装成向导式界面，用户只需要选择安装目录、扫码、填密钥，几分钟即可跑起一个可用的 OpenClaw Agent。
+OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板** 的完整方案。它把「下载 Node 运行时 → 安装 OpenClaw → 生成配置 → 接入 IM 渠道 → 配置模型供应商 → 部署 Skill → 启动运行」这一整套繁琐流程封装成向导式界面，用户只需要选择安装目录、扫码、填密钥，几分钟即可跑起一个可用的 OpenClaw Agent。
 
 > 💬 为什么做这个：OpenClaw 刚火起来那阵，身边几个朋友想装，但一堆配置还是挺折腾的。就vibe coding了个安装器，功能上是"能用就行"，遇到问题就修修，测边界情况未知，更多功能画饼ing~
 
@@ -92,11 +92,6 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
 │  runtimes/node/<ver>/node.exe · openclaw/<ver>/ · workspace │
 │  skills/ · logs/ · backups/                                │
 └─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│  Server 管理控制台 (Next.js + SQLite/Drizzle)               │
-│  版本/更新管理 · 制品下载 · 自动更新                        │
-└─────────────────────────────────────────────────────────────┘
 ```
 
 核心设计原则：**工具包自身不内置 Node Core、不要求全局 Node.js、不写系统 PATH**；Node.js 只作为 OpenClaw 的被管理运行环境存在。
@@ -108,7 +103,6 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
 ```text
 apps/
   desktop/        # Tauri 桌面应用（React 前端 + Rust Core）
-  server/         # Next.js 管理控制台（版本更新 / SQLite）
 artifacts/        # 离线制品：openclaw 包、node 运行时、插件、技能、providers 等
 scripts/          # 工具脚本（插件卸载等）
 docs/             # 架构与实现文档
@@ -140,23 +134,12 @@ pnpm install
 pnpm dev:desktop
 ```
 
-### 启动管理控制台（开发模式）
-
-```bash
-# 启动 Next.js 服务端（默认 127.0.0.1:31421）
-pnpm dev:server
-```
-
 ### 常用命令
 
 | 命令 | 说明 |
 | --- | --- |
 | `pnpm build` | 构建桌面端 |
 | `pnpm typecheck` | 桌面端类型检查 |
-| `pnpm test:server` | 服务端单元测试 |
-| `pnpm --filter @openclaw-toolkit/server db:push` | 初始化 / 同步 SQLite 数据库 |
-
-> 服务端需先初始化数据库（`db:push`）并设置 `SERVER_ADMIN_TOKEN` 环境变量以保护管理后台。
 
 ---
 
@@ -181,21 +164,6 @@ pnpm dev:server
 
 ---
 
-## 🔄 服务端管理控制台（桌面自动更新后端）
-
-`apps/server` 提供一个轻量的 Next.js 后台，作为桌面端的**自动更新服务器**，主要能力：
-
-- **版本管理**：配置更新服务器地址、上传 Tauri 更新包与签名，按渠道控制发布与资产启用状态；
-- **自动更新**：桌面端通过 `GET /api/v1/desktop/updates/:target/:arch/:version` 获取更新元数据，从下载接口拉取安装包完成静默升级。
-
-> 坦白讲，这个服务端**基本还只是个架子**——功能代码是有的，但 UI、接口、鉴权、上传这些大多**没正经测过**（目前也就 `update-selection` 那个选版本逻辑有单测），边界情况基本靠想象。用来给桌面端喂更新够用，但别拿它当生产级后台使（没鉴权）。
-
-> **更新服务器地址是可配置的**。仓库中以 `https://YOUR-UPDATE-SERVER.invalid`（保留 TLD，永不解析）作为占位地址，不会暴露任何私有基础设施。部署者可：
->
-> - 桌面端：通过环境变量 `OPENCLAW_REMOTE_SERVICE_BASE_URL` / `OPENCLAW_REMOTE_SERVICE_FALLBACK_BASE_URL` 配置（Rust 侧读取），或编辑 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.endpoints`；
-> - 服务端：通过 `PUBLIC_SERVER_BASE_URL` 环境变量配置对外公开地址。
->
-> 若不需要自动更新，保留占位地址即可（更新检查不会命中，不影响安装与运行）。
 
 ---
 
@@ -206,8 +174,7 @@ pnpm dev:server
 | 桌面壳 | Tauri v2（Rust） |
 | 前端 | React 19 · Vite · Tailwind CSS 4 · shadcn/ui · Radix UI · lucide-react |
 | 后端运行时 | Rust（Tauri command / workflow engine） |
-| 管理服务端 | Next.js 15 · React 19 · Tailwind |
-| 数据库 | SQLite（better-sqlite3）· Drizzle ORM |
+| 自动更新 | Tauri updater 插件 + GitHub Releases |
 | 包管理 | pnpm workspace · TypeScript |
 
 ---
@@ -228,7 +195,7 @@ pnpm dev:server
 ## 🙏 致谢
 
 - [OpenClaw](https://github.com/openclaw) —— 本项目部署与管理的 AI Agent 运行时
-- [Tauri](https://tauri.app) / [React](https://react.dev) / [Next.js](https://nextjs.org) / [Drizzle](https://orm.drizzle.team) 等开源生态
+- [Tauri](https://tauri.app) / [React](https://react.dev) 等开源生态
 
 ### 已集成的 IM 渠道插件（感谢各开源库）
 
