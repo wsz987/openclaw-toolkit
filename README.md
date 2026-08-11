@@ -6,6 +6,8 @@
 
 OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务端** 的完整方案。它把「下载 Node 运行时 → 安装 OpenClaw → 生成配置 → 接入 IM 渠道 → 配置模型供应商 → 部署 Skill → 启动运行」这一整套繁琐流程封装成向导式界面，用户只需要选择安装目录、扫码、填密钥，几分钟即可跑起一个可用的 OpenClaw Agent。
 
+> 💬 为什么做这个：OpenClaw 刚火起来那阵，身边几个朋友想装，但一堆配置还是挺折腾的。就vibe coding了个安装器，功能上是"能用就行"，遇到问题就修修，测边界情况未知，更多功能画饼ing~
+
 ---
 
 ## ✨ 功能特色
@@ -18,7 +20,7 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
   - **官方 npm（国内镜像）**：从 `registry.npmmirror.com` 拉取版本列表，自动过滤预发布版并选取兼容的受管 Node 运行时。
 - **版本锁定**：每个 OpenClaw / Node 版本均以 `sha256` 校验，Node 版本按 `requiredNode.range` 自动匹配。
 - **受管 Node 运行时**：工具包自身不依赖全局 Node.js、不写入系统 PATH、不安装全局 npm；Node 仅作为 OpenClaw 的被管理运行环境（安装于独立目录），并提供国内镜像 `.npmrc`（npm 源 / node 镜像 / electron 镜像 / playwright 下载源）。
-- **失败回滚**：安装前自动备份旧目录与 `openclaw.json`，失败进入回滚并保留现场日志。
+- **自动备份**：安装前自动备份旧目录与 `openclaw.json` 到 `backups/`，并保留完整安装日志，便于排查问题。（真正的失败自动回滚——**画饼 ing**，还没做，旧版本先安静躺在 backups 里。）
 
 ### 📱 多渠道扫码接入（IM 通知/入口）
 内置主流国内 IM 渠道的对接向导，无需手写配置文件，**扫码即可完成授权**：
@@ -54,6 +56,28 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
 
 ---
 
+## 📸 界面预览
+
+<p align="center">
+  <img src="docs/screenshots/runtime.png" alt="运行时生命周期管理" width="49%"/>
+  <img src="docs/screenshots/provider.png" alt="模型供应商快速接入" width="49%"/>
+</p>
+<p align="center"><b>运行时生命周期管理</b>　·　<b>模型供应商快速接入</b></p>
+
+<p align="center">
+  <img src="docs/screenshots/channels.png" alt="多渠道接入面板" width="49%"/>
+  <img src="docs/screenshots/feishu-setting.png" alt="飞书渠道配置" width="49%"/>
+</p>
+<p align="center"><b>多渠道接入面板</b>　·　<b>飞书渠道配置</b></p>
+
+<p align="center">
+  <img src="docs/screenshots/skills.png" alt="技能管理" width="49%"/>
+  <img src="docs/screenshots/console.png" alt="控制台与实时日志" width="49%"/>
+</p>
+<p align="center"><b>技能管理</b>　·　<b>控制台与实时日志</b></p>
+
+---
+
 ## 🛠️ 技术架构
 
 ```text
@@ -64,7 +88,7 @@ OpenClaw Toolkit 是一套 **Tauri 桌面安装器 + 管理面板 + 更新服务
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Tauri Rust Core                                            │
-│  Workflow Engine · Manifest/版本目录管理 · License 校验      │
+│  Workflow Engine · Manifest/版本目录管理 · 环境预检          │
 │  Artifact 安装器 · openclaw.json 生成 · Node Runtime 管理   │
 │  Skill 安装器 · 权限管理 · 渠道接入 · 进程/运行时管理        │
 └──────────────────────────────┬──────────────────────────────┘
@@ -170,6 +194,8 @@ pnpm dev:server
 - **版本管理**：配置更新服务器地址、上传 Tauri 更新包与签名，按渠道控制发布与资产启用状态；
 - **自动更新**：桌面端通过 `GET /api/v1/desktop/updates/:target/:arch/:version` 获取更新元数据，从下载接口拉取安装包完成静默升级。
 
+> 坦白讲，这个服务端**基本还只是个架子**——功能代码是有的，但 UI、接口、鉴权、上传这些大多**没正经测过**（目前也就 `update-selection` 那个选版本逻辑有单测），边界情况基本靠想象。用来给桌面端喂更新够用，但别拿它当生产级后台使。
+
 > **更新服务器地址是可配置的**。仓库中以 `https://YOUR-UPDATE-SERVER.invalid`（保留 TLD，永不解析）作为占位地址，不会暴露任何私有基础设施。部署者可：
 >
 > - 桌面端：通过环境变量 `OPENCLAW_REMOTE_SERVICE_BASE_URL` / `OPENCLAW_REMOTE_SERVICE_FALLBACK_BASE_URL` 配置（Rust 侧读取），或编辑 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.endpoints`；
@@ -209,6 +235,13 @@ pnpm dev:server
 
 - [OpenClaw](https://github.com/openclaw) —— 本项目部署与管理的 AI Agent 运行时
 - [Tauri](https://tauri.app) / [React](https://react.dev) / [Next.js](https://nextjs.org) / [Drizzle](https://orm.drizzle.team) 等开源生态
+
+### 已集成的 IM 渠道插件（感谢各开源库）
+
+- [DingTalk-Real-AI/dingtalk-openclaw-connector](https://github.com/DingTalk-Real-AI/dingtalk-openclaw-connector) —— 钉钉渠道插件（`@dingtalk-real-ai/dingtalk-connector`）
+- [tencent-connect/openclaw-qqbot](https://github.com/tencent-connect/openclaw-qqbot) —— QQ 机器人渠道插件（`@tencent-connect/openclaw-qqbot`）
+- [larksuite/openclaw-lark](https://github.com/larksuite/openclaw-lark) —— 飞书渠道插件（`@larksuite/openclaw-lark`）
+- [Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin) —— 微信渠道插件（`@tencent-weixin/openclaw-weixin`）
 
 ---
 

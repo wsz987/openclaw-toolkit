@@ -247,15 +247,6 @@ fn build_uninstall_plan(record: &InstallationRecord) -> anyhow::Result<Uninstall
     add_base_child_target(
         &mut targets,
         &base_dir,
-        "skills",
-        "skills",
-        false,
-        "medium",
-        "删除受管 Skill 目录。",
-    );
-    add_base_child_target(
-        &mut targets,
-        &base_dir,
         "logs",
         "logs",
         true,
@@ -427,7 +418,7 @@ fn validate_deletion_target(
                 anyhow::bail!("Node Runtime 目录不在受管边界内：{}", path.display());
             }
         }
-        "skills" | "logs" | "backups" => {
+        "logs" | "backups" => {
             if !is_direct_child_named(&base_dir, &path, &target.scope) {
                 anyhow::bail!("目录不在受管边界内：{}", path.display());
             }

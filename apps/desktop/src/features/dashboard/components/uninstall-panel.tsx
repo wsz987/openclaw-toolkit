@@ -485,7 +485,6 @@ function scopeLabel(scope: string) {
   const labels: Record<string, string> = {
     openclawApp: 'OpenClaw 主程序',
     managedNode: '受管 Node Runtime',
-    skills: 'Skill 目录',
     logs: '日志',
     backups: '备份',
     workspace: '工作区'
