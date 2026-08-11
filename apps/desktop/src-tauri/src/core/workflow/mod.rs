@@ -8,7 +8,6 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::core::{
-    activation::{precheck_activation_code, verify_activation_code},
     app_state::{
         default_base_dir, derive_installation_id, prepare_installation_target,
         register_successful_install, remember_last_selected_base_dir,
@@ -44,7 +43,6 @@ use crate::core::{
 pub struct Stage1InstallInput {
     pub project_root: Option<String>,
     pub base_dir: Option<String>,
-    pub license_key: Option<String>,
     pub install_mode: Option<String>,
     pub selected_version: Option<String>,
 }
@@ -66,7 +64,6 @@ pub struct Stage1InstallResult {
 #[serde(rename_all = "camelCase")]
 pub enum InstallStep {
     LoadManifest,
-    ValidateLicense,
     CheckEnvironment,
     SelectInstallMode,
     ResolveOpenClawVersion,
@@ -193,9 +190,8 @@ pub struct Stage1Dashboard {
     pub install_plan: Stage1InstallPlan,
 }
 
-const STAGE1_STEPS: [InstallStep; 15] = [
+const STAGE1_STEPS: [InstallStep; 14] = [
     InstallStep::LoadManifest,
-    InstallStep::ValidateLicense,
     InstallStep::CheckEnvironment,
     InstallStep::SelectInstallMode,
     InstallStep::ResolveOpenClawVersion,
@@ -224,10 +220,6 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         .clone()
         .unwrap_or_else(|| "latest".to_string());
     let toolkit_manifest = load_toolkit_manifest(&project_root).ok();
-    let license_result = precheck_activation_code(input.license_key.as_deref(), &project_root);
-    let license_error = license_result.as_ref().err().map(format_error_chain);
-    let license = license_result.ok();
-    let license_ok = license.is_some();
     let version_catalog = build_version_catalog(&project_root, install_mode.as_str());
     let release_manifest_available = version_catalog.source_ready;
     let resolved_release = resolve_release_for_install(
@@ -246,15 +238,12 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         toolkit_manifest.as_ref(),
         resolved_release.as_ref(),
         release_manifest_available,
-        license_ok,
-        license_error.as_deref(),
     );
     let precheck_step = infer_precheck_step(
         &project_root,
         input.install_mode.as_deref(),
         toolkit_manifest.as_ref(),
         release_manifest_available,
-        license_ok,
     );
 
     if let Some(progress) = read_stage1_progress(&base_dir)? {
@@ -273,7 +262,6 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
                 Some(progress),
                 environment,
                 progress_release.as_ref(),
-                license.as_ref(),
             ));
         }
 
@@ -328,7 +316,6 @@ pub fn inspect_stage1_dashboard(input: Stage1InstallInput) -> anyhow::Result<Sta
         Some(progress_state),
         environment,
         resolved_release.as_ref(),
-        license.as_ref(),
     ))
 }
 
@@ -363,7 +350,7 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
         &base_dir,
         &mut progress,
         InstallStep::LoadManifest,
-        Some(InstallStep::ValidateLicense),
+        Some(InstallStep::CheckEnvironment),
         || load_toolkit_manifest(&project_root),
     )?;
 
@@ -373,14 +360,6 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
             providers: Vec::new(),
         }
     });
-
-    let license = run_step(
-        &base_dir,
-        &mut progress,
-        InstallStep::ValidateLicense,
-        Some(InstallStep::CheckEnvironment),
-        || verify_activation_code(input.license_key.as_deref(), &project_root),
-    )?;
 
     run_step(
         &base_dir,
@@ -572,7 +551,6 @@ pub fn run_stage1_install(input: Stage1InstallInput) -> anyhow::Result<Stage1Ins
                 &config_path,
                 &release,
                 &default_skills,
-                &license.tier,
                 &openclaw_dir,
                 &node_dir,
                 &provider_catalog.providers,
@@ -729,7 +707,6 @@ fn build_dashboard(
     progress: Option<Stage1ProgressState>,
     environment: Vec<Stage1EnvironmentCheck>,
     resolved_release: Option<&ReleaseArtifact>,
-    _license: Option<&crate::core::license::LicensePayload>,
 ) -> Stage1Dashboard {
     let phase = progress
         .as_ref()
@@ -846,8 +823,6 @@ fn build_environment_checks(
     toolkit_manifest: Option<&ToolkitManifest>,
     resolved_release: Option<&ReleaseArtifact>,
     release_manifest_available: bool,
-    license_ok: bool,
-    license_error: Option<&str>,
 ) -> Vec<Stage1EnvironmentCheck> {
     let toolkit_manifest_path = project_root.join("artifacts").join("toolkit-manifest.json");
     let release_manifest_path = project_root.join("artifacts").join("manifest.json");
@@ -904,20 +879,6 @@ fn build_environment_checks(
                 display_path(&toolkit_manifest_path)
             } else {
                 "缺少 artifacts/toolkit-manifest.json".to_string()
-            },
-        },
-        Stage1EnvironmentCheck {
-            id: "license".to_string(),
-            label: "授权激活".to_string(),
-            state: if license_ok {
-                Stage1CheckState::Ok
-            } else {
-                Stage1CheckState::Error
-            },
-            detail: if license_ok {
-                "授权校验通过".to_string()
-            } else {
-                license_error.unwrap_or("激活码尚未验证").to_string()
             },
         },
         Stage1EnvironmentCheck {
@@ -1258,7 +1219,6 @@ fn infer_precheck_step(
     install_mode: Option<&str>,
     toolkit_manifest: Option<&ToolkitManifest>,
     release_manifest_available: bool,
-    license_ok: bool,
 ) -> Option<InstallStep> {
     let Some(toolkit_manifest) = toolkit_manifest else {
         return Some(InstallStep::LoadManifest);
@@ -1270,10 +1230,6 @@ fn infer_precheck_step(
 
     if !project_root.exists() {
         return Some(InstallStep::LoadManifest);
-    }
-
-    if !license_ok {
-        return Some(InstallStep::ValidateLicense);
     }
 
     match install_mode.unwrap_or("local") {
@@ -1459,7 +1415,6 @@ fn format_error_chain(error: &anyhow::Error) -> String {
 fn step_title(step: InstallStep) -> &'static str {
     match step {
         InstallStep::LoadManifest => "加载 Manifest",
-        InstallStep::ValidateLicense => "验证授权",
         InstallStep::CheckEnvironment => "检查环境",
         InstallStep::SelectInstallMode => "选择安装模式",
         InstallStep::ResolveOpenClawVersion => "解析 OpenClaw 版本",
@@ -1479,7 +1434,6 @@ fn step_title(step: InstallStep) -> &'static str {
 fn step_description(step: InstallStep) -> &'static str {
     match step {
         InstallStep::LoadManifest => "读取工具包和制品清单",
-        InstallStep::ValidateLicense => "校验激活码、授权等级和有效期",
         InstallStep::CheckEnvironment => "确认当前系统满足安装前提",
         InstallStep::SelectInstallMode => "确认本地、远程或 npm 安装模式",
         InstallStep::ResolveOpenClawVersion => "选出当前要安装的 OpenClaw 版本",

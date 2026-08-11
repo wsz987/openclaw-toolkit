@@ -10,7 +10,7 @@
 
 路径：
 
-- [openclaw-feishu-offline-sync/SKILL.md](/d:/workspace/auto-tools-install/skills/openclaw-feishu-offline-sync/SKILL.md)
+- [openclaw-feishu-offline-sync/SKILL.md](./openclaw-feishu-offline-sync/SKILL.md)
 
 适用场景：
 

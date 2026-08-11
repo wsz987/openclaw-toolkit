@@ -1,1 +1,0 @@
-{"providers":[],"update":{"checkOnStart":false,"auto":{"enabled":false}},"plugins":{"feishu":{"enabled":false,"connectionMode":"websocket"}}}

@@ -7,7 +7,6 @@ export type RuntimeLifecycleState = 'stopped' | 'starting' | 'running' | 'stoppi
 
 export type InstallStep =
   | 'loadManifest'
-  | 'validateLicense'
   | 'checkEnvironment'
   | 'selectInstallMode'
   | 'resolveOpenClawVersion'
@@ -636,7 +635,6 @@ export type DirectoryPickerResponse = string | null;
 
 export type OpenClawInstallPayload = {
   baseDir: string;
-  licenseKey: string;
   installMode: InstallMode;
   selectedVersion: string;
 };

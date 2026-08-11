@@ -1,13 +1,23 @@
-pub const PRIMARY_REMOTE_SERVICE_BASE_URL: &str = "https://openclaw.wsz987.xyz";
-pub const FALLBACK_REMOTE_SERVICE_BASE_URL: &str = "http://47.80.6.78";
-pub const ACTIVATION_VALIDATE_PATH: &str = "/api/v1/licenses/validate";
+/// 远程更新/制品服务的基地址环境变量。
+///
+/// 开源发布默认使用占位地址（`.invalid` 为保留 TLD，永不解析）；
+/// 部署者可通过环境变量覆盖为自己的更新服务器。
+pub const REMOTE_SERVICE_BASE_URL_ENV: &str = "OPENCLAW_REMOTE_SERVICE_BASE_URL";
+pub const REMOTE_SERVICE_FALLBACK_BASE_URL_ENV: &str = "OPENCLAW_REMOTE_SERVICE_FALLBACK_BASE_URL";
+
+pub const DEFAULT_REMOTE_SERVICE_BASE_URL: &str = "https://YOUR-UPDATE-SERVER.invalid";
+
 pub const DESKTOP_UPDATE_PATH_TEMPLATE: &str =
     "/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}";
 
-pub fn remote_service_base_urls() -> Vec<&'static str> {
+fn configured_base_url(env_name: &str) -> String {
+    std::env::var(env_name).unwrap_or_else(|_| DEFAULT_REMOTE_SERVICE_BASE_URL.to_string())
+}
+
+pub fn remote_service_base_urls() -> Vec<String> {
     vec![
-        PRIMARY_REMOTE_SERVICE_BASE_URL,
-        FALLBACK_REMOTE_SERVICE_BASE_URL,
+        configured_base_url(REMOTE_SERVICE_BASE_URL_ENV),
+        configured_base_url(REMOTE_SERVICE_FALLBACK_BASE_URL_ENV),
     ]
 }
 
@@ -20,47 +30,19 @@ pub fn desktop_update_endpoint_templates() -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use serde::Deserialize;
-
-    use super::{
-        desktop_update_endpoint_templates, remote_service_base_urls, ACTIVATION_VALIDATE_PATH,
-    };
-
-    #[derive(Deserialize)]
-    struct TauriConfig {
-        bundle: TauriBundle,
-        plugins: TauriPlugins,
-    }
-
-    #[derive(Deserialize)]
-    struct TauriBundle {
-        resources: std::collections::BTreeMap<String, String>,
-    }
-
-    #[derive(Deserialize)]
-    struct TauriPlugins {
-        updater: TauriUpdater,
-    }
-
-    #[derive(Deserialize)]
-    struct TauriUpdater {
-        endpoints: Vec<String>,
-    }
+    use super::{desktop_update_endpoint_templates, remote_service_base_urls, DESKTOP_UPDATE_PATH_TEMPLATE};
 
     #[test]
-    fn update_endpoint_templates_are_derived_from_shared_remote_service_hosts() {
-        assert_eq!(
-            desktop_update_endpoint_templates(),
-            vec![
-                "https://openclaw.wsz987.xyz/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}",
-                "http://47.80.6.78/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}"
-            ]
-        );
-        assert_eq!(
-            remote_service_base_urls(),
-            vec!["https://openclaw.wsz987.xyz", "http://47.80.6.78"]
-        );
-        assert_eq!(ACTIVATION_VALIDATE_PATH, "/api/v1/licenses/validate");
+    fn endpoint_templates_are_derived_from_remote_service_hosts() {
+        let templates = desktop_update_endpoint_templates();
+        let base_urls = remote_service_base_urls();
+
+        assert_eq!(templates.len(), 2);
+        assert_eq!(base_urls.len(), 2);
+        for (template, base_url) in templates.iter().zip(base_urls.iter()) {
+            assert!(template.starts_with(base_url));
+            assert!(template.ends_with(DESKTOP_UPDATE_PATH_TEMPLATE));
+        }
     }
 
     #[test]
@@ -69,29 +51,28 @@ mod tests {
             serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
 
         assert_eq!(
-            config.plugins.updater.endpoints,
-            desktop_update_endpoint_templates()
+            config.plugins.updater.endpoints.len(),
+            2,
+            "updater endpoints should stay in sync with remote_service_base_urls()"
         );
+        for endpoint in &config.plugins.updater.endpoints {
+            assert!(endpoint.starts_with("https://"), "endpoint should use https: {endpoint}");
+            assert!(endpoint.ends_with(DESKTOP_UPDATE_PATH_TEMPLATE), "endpoint should end with path template: {endpoint}");
+        }
     }
 
-    #[test]
-    fn tauri_bundle_includes_only_license_dat_not_activation_code() {
-        let config: TauriConfig =
-            serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
+    #[derive(serde::Deserialize)]
+    struct TauriConfig {
+        plugins: TauriPlugins,
+    }
 
-        assert_eq!(
-            config
-                .bundle
-                .resources
-                .get("../../../licenses/license.dat")
-                .map(String::as_str),
-            Some("licenses/license.dat")
-        );
-        assert!(!config.bundle.resources.contains_key("../../../licenses"));
-        assert!(!config
-            .bundle
-            .resources
-            .keys()
-            .any(|path| path.contains("activation-code")));
+    #[derive(serde::Deserialize)]
+    struct TauriPlugins {
+        updater: TauriUpdater,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct TauriUpdater {
+        endpoints: Vec<String>,
     }
 }

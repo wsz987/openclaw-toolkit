@@ -98,7 +98,6 @@ export function useOpenClawInstaller(
   const fallbackBaseDir = 'D:\\OpenClaw';
 
   const [baseDir, setBaseDir] = useState(initialBaseDir && initialBaseDir.trim().length > 0 ? initialBaseDir : fallbackBaseDir);
-  const [licenseKey, setLicenseKey] = useState('');
   const [installMode, setInstallMode] = useState<InstallMode>('local');
   const [selectedVersion, setSelectedVersion] = useState('latest');
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -160,11 +159,10 @@ export function useOpenClawInstaller(
   const payload = useMemo<OpenClawInstallPayload>(
     () => ({
       baseDir,
-      licenseKey,
       installMode,
       selectedVersion
     }),
-    [baseDir, licenseKey, installMode, selectedVersion]
+    [baseDir, installMode, selectedVersion]
   );
   const debouncedPayload = useDebouncedValue(payload, DASHBOARD_DEBOUNCE_MS);
 
@@ -962,7 +960,6 @@ export function useOpenClawInstaller(
   const environmentItems = dashboard?.environment ?? [];
   const payloadSettled =
     payload.baseDir === debouncedPayload.baseDir &&
-    payload.licenseKey === debouncedPayload.licenseKey &&
     payload.installMode === debouncedPayload.installMode &&
     payload.selectedVersion === debouncedPayload.selectedVersion;
   const dashboardMatchesDebouncedPayload =
@@ -1025,7 +1022,6 @@ export function useOpenClawInstaller(
     installPlan,
     installationDirOpening,
     importingInstallation,
-    licenseKey,
     logsDirOpening,
     loading,
     phase,
@@ -1050,7 +1046,6 @@ export function useOpenClawInstaller(
     setBaseDir,
     setConfirmDialogOpen,
     setInstallMode,
-    setLicenseKey,
     setSelectedVersion,
     setWizardStep,
     step1Checks,

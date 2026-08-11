@@ -16,13 +16,6 @@ import {
 import { SpinnerIcon } from './components/icons';
 import type { AppBootstrapState } from '@/openclaw/model/types';
 import { hasMissingInstallationRecord, isRecoveredInstallationState } from '@/openclaw/model/app-flow';
-import { DebugFlowPanel } from './features/installer/components/debug-flow-panel';
-import {
-  canForceInstalledHome,
-  getEffectiveBootstrapState,
-  readInstallerDebugFlowState,
-  writeInstallerDebugFlowState
-} from '@/openclaw/model/debug-flow';
 
 export function AppBootstrap() {
   const [state, setState] = useState<AppBootstrapState | null>(null);
@@ -30,7 +23,6 @@ export function AppBootstrap() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [recoveryAlertOpen, setRecoveryAlertOpen] = useState(true);
-  const [debugFlowState, setDebugFlowState] = useState(() => readInstallerDebugFlowState());
 
   useEffect(() => {
     let cancelled = false;
@@ -61,18 +53,11 @@ export function AppBootstrap() {
     };
   }, [refreshKey]);
 
-  useEffect(() => {
-    writeInstallerDebugFlowState(debugFlowState);
-  }, [debugFlowState]);
-
   function handleEnterInstaller() {
     setError(null);
     setState(null);
     setLoading(false);
   }
-
-  const isDev = import.meta.env.DEV;
-  const effectiveState = getEffectiveBootstrapState(state, debugFlowState.mode);
 
   if (loading) {
     return (
@@ -85,7 +70,7 @@ export function AppBootstrap() {
           <div className="relative w-28 h-28 flex items-center justify-center mb-8">
             <div className="absolute inset-0 rounded-full border border-[hsl(var(--primary)/0.12)] animate-ping [animation-duration:2.5s]" />
             <div className="absolute inset-4 rounded-full border border-[hsl(var(--primary)/0.08)] animate-pulse" />
-            <div className="absolute inset-6 rounded-full border-2 border-[hsl(var(--hairline-soft))]" />
+            <div className="absolute inset-6 rounded-full border border-[hsl(var(--hairline-soft))]" />
             <div className="absolute inset-6 rounded-full border-2 border-transparent border-t-[hsl(var(--primary))] border-r-[hsl(var(--primary))] animate-spin [animation-duration:1.2s]" />
             <div className="w-10 h-10 rounded-full bg-[hsl(var(--canvas))] border border-[hsl(var(--hairline))] flex items-center justify-center shadow-xs">
               <SpinnerIcon size={16} className="spinning text-[hsl(var(--primary))/0.8]" />
@@ -128,15 +113,6 @@ export function AppBootstrap() {
     return (
       <main className="app-shell flex flex-col min-h-screen py-10 px-6 bg-[hsl(var(--canvas))]">
         <div className="workspace max-w-[1200px] w-full mx-auto flex flex-col gap-8 animate-fade-in">
-          {isDev ? (
-            <DebugFlowPanel
-              mode={debugFlowState.mode}
-              canForceInstalledHome={canForceInstalledHome(state)}
-              installerStep={debugFlowState.installerStep}
-              onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
-              onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
-            />
-          ) : null}
           <Card className="max-w-2xl mx-auto border-[hsl(var(--error)/0.3)]">
             <CardHeader>
               <CardTitle>启动恢复失败</CardTitle>
@@ -159,30 +135,17 @@ export function AppBootstrap() {
     );
   }
 
-  const shouldReturnToInstaller =
-    debugFlowState.mode !== 'installed-home' && hasMissingInstallationRecord(effectiveState);
-
-  if (shouldReturnToInstaller) {
+  if (hasMissingInstallationRecord(state)) {
     return (
       <>
-        {isDev ? (
-          <DebugFlowPanel
-            mode={debugFlowState.mode}
-            canForceInstalledHome={canForceInstalledHome(state)}
-            installerStep={debugFlowState.installerStep}
-            onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
-            onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
-          />
-        ) : null}
         <OpenClawInstallerApp
           bootstrapState={null}
           initialBaseDir={
-            effectiveState?.settings.lastSelectedBaseDir ??
-            effectiveState?.activeInstallation?.baseDir ??
-            effectiveState?.defaultBaseDir ??
+            state?.settings.lastSelectedBaseDir ??
+            state?.activeInstallation?.baseDir ??
+            state?.defaultBaseDir ??
             null
           }
-          initialWizardStep={debugFlowState.installerStep}
           onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
         />
         <AlertDialog open={recoveryAlertOpen} onOpenChange={setRecoveryAlertOpen}>
@@ -195,7 +158,7 @@ export function AppBootstrap() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded-lg border border-[hsl(var(--warning)/0.18)] bg-[hsl(var(--warning)/0.08)] p-4 text-sm leading-6 text-[hsl(var(--body-strong))] break-all">
-              {effectiveState?.message}
+              {state?.message}
             </div>
             <AlertDialogFooter>
               <AlertDialogAction>返回安装页</AlertDialogAction>
@@ -208,24 +171,14 @@ export function AppBootstrap() {
 
   return (
     <>
-      {isDev ? (
-        <DebugFlowPanel
-          mode={debugFlowState.mode}
-          canForceInstalledHome={canForceInstalledHome(state)}
-          installerStep={debugFlowState.installerStep}
-          onModeChange={(mode) => setDebugFlowState((current) => ({ ...current, mode }))}
-          onInstallerStepChange={(installerStep) => setDebugFlowState((current) => ({ ...current, installerStep }))}
-        />
-      ) : null}
-      {isRecoveredInstallationState(effectiveState) ? (
+      {isRecoveredInstallationState(state) ? (
         <DashboardApp
-          bootstrapState={effectiveState}
+          bootstrapState={state}
           onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
         />
       ) : (
         <OpenClawInstallerApp
-          bootstrapState={effectiveState}
-          initialWizardStep={debugFlowState.installerStep}
+          bootstrapState={state}
           onExitInstalledHome={() => setRefreshKey((value) => value + 1)}
         />
       )}

@@ -11,19 +11,14 @@ The server lives in `apps/server`:
 - Local artifact storage under `apps/server/storage/releases`.
 - Tailwind + small shadcn-style UI primitives for the admin pages.
 
-Primary endpoint:
+Primary endpoint (configurable via `PUBLIC_SERVER_BASE_URL` / `OPENCLAW_REMOTE_SERVICE_BASE_URL`):
 
 ```text
-https://openclaw.wsz987.xyz/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}
+https://YOUR-UPDATE-SERVER.invalid/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}
 ```
 
-Fallback endpoint:
-
-```text
-http://47.80.6.78/api/v1/desktop/updates/{{target}}/{{arch}}/{{current_version}}
-```
-
-HTTP fallback is enabled through `dangerousInsecureTransportProtocol`. Prefer putting TLS in front of `47.80.6.78` before public release.
+> `.invalid` 是保留 TLD，永不解析。开源仓库中仅作为占位地址，请替换为你自己的更新服务器地址，或通过环境变量配置。
+> 桌面端 Rust 侧从 `OPENCLAW_REMOTE_SERVICE_BASE_URL` / `OPENCLAW_REMOTE_SERVICE_FALLBACK_BASE_URL` 读取基地址，默认回退到占位地址。
 
 ## SQLite
 
@@ -64,7 +59,7 @@ Run with a named volume for SQLite and uploaded updater artifacts:
 ```powershell
 docker run -d --name openclaw-server `
   -p 31421:31421 `
-  -e PUBLIC_SERVER_BASE_URL=https://openclaw.wsz987.xyz `
+  -e PUBLIC_SERVER_BASE_URL=https://YOUR-UPDATE-SERVER.invalid `
   -e SERVER_ADMIN_TOKEN=replace-with-a-long-random-token `
   -e SQLITE_DB_PATH=/data/server.sqlite `
   -e RELEASE_STORAGE_DIR=/data/releases `
@@ -98,53 +93,6 @@ The page supports:
 - enabling or disabling releases;
 - listing recent releases and platform assets.
 
-License management lives at:
-
-```text
-http://127.0.0.1:31421/admin/licenses
-```
-
-It supports company grouping, online activation code issuance, status management, optional activation limits, optional expiration dates, and optional offline `license.dat` fallback generation. Empty expiration dates are stored as `null` and mean no expiration limit.
-
-## License Validation Contract
-
-Applications validate online activation codes with:
-
-```http
-POST /api/v1/licenses/validate
-Content-Type: application/json
-
-{
-  "activationCode": "8F3K-29HD-Q7M2",
-  "machineId": "optional-stable-device-id",
-  "appVersion": "0.1.2"
-}
-```
-
-All new license APIs use a normalized envelope:
-
-```json
-{
-  "success": true,
-  "code": "OK",
-  "message": "激活成功",
-  "data": {
-    "license": {
-      "licenseId": "lic-...",
-      "companyName": "Example Co",
-      "tier": "basic",
-      "features": [],
-      "expiresAt": null,
-      "status": "active",
-      "maxActivations": null,
-      "activationCount": 1
-    }
-  }
-}
-```
-
-Validation failures return the same envelope with `success: false`. The app should display the `message` field directly, for example `激活码不存在，请检查后重试`, `激活码已过期`, or `激活数量已达上限`.
-
 ## Update Check Contract
 
 Desktop request:
@@ -160,7 +108,7 @@ When an update is available, the server returns `200`:
   "version": "0.1.1",
   "notes": "Fixes and improvements",
   "pub_date": "2026-06-30T00:00:00.000Z",
-  "url": "https://openclaw.wsz987.xyz/api/v1/desktop/downloads/0.1.1/windows-x86_64/openclaw.zip",
+  "url": "https://YOUR-UPDATE-SERVER.invalid/api/v1/desktop/downloads/0.1.1/windows-x86_64/openclaw.zip",
   "signature": "TAURI_UPDATER_SIGNATURE"
 }
 ```
@@ -190,23 +138,6 @@ When no update is available, the server returns `204 No Content`.
 
 - `publicBaseUrl`
 
-`companies` stores customer groups by company name.
-
-`license_keys` stores online activation keys:
-
-- `companyId`
-- `activationCodeHash`
-- `activationCodePreview`
-- `licenseId`
-- `tier`
-- `featuresJson`
-- `expiresAt`
-- `status`
-- `expiresAt` (`null` means no expiration limit)
-- `maxActivations` (`null` means unlimited)
-- `activationCount`
-
-`license_activation_events` stores validation attempts with hashed machine identifiers and app versions.
 
 The update selector only returns releases that are enabled, newer than the current version, on the requested channel, and have an enabled matching asset.
 
@@ -219,11 +150,41 @@ The Tauri updater public key is committed in `apps/desktop/src-tauri/tauri.conf.
 Build signing uses:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY_PATH="D:\coding\auto-intsall-openclaw\apps\desktop\signing\openclaw-updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PATH="<你的仓库路径>\apps\desktop\signing\openclaw-updater.key"
 pnpm --dir apps/desktop build
 ```
 
 After build, upload the generated updater artifact and `.sig` file in the admin page, then enable the release. The server also stores `sha256` for the uploaded artifact for audit/manual verification.
+
+## 生成你自己的签名密钥（推荐）
+
+> **私钥必须保密，严禁提交到仓库。** 任何人都能用私钥签发"通过公钥校验"的更新包——配合桌面端静默自动更新，等于可向所有用户推送恶意版本（供应链攻击）。
+
+仓库内提交的 `apps/desktop/signing/openclaw-updater.key.pub` 和 `tauri.conf.json` 的 `plugins.updater.pubkey` 是**作者部署**的公钥。**每位部署者都应生成自己独立的密钥对**，不要复用或公开他人的私钥。
+
+生成新的密钥对：
+
+```powershell
+cd apps/desktop
+pnpm exec tauri signer generate --ci `
+  --password "<你的私钥密码，请妥善保存>" `
+  -w "apps\desktop\signing\openclaw-updater.key" `
+  -f
+```
+
+生成后：
+
+1. **保存好私钥**（`apps/desktop/signing/openclaw-updater.key`）和密码——丢失后将无法再签发更新包，已发布版本也无法再更新；
+2. 把新公钥写进 `apps/desktop/src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`（内容即 `signing/openclaw-updater.key.pub`，为 minisign 公钥 base64）；
+3. 发布构建时通过环境变量提供私钥：
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY_PATH="<你的仓库路径>\apps\desktop\signing\openclaw-updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<你的私钥密码>"
+pnpm --dir apps/desktop build
+```
+
+**`.gitignore` 已覆盖 `apps/desktop/signing/*.key`**，私钥文件不会被 git 跟踪或提交；若误 `git add`，会先被忽略并在 `git status` 中不显示。
 
 ## Desktop Behavior
 
@@ -238,5 +199,5 @@ On Windows the updater is configured with `installMode: "passive"`, so after the
 ## Production Notes
 
 - Put HTTPS in front of the fallback host.
-- Add authentication before exposing `/admin/updates` or `/admin/licenses` publicly. The JSON admin API supports `SERVER_ADMIN_TOKEN`; the form pages are intended for internal deployment until auth is added.
+- Add authentication before exposing `/admin/updates` publicly. The JSON admin API supports `SERVER_ADMIN_TOKEN`; the form pages are intended for internal deployment until auth is added.
 - Do not lose the updater private key; existing clients cannot install future signed updates without it.

@@ -1,4 +1,3 @@
-pub mod activation;
 pub mod app_state;
 pub mod artifact;
 pub mod background_process;
@@ -6,7 +5,6 @@ pub mod browser;
 pub mod dialog;
 pub mod environment;
 pub mod install_log;
-pub mod license;
 pub mod manifest;
 pub mod node_runtime;
 pub mod openclaw_cli;

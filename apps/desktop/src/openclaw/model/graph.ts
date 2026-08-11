@@ -2,7 +2,6 @@ import type { InstallStep, MasterPhase, StepDiagnostic } from './types';
 
 export const installerSteps: Array<{ id: InstallStep; title: string; description: string }> = [
   { id: 'loadManifest', title: '加载 Manifest', description: '读取工具包和制品清单' },
-  { id: 'validateLicense', title: '验证授权', description: '校验激活码和功能范围' },
   { id: 'checkEnvironment', title: '检查环境', description: '确认当前系统满足安装前提' },
   { id: 'selectInstallMode', title: '选择安装模式', description: '确认本地、远程或 npm 安装模式' },
   { id: 'resolveOpenClawVersion', title: '解析 OpenClaw 版本', description: '选出当前要安装的 OpenClaw 版本' },
@@ -28,7 +27,7 @@ export const masterPhases: MasterPhase[] = [
   {
     id: 'verify-pre',
     label: '基础初始化',
-    steps: ['loadManifest', 'validateLicense', 'checkEnvironment', 'selectInstallMode', 'resolveOpenClawVersion']
+    steps: ['loadManifest', 'checkEnvironment', 'selectInstallMode', 'resolveOpenClawVersion']
   },
   {
     id: 'dependencies',
@@ -54,14 +53,6 @@ export const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
     tasks: [
       { label: '定位内置安装资源目录', key: 'resource-root' },
       { label: '读取 toolkit-manifest.json 配置文件', key: 'toolkit-manifest' }
-    ]
-  },
-  validateLicense: {
-    title: '校验授权激活',
-    description: '激活码有效性检测...',
-    tasks: [
-      { label: '验证激活码与授权状态', key: 'license' },
-      { label: '核查是否支持受管 Node Runtime 能力', key: 'license' }
     ]
   },
   checkEnvironment: {
@@ -130,7 +121,7 @@ export const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
   },
   generateOpenClawConfig: {
     title: '配置系统运行参数 openclaw.json',
-    description: '解析配置输入并保存为主程序的配置文件，包括端口、进程守护及授权级别...',
+    description: '解析配置输入并保存为主程序的配置文件，包括端口、进程守护及运行策略...',
     tasks: [
       { label: '计算端口占用和本地 Node 环境变量映射关系', key: 'config' },
       { label: '生成并持久化 openclaw.json 文件', key: 'config' }
@@ -146,7 +137,7 @@ export const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
   },
   configurePermissions: {
     title: '应用命令与路径安全访问限制',
-    description: '根据授权等级激活安全策略限制，限定读写和调用底层工具权限...',
+    description: '根据运行策略激活安全限制，限定读写和调用底层工具权限...',
     tasks: [
       { label: '配置命令执行和文件读写白名单', key: 'config' },
       { label: '设置沙箱安全隔离过滤规则', key: 'config' }
@@ -171,5 +162,5 @@ export const stepDiagnosticsMap: Record<InstallStep, StepDiagnostic> = {
 };
 
 export const STEP1_CHECK_IDS = ['windows', 'resource-root', 'toolkit-manifest'];
-export const STEP2_CHECK_IDS = ['license', 'install-mode', 'release-manifest', 'selected-version', 'system-openclaw'];
-export const STEP3_SPLIT_INDEX = 9;
+export const STEP2_CHECK_IDS = ['install-mode', 'release-manifest', 'selected-version', 'system-openclaw'];
+export const STEP3_SPLIT_INDEX = 8;

@@ -1,1 +1,0 @@
-{"tools":{"profile":"coding","deny":["browser","canvas"],"fs":{"workspaceOnly":true},"exec":{"security":"full","ask":"off","applyPatch":{"workspaceOnly":true}}},"agents":{"defaults":{"sandbox":{"mode":"off"}}}}

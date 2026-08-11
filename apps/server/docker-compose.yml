@@ -12,7 +12,7 @@ services:
       HOSTNAME: 0.0.0.0
       SQLITE_DB_PATH: /data/server.sqlite
       RELEASE_STORAGE_DIR: /data/releases
-      PUBLIC_SERVER_BASE_URL: https://openclaw.wsz987.xyz
+      PUBLIC_SERVER_BASE_URL: ${PUBLIC_SERVER_BASE_URL:-https://YOUR-UPDATE-SERVER.invalid}
       OPENCLAW_UPDATE_CHANNEL: stable
       SERVER_ADMIN_TOKEN: ${SERVER_ADMIN_TOKEN:?set SERVER_ADMIN_TOKEN in your environment}
     volumes:

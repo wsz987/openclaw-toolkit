@@ -19,7 +19,7 @@ export function InstallerShell({
 }: InstallerShellProps) {
   return (
     <main className="app-shell flex h-screen w-screen overflow-hidden bg-[hsl(var(--canvas))] animate-fade-in [--installer-sidebar-width:16rem]">
-      <aside className="w-[var(--installer-sidebar-width)] border-r border-[hsl(var(--hairline))] bg-[hsl(var(--surface-soft))] p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
+      <aside className="w-[var(--installer-sidebar-width)] bg-[hsl(var(--surface-soft))] p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
         <div className="flex flex-col gap-8 flex-1">{sidebar}</div>
         <div className="flex flex-col gap-4 pt-4 border-t border-[hsl(var(--hairline))]">
           {footer}

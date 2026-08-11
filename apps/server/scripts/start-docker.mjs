@@ -20,8 +20,7 @@ if (existsSync(migrationsDir)) {
     db.prepare('SELECT name FROM __openclaw_migrations').all().map((row) => String(row.name))
   );
   const existingMigrationMarkers = {
-    '0000_long_gorilla_man.sql': ['desktop_releases', 'desktop_release_assets', 'update_server_settings'],
-    '0001_license_management.sql': ['companies', 'license_keys', 'license_activation_events']
+    '0000_short_spot.sql': ['desktop_releases', 'desktop_release_assets', 'update_server_settings']
   };
   const existingTables = new Set(
     db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => String(row.name))

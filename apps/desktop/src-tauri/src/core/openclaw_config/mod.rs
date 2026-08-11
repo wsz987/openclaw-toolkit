@@ -447,7 +447,6 @@ pub fn write_openclaw_config(
     config_path: &Path,
     _release: &ReleaseArtifact,
     default_skills: &[ReleaseSkill],
-    _tier: &str,
     openclaw_dir: &Path,
     _node_dir: &Path,
     provider_catalog: &[ProviderCatalogEntry],
@@ -2354,7 +2353,9 @@ fn install_openclaw_via_npm(
         .arg(format!("openclaw@{}", version))
         .arg("--prefix")
         .arg(process_friendly_path_string(openclaw_dir))
-        .args(["--no-audit", "--no-fund"])
+        // --legacy-peer-deps: npm/arborist peer 解析存在已知 bug
+        // (Cannot read properties of null (reading 'edgesOut'))，跳过严格 peer 校验以规避。
+        .args(["--legacy-peer-deps", "--no-audit", "--no-fund"])
         .env("NPM_CONFIG_USERCONFIG", node_runtime_npmrc_path(node_dir))
         .env("npm_config_userconfig", node_runtime_npmrc_path(node_dir))
         .output()
@@ -2436,6 +2437,9 @@ fn install_openclaw_package_dependencies(
             "install",
             "--omit=dev",
             "--ignore-scripts",
+            // --legacy-peer-deps: npm/arborist peer 解析存在已知 bug
+            // (Cannot read properties of null (reading 'edgesOut'))，跳过严格 peer 校验以规避。
+            "--legacy-peer-deps",
             "--no-audit",
             "--no-fund",
             "--verbose",
@@ -2691,7 +2695,6 @@ mod tests {
             &config_path,
             &release,
             &release.skills,
-            "community",
             &openclaw_dir,
             &temp_dir.join("node"),
             &[sample_provider()],
@@ -2724,7 +2727,6 @@ mod tests {
             &config_path,
             &release,
             &release.skills,
-            "community",
             &openclaw_dir,
             &temp_dir.join("node"),
             &[sample_provider(), sample_qwen_provider()],

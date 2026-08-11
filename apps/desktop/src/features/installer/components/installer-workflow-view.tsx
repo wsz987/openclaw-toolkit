@@ -24,14 +24,12 @@ export function InstallerWorkflowView({ controller, screen }: InstallerWorkflowV
     installLogTail,
     installMode,
     installPlan,
-    licenseKey,
     loading,
     progressValue,
     selectedVersion,
     selectedVersionOption,
     setBaseDir,
     setInstallMode,
-    setLicenseKey,
     setSelectedVersion,
     setWizardStep,
     step1Checks,
@@ -72,7 +70,6 @@ export function InstallerWorkflowView({ controller, screen }: InstallerWorkflowV
   if (screen === 'config') {
     return (
       <ConfigStepView
-        licenseKey={licenseKey}
         installMode={installMode}
         selectedVersion={selectedVersion}
         versionCatalogLoading={versionCatalogLoading}
@@ -84,7 +81,6 @@ export function InstallerWorkflowView({ controller, screen }: InstallerWorkflowV
         loading={loading}
         canStartInstall={canStartInstall}
         step2Checks={step2Checks}
-        onLicenseKeyChange={setLicenseKey}
         onInstallModeChange={setInstallMode}
         onSelectedVersionChange={setSelectedVersion}
         onBack={() => setWizardStep(0)}

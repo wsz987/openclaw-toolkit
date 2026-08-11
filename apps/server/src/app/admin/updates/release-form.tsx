@@ -14,7 +14,7 @@ export function UpdateServerConfigForm({ publicBaseUrl }: { publicBaseUrl: strin
         <form action={saveUpdateServerConfigAction} className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-neutral-600">公开访问地址</span>
-            <Input name="publicBaseUrl" defaultValue={publicBaseUrl} placeholder="https://openclaw.wsz987.xyz" />
+            <Input name="publicBaseUrl" defaultValue={publicBaseUrl} placeholder="https://YOUR-UPDATE-SERVER.invalid" />
           </label>
           <Button type="submit" className="self-end">保存配置</Button>
         </form>

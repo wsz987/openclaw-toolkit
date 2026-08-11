@@ -36,8 +36,7 @@ OpenClaw Package + Skills = 被工具包安装和管理的目标环境
 ### Stage 1：当前实现重点
 
 - Windows Tauri 桌面安装器
-- Rust Core 安装、配置、授权和版本管理
-- 离线激活码校验
+- Rust Core 安装、配置和版本管理
 - 三种安装模式：内置稳定版、内部配置的远程服务器、官方 npm 下载指定版本
 - OpenClaw 版本锁定
 - OpenClaw 专用 Node Runtime 版本锁定
@@ -153,7 +152,6 @@ Rust Core 使用简单、显式的 Step enum 和 handler，不引入过重状态
 ```rust
 pub enum InstallStep {
     LoadManifest,
-    ValidateLicense,
     CheckEnvironment,
     SelectInstallMode,
     ResolveOpenClawVersion,
@@ -174,7 +172,6 @@ pub enum InstallStep {
 
 ```text
 loadManifest
-  -> validateLicense
   -> checkEnvironment
   -> selectInstallMode
   -> resolveOpenClawVersion
@@ -261,36 +258,6 @@ load settings
 
 安装成功页只作为一次性反馈，不应继续承担长期入口职责。
 
-## 授权设计
-
-使用离线授权，不自定义易伪造格式。当前客户体验是短激活码 + 签名授权文件：
-
-- 客户输入短激活码，例如 `8F3K-29HD-Q7M2`
-- 离线包携带客户专属 `license.dat`；开发仓库默认读取 `licenses/license.dat`
-- 生成端使用 Ed25519 私钥签名 `license.dat`
-- 客户端 Rust Core 内置 Ed25519 DER 公钥
-- Rust Core 离线验签并校验短码与 `activationHash` 绑定关系
-- license payload 决定 tier、额外 features 和过期时间
-- 当前签发端先使用 `scripts/license.mjs` 内部 CLI，后续可平移为带审计和 KMS/HSM 的授权后台
-
-授权等级：
-
-- `basic`：基础产品授权，包含默认安装和管理能力。
-- `pro`：预留高级授权等级。
-- `enterprise`：预留企业授权等级。
-
-基础能力默认开放，不写入 features：
-
-- feishu-plugin
-- offline-install
-- remote-artifact-install
-- official-npm-install
-- managed-node-runtime
-- local-skills
-- browser-control
-
-`features` 只记录额外授权能力，例如后续企业策略、审计、私有模型网关或高级 provider 管理。
-
 ## 权限设计
 
 Tauri NSIS 安装器使用 `requireAdministrator`。管理员权限用于安装、服务注册、浏览器自动化和受限目录写入。
@@ -313,7 +280,7 @@ openclaw.json 不直接字符串拼接，使用：
 
 ## 维护原则
 
-- 前端只展示用户需要选择的目录、版本、安装模式和激活码
+- 前端只展示用户需要选择的目录、版本和安装模式
 - 工具包自身不依赖 Node.js
 - Node.js 只作为 OpenClaw 运行环境被管理
 - 流程定义在 Rust workflow

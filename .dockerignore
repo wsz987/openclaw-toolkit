@@ -13,7 +13,4 @@ node_modules
 *.sqlite-shm
 *.sqlite-wal
 *.tsbuildinfo
-license-keys
-license-keys-verify
 artifacts/tmp
-artifacts/license.dat

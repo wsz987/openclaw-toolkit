@@ -18,7 +18,7 @@ export function InstallerHeader({ openclawVersion, nodeVersion, layout = 'horizo
             </span>
           </div>
           <h1 className="font-serif text-2xl text-[hsl(var(--ink))] font-normal tracking-tight leading-tight">
-            部署受管运行环境
+            部署环境
           </h1>
         </div>
 
@@ -54,7 +54,7 @@ export function InstallerHeader({ openclawVersion, nodeVersion, layout = 'horizo
           </span>
         </div>
         <h1 className="font-serif text-4xl text-[hsl(var(--ink))] font-normal tracking-tight leading-tight">
-          部署受管运行环境
+          部署环境
         </h1>
       </div>
 

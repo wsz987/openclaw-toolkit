@@ -259,7 +259,7 @@ export function UninstallPanel({
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[hsl(var(--hairline))] pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-[hsl(var(--ink))]">卸载实例受管数据</h2>
+          <h2 className="text-lg font-semibold text-[hsl(var(--ink))]">卸载与清理</h2>
           <p className="text-xs text-[hsl(var(--muted))] mt-1 leading-relaxed">
             您可以自主选择需要清理的实例资产目录。全局 Node.js 安装、全局 system PATH 以及位于外部的资源库不包含在清理范围内。
           </p>

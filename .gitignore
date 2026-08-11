@@ -10,13 +10,12 @@ coverage
 !.env.example
 apps/desktop/src-tauri/target
 runtime
-license-keys/
-license-keys*/
-artifacts/license.dat
-*-private.pem
-*.private.pem
-*.key.pem
 
+# 私有签名密钥（Tauri 更新签名私钥，严禁提交）
+apps/desktop/signing/*.key
+
+# ZCode 会话/计划文件
+.zcode/
 
 # Added by cargo
 

@@ -57,13 +57,11 @@ describe('installer API command names', () => {
 
     await inspectInstallDashboard({
       baseDir: '',
-      licenseKey: '',
       installMode: 'local',
       selectedVersion: 'latest'
     });
     await startOpenClawInstall({
       baseDir: '',
-      licenseKey: '',
       installMode: 'local',
       selectedVersion: 'latest'
     });

@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select } from '@/components/ui/select';
-import { SecretField } from '@/components/secret-field';
 import {
   AlertIcon,
   ArrowLeftIcon,
@@ -241,7 +240,6 @@ export function PrecheckStepView({
 }
 
 type ConfigStepViewProps = {
-  licenseKey: string;
   installMode: InstallMode;
   selectedVersion: string;
   versionCatalogLoading: boolean;
@@ -253,7 +251,6 @@ type ConfigStepViewProps = {
   loading: boolean;
   canStartInstall: boolean;
   step2Checks: InstallEnvironmentCheck[];
-  onLicenseKeyChange: (value: string) => void;
   onInstallModeChange: (value: InstallMode) => void;
   onSelectedVersionChange: (value: string) => void;
   onBack: () => void;
@@ -261,7 +258,6 @@ type ConfigStepViewProps = {
 };
 
 export function ConfigStepView({
-  licenseKey,
   installMode,
   selectedVersion,
   versionCatalogLoading,
@@ -273,7 +269,6 @@ export function ConfigStepView({
   loading,
   canStartInstall,
   step2Checks,
-  onLicenseKeyChange,
   onInstallModeChange,
   onSelectedVersionChange,
   onBack,
@@ -286,20 +281,13 @@ export function ConfigStepView({
         <div className="lg:col-span-3 p-8 flex flex-col justify-between h-full overflow-y-auto">
           <div className="flex flex-col gap-5">
             <div>
-              <h2 className="text-xl font-semibold text-[hsl(var(--ink))]">授权激活与模式</h2>
+              <h2 className="text-xl font-semibold text-[hsl(var(--ink))]">安装配置与模式</h2>
               <p className="text-xs text-[hsl(var(--muted))] mt-1">
-                验证激活码并设定依赖组件的获取源，准备开始拉取运行制品。
+                设定依赖组件的获取源，准备开始拉取运行制品。
               </p>
             </div>
 
             <div className="flex flex-col gap-4 mt-1">
-              <SecretField
-                label="激活码"
-                value={licenseKey}
-                onChange={onLicenseKeyChange}
-                placeholder="8F3K-29HD-Q7M2"
-              />
-
               <div className="form-group flex flex-col gap-2">
                 <label className="text-xs font-semibold text-[hsl(var(--body-strong))]">
                   <span>使用源</span>
@@ -386,8 +374,8 @@ export function ConfigStepView({
         <div className="lg:col-span-2 p-8 bg-[hsl(var(--canvas))/0.4] flex flex-col h-full min-h-0 overflow-y-auto">
           <div className="flex items-center justify-between pb-4 border-b border-[hsl(var(--hairline))] mb-4 flex-shrink-0">
             <div>
-              <h3 className="text-sm font-semibold text-[hsl(var(--body-strong))]">授权与配置预检</h3>
-              <p className="text-[10px] text-[hsl(var(--muted))] mt-0.5">校验激活包密钥及包源可用状态</p>
+              <h3 className="text-sm font-semibold text-[hsl(var(--body-strong))]">安装配置预检</h3>
+              <p className="text-[10px] text-[hsl(var(--muted))] mt-0.5">校验包源可用状态</p>
             </div>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${canStartInstall ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]' : 'bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]'}`}>
               {step2Checks.filter((item) => item.state === 'ok').length}/{step2Checks.length} 项通过
@@ -517,9 +505,6 @@ export function ProgressStageView({
     }
     if (lbl.includes('pip') || lbl.includes('依赖') || lbl.includes('库')) {
       return '下载并安全安装 OpenClaw 执行所需的第三方核心算法依赖库。';
-    }
-    if (lbl.includes('授权') || lbl.includes('密钥') || lbl.includes('激活') || lbl.includes('license')) {
-      return '激活码验证。';
     }
     if (lbl.includes('拉取') || lbl.includes('包') || lbl.includes('分发') || lbl.includes('下载')) {
       return '从安全节点获取主运行引擎程序，解压释放至工作目录。';
